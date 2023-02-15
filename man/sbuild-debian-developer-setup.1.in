@@ -1,0 +1,77 @@
+.\" Copyright © 2018  Michael Stapelberg <stapelberg@debian.org>
+.\"
+.\" This program is free software: you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation, either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful, but
+.\" WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+.\" General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program.  If not, see
+.\" <http://www.gnu.org/licenses/>.
+.so defs.man
+.TH SBUILD\-DEBIAN\-DEVELOPER\-SETUP 1 "\*[RELEASE_DATE]" "Version \*[VERSION]" "Debian sbuild"
+.SH NAME
+sbuild\-debian\-developer\-setup \- set up sbuild so that packages for Debian unstable can be built
+.SH SYNOPSIS
+.BR sbuild\-debian\-developer\-setup
+.RB [ \-h \[or] \-\-help ]
+.RB [ \-\-distribution=\fIdistribution\fP ]
+.RB [ \-\-suite=\fIsuite\fP ]
+.RB [ \-\-arch=\fIarch\fP ]
+.SH DESCRIPTION
+
+\fBsbuild-debian-developer-setup\fR is a convenience script to set up an sbuild
+environment for Debian Developers.
+
+When run, it adds the current user to the sbuild group, creates an schroot for
+building packages for Debian unstable, and creates a cronjob which updates said
+schroot daily.
+
+The script assumes you are on an un-metered internet connection (daily schroot
+updates might be costly otherwise).
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Display this manual.
+.TP
+.BR \-V ", " \-\-version
+Print version information.
+.TP
+.BR "\-\-distribution=\fIdistribution\fP"
+Set up an sbuild chroot for \fIdistribution\fP. Defaults to "debian".
+.TP
+.BR "\-\-suite=\fIsuite\fP"
+Set up an sbuild chroot for \fIsuite\fP. Defaults to "unstable".
+.TP
+.BR "\-\-arch=\fIarch\fP"
+Set up an sbuild chroot with architecture \fIarch\fP. Defaults to system arch.
+.SH EXAMPLES
+To set up sbuild and build the hello world Debian package, use:
+.PP
+\f[CR]% \f[CB]sudo sbuild\-debian\-developer\-setup\fP\fP\[CR]
+.br
+\f[CR]% \f[CB]newgrp sbuild\[CR]
+.br
+\f[CR]% \f[CB]sbuild -d unstable hello\[CR]
+.br
+.SH AUTHORS
+.nf
+Michael Stapelberg.
+.fi
+.SH COPYRIGHT
+.nf
+Copyright \[co] 2018 Michael Stapelberg <stapelberg@debian.org>.
+.fi
+.SH "SEE ALSO"
+.BR sbuild (1).
+.\"#
+.\"# The following sets edit modes for GNU EMACS
+.\"# Local Variables:
+.\"# mode:nroff
+.\"# fill-column:79
+.\"# End:

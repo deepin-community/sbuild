@@ -1,0 +1,8 @@
+.gitignore export-ignore
+.gitattributes export-ignore
+db/.gitignore export-ignore
+etc/.gitignore export-ignore
+lib/Sbuild/.gitignore export-ignore
+man/.gitignore export-ignore
+scripts/.gitignore export-ignore
+test/.gitignore export-ignore

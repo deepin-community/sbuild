@@ -1,0 +1,146 @@
+.\" Copyright © 2020-2022  Christian Kastner <ckk@debian.org>
+.\"
+.\" This program is free software: you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation, either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful, but
+.\" WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+.\" General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program.  If not, see
+.\" <http://www.gnu.org/licenses/>.
+.so defs.man
+.TH SBUILD\-QEMU\-CREATE "1" "\*[RELEASE_DATE]" "Version \*[VERSION]" "Debian sbuild"
+.SH NAME
+sbuild\-qemu\-create \- QEMU image creator for sbuild
+.SH SYNOPSIS
+.B sbuild\-qemu\-create
+.RB [ \-h ]
+.RB [ \-\-arch=ARCH ]
+.RB [ \-\-install\-packages=INSTALL_PACKAGES]
+.RB [ \-\-extra\-deb=EXTRA_DEB]
+.RB [ \-\-components=COMPONENTS ]
+.RB [ \-\-skel=SKEL ]
+.RB [ \-\-size=SIZE ]
+.RB [ \-o=OUT_FILE  ]
+.RB [ \-\-noexec ]
+.RB [RELEASE]
+.RB [MIRROR]
+.PP
+Build an image for use with \fBsbuild-qemu\fR and \fBautopkgtest\fR.
+\fBRELEASE\fR will be debootstrapped from \fBMIRROR\fR.
+Note that the same mirror will also be used for the \fIsources.list\fR file
+within the VM. See MIRROR below.
+.PP
+Note that sbuild\-qemu\-create is just a simple wrapper around
+autopkgtest\-build\-qemu(1) that automates a few additional steps commonly
+performed for package\-building images.
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Show this help message and exit.
+.TP
+\fB\-\-arch\fR=ARCH
+Architecture to use. Default is the host architecture. Currently supported
+architectures are: amd64, arm64, armhf, i386, ppc64el.
+.TP
+\fB\-\-install\-packages\fR=INSTALL_PACKAGES
+Comma\-separated list of additional packages to install using
+\fBapt\-get install\fR from within the image.
+.TP
+\fB\-\-extra\-deb\fR=EXTRA_DEB
+Package file (.deb) from the local filesystem to install. Can be specified more
+than once.
+.TP
+\fB\-\-components\fR=COMPONENTS
+Comma\-separated list of components to use with \fIsources.list\fR entries.
+Default: main.
+.TP
+\fB\-\-skel\fR=SKEL
+Skeleton directory to use for \fI\,/root\/\fP.
+.TP
+\fB\-\-size\fR=SIZE
+Image size to use. Note that the images will be created in qcow2 format, so
+they won't consume that space right away. Default: 10G.
+.TP
+\fB\-o\fR=OUT_FILE, \fB\-\-out\-file\fR=OUT_FILE
+Output filename. If not supplied, then DIST\-autopkgtest\-ARCH.img will be
+used.
+.TP
+\fB\-\-noexec\fR
+Don't actually do anything. Just print the autopkgtest\-build\-qemu(1) command
+string that would be executed, and then exit.
+.SH "MIRROR"
+It is \fBhighly recommended\fR that you use an APT cache, like approx(8) or
+apt\-cacher\-ng(8), on the \fBlocal\fR machine (so that the VM can access
+that cache without much hassle) as a mirror. This will dramatically speed up the
+package build process. On the author's local machine, installing the build
+dependencies of even larger packages takes only a few seconds.
+.PP
+If you use a local cache, then ensure that the mirror is accessible from within
+the guest. Using \fIhttp://localhost:9999/debian\fR or similar will
+successfully build the image, but APT will fail within the running VM, because
+to the VM, ``localhost'' is something else. An easy workaround is to use an
+IP address instead, for example \fIhttp://192.168.0.123:9999/debian\fR,
+assuming the host system has the IP 192.168.0.123.
+.SH "SPECIAL CASES"
+If \fBRELEASE\fR is \fBexperimental\fR, \fIsources.list\fR will contain
+entries for both \fBexperimental\fR and \fBunstable\fR.
+.PP
+If \fBRELEASE\fR ends with \fB\-backports\fR, \fIsources.list\fR will contain
+entries for both \fBRELEASE\fR and for the distribution it is based upon. In
+other words, specifying \fIbullseye-backports\fR will also add an entry
+for \fIbullseye\fR.
+.SH "SHARING FILES"
+Among other things, autopkgtest\-virt\-qemu(1) has built-in support for sharing
+a directory on the host with the guest, so no further configuration should be
+necessary when accessing the VM using autopkgtest.
+.PP
+In additon to that, a mount point for a 9p filesystem is added to the
+VM's \fI/etc/fstab\fR. This is for cases where the VM is launched via QEMU
+directly, rather than going through autopkgtest\-virt\-qemu.
+.PP
+To share a directory on the host with the VM, QEMU should be started with
+the following additional options:
+.PP
+\fB \-virtfs local,path=/path/to/host/dir,id=sbuild-qemu,mount_tag=sbuild-qemu,security_model=none
+.SH EXAMPLES
+\fB$ sudo sbuild\-qemu\-create unstable http://deb.debian.org/debian\fR
+.PP
+This will create an image \fBunstable\-autopkgtest\-amd64.img\fR (assuming
+that the host architecture is amd64) with the unstable distribution.
+.PP
+\fB$ sudo sbuild\-qemu\-create bullseye\-backports http://deb.debian.org/debian\fR
+.PP
+This will create an image \fBbullseye\-backports\-autopkgtest\-amd64.img\fR,
+with \fIsources.list\fR entries for both bullseye and bullseye-backports.
+.PP
+\fB$ sudo sbuild\-qemu\-create \-\-skel DIR unstable http://deb.debian.org/debian\fR
+.PP
+The files in \fBDIR\fR will be copied into /root (that is, root's $HOME). This
+can be used, for example, to copy an \fB.ssh/authorized_keys\fR file, so that
+one can connect to the running image using SSH (assuming openssh\-server is
+installed).
+.PP
+\fB$ sudo sbuild\-qemu\-create \-\-install\-packages openssh\-server unstable http://deb.debian.org/debian\fR
+.PP
+This would install openssh\-server. The package will be downloaded in the
+target environment using 'apt-get'.
+.PP
+A popular package to pre\-install this way would be \fBdebhelper\fR, as it is a
+build dependency of the vast majority of Debian packages.
+.PP
+\fB$ sudo sbuild\-qemu\-create \-\-extra\-deb FOO.deb unstable http://deb.debian.org/debian\fR
+.PP
+This would install the package \fBFOO.deb\fR from the local filesystem.
+Useful, for example, to install additional keyring packages.
+.SH COPYRIGHT
+Copyright \[co] 2020-2022 Christian Kastner <ckk@debian.org>
+.SH "SEE ALSO"
+.BR sbuild (1),
+.BR sbuild\-qemu (1),
+.BR sbuild\-qemu\-update (1).

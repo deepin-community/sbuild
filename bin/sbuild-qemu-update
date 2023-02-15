@@ -1,0 +1,220 @@
+#!/usr/bin/python3
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
+# Copyright © 2020-2022 Christian Kastner <ckk@debian.org>
+#             2021      Simon McVittie <smcv@debian.org>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see
+# <http://www.gnu.org/licenses/>.
+#
+#######################################################################
+
+
+# Note that there is significant overlap between this program and
+# sbuild-qemu-boot. Both are in their developmental stages and I'd prefer to
+# wait and see where this goes before refactoring them. --ckk
+
+
+import argparse
+import datetime
+import os
+import subprocess
+import sys
+
+import pexpect
+
+
+SUPPORTED_ARCHS = [
+    'amd64',
+    'arm64',
+    'armhf',
+    'i386',
+    'ppc64el',
+]
+
+IMAGEDIR = os.environ.get(
+    'IMAGEDIR',
+    os.path.join(os.path.expanduser('~'), '.cache', 'sbuild'),
+)
+
+
+def make_snapshot(image):
+    iso_stamp = datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')
+    run = subprocess.run(
+        ['qemu-img', 'snapshot', '-l', image],
+        capture_output=True
+    )
+    tags = [t.split()[1].decode('utf-8') for t in run.stdout.splitlines()[2:]]
+
+    if iso_stamp in tags:
+        print(
+            f"Error: snapshot for {iso_stamp} already exists.",
+            file=sys.stderr
+        )
+        return False
+
+    run = subprocess.run(['qemu-img', 'snapshot', '-c', iso_stamp, image])
+    return True if run.returncode == 0 else False
+
+
+def get_qemu_base_args(image, guest_arch=None):
+    host_arch = subprocess.check_output(
+        ['dpkg', '--print-architecture'],
+        text=True,
+    ).strip()
+
+    if not guest_arch:
+        # This assumes that images are named foo-bar-ARCH.img
+        root, _ = os.path.splitext(os.path.basename(image))
+        components = root.split('-')
+        for c in reversed(components):
+            if c in SUPPORTED_ARCHS:
+                guest_arch = c
+                break
+        if not guest_arch:
+            print(
+                f"Could not guess guest architecture, please use --arch",
+                file=sys.stderr,
+            )
+            return
+    else:
+        if not guest_arch in SUPPORTED_ARCHS:
+            print(f"Unsupported architecture: {guest_arch}", file=sys.stderr)
+            print("Supported architectures are: ", file=sys.stderr, end="")
+            print(f"{', '.join(SUPPORTED_ARCHS)}", file=sys.stderr)
+            return
+
+    if guest_arch == 'amd64' :
+        argv = ['qemu-system-x86_64']
+        if host_arch == 'amd64':
+            argv.append('-enable-kvm')
+    elif guest_arch == 'i386':
+        argv = ['qemu-system-i386', '-machine', 'q35']
+        if host_arch in ['amd64', 'i386']:
+            argv.append('-enable-kvm')
+    elif guest_arch == 'ppc64el':
+        argv = ['qemu-system-ppc64le']
+        if host_arch == 'ppc64el':
+            argv.append('-enable-kvm')
+    elif guest_arch == 'arm64':
+        argv = [
+            'qemu-system-aarch64',
+            '-machine', 'virt',
+            '-drive',   'if=pflash,format=raw,unit=0,read-only=on,'
+                        'file=/usr/share/AAVMF/AAVMF_CODE.fd',
+        ]
+        if host_arch == 'arm64':
+            argv.extend(['-cpu', 'host', '-enable-kvm'])
+        else:
+            argv.extend(['-cpu', 'cortex-a53'])
+    elif guest_arch == 'armhf':
+            if host_arch == 'arm64':
+                argv = [
+                    'qemu-system-aarch64',
+                    '-cpu', 'host,aarch64=off',
+                    '-enable-kvm'
+                ]
+            else:
+                argv = ['qemu-system-arm']
+            argv.extend([
+                '-machine', 'virt',
+                '-drive',   'if=pflash,format=raw,unit=0,read-only=on,'
+                            'file=/usr/share/AAVMF/AAVMF32_CODE.fd',
+            ])
+
+    return argv
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='sbuild-update analog for QEMU images.',
+    )
+    parser.add_argument(
+        '--snapshot',
+        action='store_true',
+        help="Create a snapshot of the image before changing it. Useful for "
+             "reproducibility purposes.",
+    )
+    parser.add_argument(
+        '--arch',
+        help="Architecture to use (instead of attempting to auto-guess based "
+             "on the image name).",
+    )
+    parser.add_argument(
+        '--noexec',
+        action='store_true',
+        help="Don't actually do anything. Just print the command string that "
+             "would be executed, and then exit.",
+    )
+    parser.add_argument(
+        'image',
+        help="Image. Will first be interpreted as a path. If no suitable "
+        "image exists at that location, then $IMAGEDIR\<image> is tried.",
+    )
+
+    parsed_args = parser.parse_args()
+
+    if os.path.exists(parsed_args.image):
+        image = parsed_args.image
+    elif os.path.exists(os.path.join(IMAGEDIR, parsed_args.image)):
+        image = os.path.join(IMAGEDIR, parsed_args.image)
+    else:
+        print("Image does not exist", file=sys.stderr)
+        sys.exit(1)
+
+    args = get_qemu_base_args(parsed_args.image, parsed_args.arch)
+    if not args:
+        sys.exit(1)
+
+    args.extend([
+            '-object', 'rng-random,filename=/dev/urandom,id=rng0',
+            '-device', 'virtio-rng-pci,rng=rng0,id=rng-device0',
+            '-device', 'virtio-serial',
+            '-nic',    'user,model=virtio',
+            '-m',      '1024',
+            '-smp',    '1',
+            '-nographic',
+            image,
+    ])
+
+    print(' '.join(str(a) for a in args))
+    if parsed_args.noexec:
+        return
+    elif parsed_args.snapshot and not make_snapshot(image):
+        return
+
+    child = pexpect.spawn(' '.join(args), encoding='utf-8')
+    child.timeout = 240
+    child.expect('host login: ')
+    child.sendline('root')
+    child.logfile = sys.stdout
+    child.expect('root@host:~# ')
+    child.sendline('DEBIAN_FRONTEND=noninteractive apt-get --quiet update')
+    child.expect('root@host:~# ')
+    child.sendline('DEBIAN_FRONTEND=noninteractive apt-get --quiet --assume-yes dist-upgrade')
+    child.expect('root@host:~# ')
+    child.sendline('DEBIAN_FRONTEND=noninteractive apt-get --quiet --assume-yes clean')
+    child.expect('root@host:~# ')
+    child.sendline('DEBIAN_FRONTEND=noninteractive apt-get --quiet --assume-yes autoremove')
+    child.expect('root@host:~# ')
+    child.sendline('sync')
+    child.expect('root@host:~# ')
+    # Don't recall what issue this solves, but it solves it
+    child.sendline('sleep 1')
+    child.expect('root@host:~# ')
+    child.sendline('shutdown -h now')
+
+
+if __name__ == '__main__':
+    main()

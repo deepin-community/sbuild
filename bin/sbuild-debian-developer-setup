@@ -1,0 +1,77 @@
+#!/usr/bin/perl
+#
+# Set up sbuild so that packages for Debian unstable can be built and
+# maintenance is done automatically via a daily update cronjob.
+# Copyright © 2017 Michael Stapelberg <stapelberg@debian.org>.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see
+# <http://www.gnu.org/licenses/>.
+#
+#######################################################################
+
+use strict;
+use warnings;
+use v5.10;
+use Getopt::Long;
+use Sbuild qw(help_text);
+
+my $dist = "debian";
+my $suite = "unstable";
+chomp(my $arch = `dpkg --print-architecture`);
+
+my @options = (
+    'distribution=s' => \$dist,
+    'suite=s' => \$suite,
+    'arch=s' => \$arch,
+    'help' => sub { help_text(1, "sbuild-debian-developer-setup") },
+    );
+GetOptions(@options);
+
+if (!defined($ENV{SUDO_USER})) {
+    die "Please run sudo $0";
+}
+
+system("adduser", "--", $ENV{SUDO_USER}, "sbuild") == 0
+    or die "adduser failed: $?";
+
+sub chroot_exists {
+    system("schroot -i -c chroot:$suite-$arch-sbuild >/dev/null 2>&1") == 0
+}
+
+if (!chroot_exists()) {
+    my @aliases = ();
+    if ( $suite eq "unstable" || $suite eq "sid" ) {
+        @aliases = ( "--alias=UNRELEASED", "--alias=UNRELEASED-$arch-sbuild" );
+        if ( $suite eq "unstable" ) {
+            push @aliases, "--alias=sid";
+        }
+        if ( $suite eq "sid" ) {
+            push @aliases, "--alias=unstable";
+        }
+    }
+    system("sbuild-createchroot",
+	   "--command-prefix=eatmydata",
+	   "--include=eatmydata",
+	   @aliases,
+	   "$suite",
+	   "/srv/chroot/$suite-$arch-sbuild",
+	   "http://localhost:3142/deb.debian.org/debian") == 0
+	       or die "sbuild-createchroot failed: $!";
+} else {
+    say "chroot $suite-$arch-sbuild already exists";
+}
+
+say "Your current user is now part of the sbuild group (no need to run sbuild-adduser) and a chroot environment exists in /srv/chroot/$suite-$arch-sbuild";
+
+say "Now run `newgrp sbuild', or log out and log in again.";

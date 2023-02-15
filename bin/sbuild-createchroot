@@ -1,0 +1,813 @@
+#!/usr/bin/perl
+#
+# Run debootstrap and add a few other files needed to create a working
+# sbuild chroot.
+# Copyright © 2004 Francesco P. Lovergine <frankie@debian.org>.
+# Copyright © 2007-2010 Roger Leigh <rleigh@debian.org>.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see
+# <http://www.gnu.org/licenses/>.
+#
+#######################################################################
+
+use strict;
+use warnings;
+
+umask 0022;
+
+use English;
+
+use Sbuild::AptResolver;
+
+package Conf;
+
+sub setup {
+    my $conf = shift;
+
+    my $keyring = '';
+    $keyring = '/etc/apt/trusted.gpg'
+	if -f '/etc/apt/trusted.gpg';
+
+    my %createchroot_keys = (
+	'CHROOT_PREFIX'				=> {
+	    DEFAULT => undef
+	},
+	'CHROOT_SUFFIX'				=> {
+	    DEFAULT => '-sbuild'
+	},
+	'FOREIGN'				=> {
+	    DEFAULT => 0
+	},
+	'INCLUDE'				=> {
+	    DEFAULT => ''
+	},
+	'EXCLUDE'				=> {
+	    DEFAULT => ''
+	},
+	'COMPONENTS'				=> {
+	    DEFAULT => 'main'
+	},
+	'RESOLVE_DEPS'				=> {
+	    DEFAULT => 1
+	},
+	'KEEP_DEBOOTSTRAP_DIR'			=> {
+	    DEFAULT => 0
+	},
+	'DEBOOTSTRAP'				=> {
+	    DEFAULT => 'debootstrap'
+	},
+	'KEYRING'				=> {
+	    DEFAULT => undef
+	},
+	'SETUP_ONLY'				=> {
+	    DEFAULT => 0
+	},
+	'MAKE_SBUILD_TARBALL'				=> {
+	    DEFAULT => ''
+	},
+	'KEEP_SBUILD_CHROOT_DIR'			=> {
+	    DEFAULT => 0
+	},
+	'DEB_SRC'				=> {
+	    DEFAULT => 1
+	},
+	'ALIASES'				=> {
+	    DEFAULT => []
+	},
+	'EXTRA_REPOSITORIES'			=> {
+	    DEFAULT => []
+	},
+	'COMMAND_PREFIX'			=> {
+	    DEFAULT => ''
+	},
+	'CHROOT_MODE'				=> {
+	    DEFAULT => 'schroot'
+	},
+	'MERGED_USR'				=> {
+	    DEFAULT => 'auto'
+	},
+    );
+
+    $conf->set_allowed_keys(\%createchroot_keys);
+}
+
+package Options;
+
+use Sbuild::OptionsBase;
+use Sbuild::Conf qw();
+
+BEGIN {
+    use Exporter ();
+    our (@ISA, @EXPORT);
+
+    @ISA = qw(Exporter Sbuild::OptionsBase);
+
+    @EXPORT = qw();
+}
+
+sub set_options {
+    my $self = shift;
+
+    $self->add_options(
+	"chroot-mode=s" => sub {
+	    $self->set_conf('CHROOT_MODE', $_[1]);
+	},
+	"chroot-prefix=s" => sub {
+	    $self->set_conf('CHROOT_PREFIX', $_[1]);
+	},
+	"chroot-suffix=s" => sub {
+	    $self->set_conf('CHROOT_SUFFIX', $_[1]);
+	},
+	"arch=s" => sub {
+	    $self->set_conf('BUILD_ARCH', $_[1]);
+	},
+	"foreign" => sub {
+	    $self->set_conf('FOREIGN', 1);
+	},
+	"resolve-deps" => sub {
+	    $self->set_conf('RESOLVE_DEPS', 1)
+	},
+	"no-resolve-deps" => sub {
+	    $self->set_conf('RESOLVE_DEPS', 0)
+	},
+	"keep-debootstrap-dir" => sub {
+	    $self->set_conf('KEEP_DEBOOTSTRAP_DIR', 1)
+	},
+	"debootstrap=s" => sub {
+	    $self->set_conf('DEBOOTSTRAP', $_[1])
+	},
+	"exclude=s" => sub {
+	    $self->set_conf('EXCLUDE', $_[1]);
+	},
+	"include=s" => sub {
+	    $self->set_conf('INCLUDE', $_[1]);
+	},
+	"components=s" => sub {
+	    $self->set_conf('COMPONENTS', $_[1]);
+	},
+	"keyring=s" => sub {
+	    $self->set_conf('KEYRING', $_[1]);
+	},
+	"setup-only" => sub {
+	    $self->set_conf('SETUP_ONLY', 1);
+	},
+	"make-sbuild-tarball=s" => sub {
+	    $self->set_conf('MAKE_SBUILD_TARBALL', $_[1]);
+	},
+	"keep-sbuild-chroot-dir" => sub {
+	    $self->set_conf('KEEP_SBUILD_CHROOT_DIR', 1);
+	},
+	"no-deb-src" => sub {
+	    $self->set_conf('DEB_SRC', 0);
+	},
+	"alias=s" => sub {
+	    push @{$self->get_conf('ALIASES')}, $_[1];
+	},
+	"extra-repository=s" => sub {
+	    push @{$self->get_conf('EXTRA_REPOSITORIES')}, $_[1];
+	},
+        "command-prefix=s" => sub {
+	    $self->set_conf('COMMAND_PREFIX', $_[1]);
+	},
+	"merged-usr" => sub {
+	    $self->set_conf('MERGED_USR', 1)
+	},
+	"auto-merged-usr" => sub {
+	    $self->set_conf('MERGED_USR', 'auto')
+	},
+	"no-merged-usr" => sub {
+	    $self->set_conf('MERGED_USR', 0)
+	});
+}
+
+package main;
+
+use POSIX;
+use Getopt::Long qw(:config no_ignore_case auto_abbrev gnu_getopt);
+use Sbuild qw(dump_file help_text version_text usage_error check_packages);
+use Sbuild::ChrootPlain;
+use Sbuild::ChrootUnshare;
+use Sbuild::ChrootRoot;
+use Sbuild::Sysconfig;
+use Sbuild::Conf qw();
+use Sbuild::Utility;
+use File::Basename qw(dirname);
+use File::Path qw(mkpath rmtree);
+use File::Temp qw(tempfile);
+use File::Copy;
+use Cwd qw(abs_path);
+use IPC::Open3;
+use File::Spec;
+
+sub add_items ($@);
+sub makedir ($$);
+
+my %personalities = (
+    'armel:arm64' => 'linux32',
+    'armhf:arm64' => 'linux32',
+    'i386:amd64' => 'linux32',
+    'mipsel:mips64el' => 'linux32',
+    'powerpc:ppc64' => 'linux32',
+);
+
+my $conf = Sbuild::Conf::new();
+Conf::setup($conf);
+exit 1 if !defined($conf);
+my $options = Options->new($conf, "sbuild-createchroot", "8");
+exit 1 if !defined($options);
+
+
+usage_error("sbuild-createchroot",
+	    "Incorrect number of options") if (@ARGV <2 || @ARGV >4);
+
+if ($conf->get('CHROOT_MODE') eq 'unshare' and !$conf->get('MAKE_SBUILD_TARBALL')) {
+    usage_error("sbuild-createchroot",
+	"--chroot-mode=unshare requires --make-sbuild-tarball to be set");
+}
+
+if ($conf->get('CHROOT_MODE') eq 'unshare' and $conf->get('SETUP_ONLY')) {
+    usage_error("sbuild-createchroot",
+	"--chroot-mode=unshare is incompatible with --setup-only")
+}
+
+if ($conf->get('CHROOT_MODE') eq 'unshare' and scalar @{$conf->get('ALIASES')} > 0) {
+    usage_error("sbuild-createchroot",
+	"--chroot-mode=unshare is incompatible with --alias")
+}
+
+if ($conf->get('CHROOT_MODE') ne 'schroot' and $conf->get('COMMAND_PREFIX')) {
+    usage_error("sbuild-createchroot",
+	"--command-prefix requires --chroot-mode=schroot")
+}
+
+if ($conf->get('MAKE_SBUILD_TARBALL') and -e $conf->get('MAKE_SBUILD_TARBALL')) {
+    print STDERR "E: tarball already exists: ". $conf->get('MAKE_SBUILD_TARBALL') . "\n";
+    exit 1;
+}
+
+# Make sure fakeroot and build-essential are installed
+$conf->set('INCLUDE', add_items($conf->get('INCLUDE'),
+				"fakeroot",
+				"build-essential"));
+
+# Deal with SUITE-VARIANT
+my $suite = $ARGV[0];
+
+# check if schroot name is already in use
+
+my $chrootname;
+if (defined $conf->get('CHROOT_PREFIX') && $conf->get('CHROOT_PREFIX') ne "") {
+    $chrootname = $conf->get('CHROOT_PREFIX')
+} else {
+    $chrootname = $suite
+}
+$chrootname .= "-" . $conf->get('BUILD_ARCH') . $conf->get('CHROOT_SUFFIX');
+
+if ($conf->get('CHROOT_MODE') eq 'schroot') {
+    # We redirect stderr to /dev/null because otherwise schroot might print
+    # warnings on stderr which throws off autopkgtest
+    open(NULL, ">", File::Spec->devnull);
+    my $pid = open3(my $in = '', \*PH, \*NULL, 'schroot', '-l', '--all-source-chroots');
+    while (my $line = <PH>) {
+	$line ne "source:$chrootname\n" or die "chroot with name $chrootname already exists";
+    }
+    waitpid($pid, 0);
+    if (($? >> 8) != 0) {
+	die "schroot exited with non-zero exit status";
+    }
+}
+
+my $target = $ARGV[1];
+if (-e $target) {
+    if (!-d $target) {
+	die "$target exists and is not a directory";
+    }
+    chmod 0755, $target or die "cannot chmod $target";
+    # only check if the directory is empty if the --setup-only option is not
+    # given because that option needs an already populated directory
+    if (!$conf->get('SETUP_ONLY')) {
+	# check if the directory is empty or contains nothing more than an
+	# empty lost+found directory. The latter exists on freshly created
+	# ext3 and ext4 partitions.
+	# rationale for requiring an empty directory: https://bugs.debian.org/833525
+	opendir(my $dh, $target) or die "Can't opendir($target): $!";
+	while (my $entry = readdir $dh) {
+	    # skip the "." and ".." entries
+	    next if $entry eq ".";
+	    next if $entry eq "..";
+	    # if the entry is a directory named "lost+found" then skip it
+	    # if it's empty
+	    if ($entry eq "lost+found" and -d "$target/$entry") {
+		opendir(my $dh2, "$target/$entry");
+		# Attempt reading the directory thrice. If the third time
+		# succeeds, then it has more entries than just "." and ".."
+		# and must thus not be empty.
+		readdir $dh2;
+		readdir $dh2;
+		# rationale for requiring an empty directory:
+		# https://bugs.debian.org/833525
+		if (readdir $dh2) {
+		    die "$target contains a non-empty lost+found directory";
+		}
+		closedir($dh2);
+	    } else {
+		die "$target is not empty";
+	    }
+	}
+	closedir($dh);
+    }
+} else {
+    # Create the target directory in advance so abs_path (which is buggy)
+    # won't fail.  Remove if abs_path is replaced by something better.
+    makedir($target, 0755);
+}
+$target = abs_path($target);
+my $script = undef;
+my $mirror = "http://deb.debian.org/debian";
+
+$mirror = $ARGV[2] if $#ARGV >= 2;
+$script = $ARGV[3] if $#ARGV == 3;
+
+if ($conf->get('VERBOSE')) {
+    print "I: SUITE: $suite\n";
+    print "I: TARGET: $target\n";
+    print "I: MIRROR: $mirror\n";
+    print "I: SCRIPT: $script\n" if (defined($script));
+}
+
+my @args = ("--arch=" . $conf->get('BUILD_ARCH'),
+	    "--variant=buildd");
+push @args, "--verbose" if $conf->get('VERBOSE');
+push @args, "--foreign" if $conf->get('FOREIGN');
+push @args, "--keep-debootstrap-dir" if $conf->get('KEEP_DEBOOTSTRAP_DIR');
+push @args, "--include=" . $conf->get('INCLUDE') if $conf->get('INCLUDE');
+push @args, "--exclude=" . $conf->get('EXCLUDE') if $conf->get('EXCLUDE');
+push @args, "--components=" . $conf->get('COMPONENTS')
+    if $conf->get('COMPONENTS');
+push @args, "--keyring=" . $conf->get('KEYRING') if $conf->get('KEYRING');
+push @args, "--no-check-gpg" if defined $conf->get('KEYRING') && $conf->get('KEYRING') eq "";
+push @args, $conf->get('RESOLVE_DEPS') ?
+    "--resolve-deps" : "--no-resolve-deps";
+if ($conf->get('MERGED_USR') ne 'auto') {
+	push @args, $conf->get('MERGED_USR') ?
+	    "--merged-usr" : "--no-merged-usr";
+}
+push @args, "$suite", "$target", "$mirror";
+push @args, "$script" if $script;
+
+# Set the path to debootstrap
+my $debootstrap = $conf->get('DEBOOTSTRAP');
+
+# Get the name of the debootstrap binary
+my $debootstrap_bin = $debootstrap;
+$debootstrap_bin =~ s/^.*\///s;
+
+if ($conf->get('VERBOSE')) {
+    print "I: Running $debootstrap_bin " . join(' ',@args) . "\n";
+}
+
+my @idmap;
+if ($conf->get('CHROOT_MODE') eq 'unshare') {
+    @idmap = read_subuid_subgid;
+    # sanity check
+    if (scalar(@idmap) != 2 || $idmap[0][0] ne 'u' || $idmap[1][0] ne 'g') {
+	printf STDERR "invalid idmap\n";
+	return 0;
+    }
+}
+
+# Run debootstrap with specified options.
+if (!$conf->get('SETUP_ONLY')) {
+    if ($conf->get('CHROOT_MODE') eq 'unshare') {
+	if(!test_unshare) {
+	    print STDERR "E: unable to to unshare\n";
+	    exit 1;
+	}
+
+	makedir($target, 0755);
+
+	my $outer_gid = $REAL_GROUP_ID+0;
+	system(get_unshare_cmd({
+		    IDMAP => [['u', '0', $REAL_USER_ID, '1'],
+			['g', '0', $outer_gid, '1'],
+			['u', '1', $idmap[0][2], '1'],
+			['g', '1', $idmap[1][2], '1'],
+		    ]
+		}), 'chown', '1:1', $target);
+	my @cmd = ('env', 'PATH=/usr/sbin:/usr/bin:/sbin:/bin',
+	    get_unshare_cmd({UNSHARE_FLAGS => CLONE_NEWNS | CLONE_NEWPID | CLONE_NEWUTS | CLONE_NEWIPC, FORK => 1, IDMAP => \@idmap}), 'sh', '-c', "
+	    rootdir=\"\$1\"; shift;
+	    hostname sbuild;
+	    mkdir -p \"\$rootdir/dev\";
+	    for f in null zero full random urandom tty; do
+		touch \"\$rootdir/dev/\$f\";
+		chmod -rwx \"\$rootdir/dev/\$f\";
+		mount -o bind \"/dev/\$f\" \"\$rootdir/dev/\$f\";
+	    done;
+	    mkdir -p \"\$rootdir/sys\";
+	    mount -o rbind /sys \"\$rootdir/sys\";
+	    mkdir -p \"\$rootdir/proc\";
+	    mount -t proc proc \"\$rootdir/proc\";
+	    mkdir -p \"\$rootdir/fakebin\";
+	    ln -sf /bin/true \"\$rootdir/fakebin/mknod\";
+	    ln -sf /bin/true \"\$rootdir/fakebin/mount\";
+	    export PATH=\"\$rootdir/fakebin:/fakebin:\$PATH\"
+	    \"\$@\";
+	    exit_status=\$?;
+	    rm \"\$rootdir/fakebin/mknod\" \"\$rootdir/fakebin/mount\";
+	    rm -d \"\$rootdir/fakebin\";
+	    exit \$exit_status;
+	    ", '--', $target, $debootstrap, @args
+	);
+	!system(@cmd) or die "E: Error running @cmd";
+    } else {
+	if ($REAL_USER_ID == 0) {
+	    chown(0, 0, $target) or die "cannot chown $target";
+	}
+	!system($debootstrap, @args) or die "E: Error running $debootstrap_bin";
+    }
+}
+
+if (!($conf->get('SETUP_ONLY') && $conf->get('MAKE_SBUILD_TARBALL'))) {
+    my $sources_list = "";
+
+    # Add deb-src to /etc/apt/sources.list.
+    if ($conf->get('DEB_SRC')) {
+	my $comps = join(' ',split(/,/,$conf->get('COMPONENTS')));
+	$sources_list .= "deb-src $mirror $suite $comps\n";
+    }
+
+    # Add extra repositories to /etc/apt/sources.list
+    for my $repo (@{$conf->get('EXTRA_REPOSITORIES')}) {
+	$sources_list .= "$repo\n";
+    }
+
+    my $passwd_sbuild = `getent passwd sbuild`;
+    my $group_sbuild = `getent group sbuild`;
+
+    my $setup_script = <<"EOF";
+open (my \$passwd_fd, ">>", "\$target/etc/passwd") or die "cannot open /etc/passwd";
+print \$passwd_fd \$passwd_sbuild;
+close(\$passwd_fd);
+open (my \$group_fd, ">>", "\$target/etc/group") or die "cannot open /etc/group";
+print \$group_fd \$group_sbuild;
+close(\$group_fd);
+
+
+# Set up minimal /etc/hosts if it didn't exist yet. Normally, the package
+# netbase would create the file.
+my \$hosts = "\${target}/etc/hosts";
+if (! -e \$hosts) {
+    open(HOSTS, ">\$hosts")
+	or die "Can't open \$hosts for writing";
+    # write the default content that would be created by the netbase package
+    print HOSTS <<"EOF2";
+127.0.0.1	localhost
+::1		localhost ip6-localhost ip6-loopback
+ff02::1		ip6-allnodes
+ff02::2		ip6-allrouters
+
+EOF2
+    close HOSTS or die "Can't close \$hosts";
+
+    # Display /etc/hosts.
+    print "I: Configured /etc/hosts:\n";
+    dump_file("\$hosts");
+}
+
+# Set up minimal /usr/sbin/policy-rc.d.
+my \$policy_rc_d = "\${target}/usr/sbin/policy-rc.d";
+open(POLICY_RC_D, ">\$policy_rc_d")
+    or die "Can't open \$policy_rc_d for writing";
+print POLICY_RC_D <<"EOF2";
+#!/bin/sh
+echo "All runlevel operations denied by policy" >&2
+exit 101
+EOF2
+
+close POLICY_RC_D or die "Can't close \$policy_rc_d";
+
+my (undef, undef, \$uid, undef) = getpwnam('root');
+chown(\$uid, -1, \$policy_rc_d) == 1
+    or die "E: Failed to set root: ownership on \$policy_rc_d";
+chmod(0775, \$policy_rc_d) == 1
+    or die "E: Failed to set 0755 permissions on \$policy_rc_d";
+
+# Display /usr/sbin/policy-rc.d.
+print "I: Configured /usr/sbin/policy-rc.d:\n";
+dump_file("\$policy_rc_d");
+EOF
+
+    if ($conf->get('DEB_SRC') || scalar @{$conf->get('EXTRA_REPOSITORIES')} > 0) {
+	$setup_script .= <<"EOF";
+my \$sources = "\${target}/etc/apt/sources.list";
+open(SOURCES, ">>\$sources")
+    or die "E: Can't open \$sources for writing";
+
+print SOURCES \$sources_list;
+close SOURCES or die "E: Can't close \$sources";
+EOF
+    }
+
+    $setup_script .= <<"EOF";
+# Display /etc/apt/sources.list.
+print "I: Configured APT /etc/apt/sources.list:\n";
+dump_file("\${target}/etc/apt/sources.list");
+print "I: Please add any additional APT sources to \${target}/etc/apt/sources.list\n";
+EOF
+    if ($conf->get('CHROOT_MODE') eq 'unshare') {
+    my $group_sbuild = `getent group sbuild`;
+	$setup_script = <<"EOF";
+use strict;
+use warnings;
+use Sbuild qw(dump_file);
+my \$target = \$ARGV[0];
+my \$passwd_sbuild = \$ARGV[1];
+my \$group_sbuild = \$ARGV[2];
+my \$sources_list = \$ARGV[3];
+$setup_script
+EOF
+	!system(get_unshare_cmd(
+		{IDMAP => \@idmap}), 'perl', '-e', $setup_script, $target, $passwd_sbuild, $group_sbuild, $sources_list
+	) or die "E: failed running setup script";
+    } else {
+	eval $setup_script;
+	if ($@) {
+	    die "E: failed running setup script: $@\n";
+	}
+    }
+}
+
+if ($conf->get('CHROOT_MODE') eq 'schroot') {
+    # Write out schroot chroot configuration.
+
+    my $arch = $conf->get('BUILD_ARCH');
+    my $config_entry = <<"EOF";
+[$chrootname]
+description=Debian $suite/$arch autobuilder
+groups=root,sbuild
+root-groups=root,sbuild
+profile=sbuild
+EOF
+
+    # Determine the schroot chroot configuration to use.
+    if ($conf->get('MAKE_SBUILD_TARBALL')) {
+	my $tarball = $conf->get('MAKE_SBUILD_TARBALL');
+
+	# Default to using tar gzip compression if unable to determine compression
+	# mode via file extension.
+	if ($tarball !~ /\.(tgz|tbz|tlz|txz|tar(\.(gz|bz2|lz|xz))?)$/) {
+	    print "I: Renaming sbuild tarball '$tarball' to '$tarball.tar.gz'\n";
+	    $tarball .= ".tar.gz";
+	    $conf->set('MAKE_SBUILD_TARBALL', $tarball);
+	}
+
+	$config_entry .= <<"EOF";
+type=file
+file=$tarball
+EOF
+    } else {
+	# Determine whether system has overlayfs capability
+	my $uniontype = "none";
+	if (lc("$^O") =~ /linux/ && -e '/sbin/modprobe') {
+	    my $ret = system(qw(/sbin/modprobe overlay));
+	    if ($ret == 0 && open(FILE, "/proc/filesystems")) {
+		if (grep {/\soverlay$/} <FILE>) {
+		    $uniontype = "overlay";
+		}
+		close(FILE);
+	    }
+	}
+
+	$config_entry .= <<"EOF";
+type=directory
+directory=$target
+union-type=$uniontype
+EOF
+    }
+
+    if (scalar @{$conf->get('ALIASES')} > 0) {
+	my $aliases = join ',', @{$conf->get('ALIASES')};
+	$config_entry .= "aliases=$aliases\n";
+    }
+
+    if ($conf->get('COMMAND_PREFIX') ne '') {
+	$config_entry .= "command-prefix=" . $conf->get('COMMAND_PREFIX') . "\n";
+    }
+
+    if (-d "/etc/schroot/chroot.d") {
+	# TODO: Don't hardcode path
+	my $SCHROOT_CONF =
+	new File::Temp( TEMPLATE => "$chrootname-XXXXXX",
+	    DIR => "/etc/schroot/chroot.d",
+	    UNLINK => 0)
+	    or die "Can't open schroot configuration file: $!\n";
+
+	print $SCHROOT_CONF "$config_entry";
+
+	my ($personality, $personality_message);
+	# Detect whether personality might be needed.
+	if ($conf->get('ARCH') ne $conf->get('BUILD_ARCH')) {
+	    # Take care of the known case(s).
+	    my $key = $conf->get('BUILD_ARCH') . ':' . $conf->get('ARCH');
+	    if (exists $personalities{$key}) {
+		$personality = $personalities{$key};
+		$personality_message =
+		"I: Added personality=$personality automatically " .
+		"(" . $conf->get('BUILD_ARCH') . " on " . $conf->get('ARCH') . ").\n";
+	    } else {
+		$personality_message =
+		"W: The selected architecture and the current architecture do not match\n" .
+		"W: (" . $conf->get('BUILD_ARCH') . " versus " . $conf->get('ARCH') . ").\n" .
+		"I: You probably need to add a personality option (see schroot(1)).\n" .
+		"I: You may want to report your use case to the sbuild developers so that\n" .
+		"I: the appropriate option gets automatically added in the future.\n\n";
+	    }
+	}
+
+	# Add personality if detected.
+	print $SCHROOT_CONF "personality=$personality\n" if $personality;
+
+	# Needed to display file below.
+	$SCHROOT_CONF->flush();
+
+	# Display schroot configuration.
+	print "I: schroot chroot configuration written to $SCHROOT_CONF.\n";
+	chmod 0644, "$SCHROOT_CONF";
+	dump_file("$SCHROOT_CONF");
+	print "I: Please rename and modify this file as required.\n";
+	print $personality_message if $personality_message;
+    }
+}
+
+if ($conf->get('CHROOT_MODE') eq 'schroot' || $conf->get('CHROOT_MODE') eq 'sudo') {
+    if (! -d "$Sbuild::Sysconfig::paths{'SBUILD_SYSCONF_DIR'}/chroot") {
+	makedir("$Sbuild::Sysconfig::paths{'SBUILD_SYSCONF_DIR'}/chroot", 0775);
+    }
+
+    # Populate /etc/sbuild/chroot with a symlink to be able to use the chroot in
+    # sudo mode for directory based chroots
+    my $chrootlink = "$Sbuild::Sysconfig::paths{'SBUILD_SYSCONF_DIR'}/chroot/$chrootname";
+    if ((defined $chrootlink) && (! $conf->get('MAKE_SBUILD_TARBALL'))) {
+	if (! -e $chrootlink) {
+	    if (symlink($target, $chrootlink)) {
+		print "I: sudo chroot configuration linked as $Sbuild::Sysconfig::paths{'SBUILD_SYSCONF_DIR'}/chroot/$chrootname.\n";
+	    } else {
+		print STDERR "E: Failed to symlink $target to $chrootlink: $!\n";
+	    }
+	} else {
+	    print "W: Not creating symlink $target to $chrootlink: file already exists\n";
+
+	}
+    }
+}
+
+if (!$conf->get('SETUP_ONLY') || !$conf->get('MAKE_SBUILD_TARBALL')) {
+    # FIXME: also update packages with the unshare backend
+    if ($conf->get('ARCH') eq $conf->get('HOST_ARCH') && $conf->get('CHROOT_MODE') ne 'unshare') {
+	my $session = Sbuild::ChrootPlain->new($conf, $target);
+	my $host = Sbuild::ChrootRoot->new($conf);
+	if (defined($session)) {
+	    $session->set('Log Stream', \*STDOUT);
+
+	    if (!$session->begin_session() || !$host->begin_session()) {
+		print STDERR "E: Error creating chroot session: skipping apt update\n";
+	    } else {
+		my $resolver = Sbuild::AptResolver->new($conf, $session, $host);
+		$resolver->setup();
+
+		print "I: Setting reference package list.\n";
+		check_packages($session, "set");
+
+		print "I: Updating chroot.\n";
+		my $status = $resolver->update();
+		print "W: Failed to update APT package lists\n"
+		if ($status);
+
+		$status = $resolver->distupgrade();
+		print "W: Failed to upgrade chroot\n"
+		if ($status);
+
+		$status = $resolver->clean();
+		print "W: Failed to clean up downloaded packages\n"
+		if ($status);
+
+		$resolver->cleanup();
+		$session->end_session();
+		$session = undef;
+	    }
+	}
+    } elsif ($conf->get('ARCH') ne $conf->get('HOST_ARCH')) {
+	print "W: The selected architecture and the current architecture do not match\n";
+	print "W: (" . $conf->get('BUILD_ARCH') . " versus " . $conf->get('ARCH') . ").\n";
+	print "W: Not automatically updating APT package lists.\n";
+	print "I: Run \"apt-get update\" and \"apt-get dist-upgrade\" prior to use.\n";
+	print "I: Run \"sbuild-checkpackages --set\" to set reference package list.\n";
+    }
+}
+
+# This block makes the tarball chroot if one has been requested and delete
+# the sbuild chroot directory created, unless it's been requested to keep the
+# directory.
+if ($conf->get('MAKE_SBUILD_TARBALL') && !$conf->get('SETUP_ONLY')) {
+    my ($tmpfh, $tmpfile) = tempfile("XXXXXX");
+    my @program_list = ("/bin/tar", "-c", "-C", $target);
+    push @program_list, get_tar_compress_options($conf->get('MAKE_SBUILD_TARBALL'));
+    if ($conf->get('CHROOT_MODE') ne 'unshare') {
+	push @program_list, '-f', $tmpfile;
+    }
+    push @program_list, './';
+
+    print "I: Creating tarball...\n";
+    if ($conf->get('CHROOT_MODE') eq 'unshare') {
+	open(my $in, '-|', get_unshare_cmd(
+		{IDMAP => \@idmap}), @program_list
+	) // die "could not exec tar";
+	if (copy($in, $tmpfile) != 1 ) {
+	    die "unable to copy: $!\n";
+	}
+	close($in) or die "Could not create chroot tarball: $?\n";
+    } else {
+	system(@program_list) == 0 or die "Could not create chroot tarball: $?\n";
+    }
+
+    makedir(dirname($conf->get('MAKE_SBUILD_TARBALL')), 0755);
+    move("$tmpfile", $conf->get('MAKE_SBUILD_TARBALL')) or die "cannot mv to $conf->get('MAKE_SBUILD_TARBALL'): $!";
+    chmod 0644, $conf->get('MAKE_SBUILD_TARBALL');
+
+    print "I: Done creating " . $conf->get('MAKE_SBUILD_TARBALL') . "\n";
+
+    if (! $conf->get('KEEP_SBUILD_CHROOT_DIR')) {
+	if ($conf->get('CHROOT_MODE') eq 'unshare') {
+	    # this looks like a recipe for disaster, but since we execute "rm -rf" with
+	    # lxc-usernsexec, we only have permission to delete the files that were
+	    # created with the fake root user
+	    system(get_unshare_cmd({IDMAP => \@idmap}), 'rm', '-rf', $target);
+	    die "Unable to remove $target" if -e $target;
+	} else {
+	    rmtree("$target");
+	}
+	print "I: chroot $target has been removed.\n";
+    } else {
+	print "I: chroot $target has been kept.\n";
+    }
+}
+
+print "I: Successfully set up $suite chroot.\n";
+if ($conf->get('CHROOT_MODE') eq 'schroot') {
+    print "I: Run \"sbuild-adduser\" to add new sbuild users.\n";
+}
+
+exit 0;
+
+# Add items to the start of a comma-separated list, and remove the
+# items from later in the list if they were already in the list.
+sub add_items ($@) {
+    my $items = shift;
+    my @add = @_;
+
+    my $ret = '';
+    my %values;
+
+    foreach (@_) {
+	$values{$_} = '';
+	$ret .= "$_,"
+    }
+
+    # Only add if not already used, to eliminate duplicates.
+    foreach (split (/,/,$items)) {
+	$ret .= "$_," if (!defined($values{$_}));
+    }
+
+    # Remove trailing comma.
+    $ret =~ s/,$//;
+
+    return $ret;
+}
+
+sub makedir ($$) {
+    my $dir = shift;
+    my $perms = shift;
+
+    mkpath($dir,
+	   { mode => $perms,
+	     verbose => 1,
+	     error => \my $error
+	   });
+
+    for my $diag (@$error) {
+	my ($file, $message) = each %$diag;
+	print "E: Can't make directory $file: $message\n";
+    }
+}

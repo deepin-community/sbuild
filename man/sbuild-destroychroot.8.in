@@ -1,0 +1,57 @@
+.\" Copyright © 2016 Johannes Schauer Marin Rodrigues <josch@debian.org>
+.\"
+.\" This program is free software: you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation, either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful, but
+.\" WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+.\" General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program.  If not, see
+.\" <http://www.gnu.org/licenses/>.
+.so defs.man
+.TH SBUILD\-DESTROYCHROOT 8 "\*[RELEASE_DATE]" "Version \*[VERSION]" "Debian sbuild"
+.SH NAME
+sbuild\-destroychroot \- destroy sbuild chroot
+.SH SYNOPSIS
+.BR sbuild\-destroychroot
+.RB [ \-h \[or] \-\-help " \[or] " \-V \[or] \-\-version ]
+.B CHROOT
+.SH DESCRIPTION
+\fBsbuild\-destroychroot\fR instructs the user which commands to run to remove
+a chroot as it was created by \fBsbuild\-createchroot\fR. This command will not
+make any changes to the system by itself.
+.SH OPTIONS
+.SS Actions
+.TP
+.BR \-h ", " \-\-help
+Display this manual.
+.TP
+.BR \-V ", " \-\-version
+Print version information.
+.SS Chroot selection
+.TP
+.B CHROOT
+The chroot to use.  Note that \[oq]o\[cq], \[oq]s\[cq],
+\[oq]t\[cq], \[oq]u\[cq] and \[oq]e\[cq] may be used as abbreviations for
+\[oq]oldstable\[cq], \[oq]stable\[cq], \[oq]testing\[cq], \[oq]unstable\[cq]
+and \[oq]experimental\[cq], respectively.
+.SH EXAMPLES
+To receive instructions on how to remove an \fIunstable\fP chroot:
+.PP
+\f[CR]% \f[CB]sbuild\-destroychroot unstable\fP\fP\[CR]
+.br
+.SH AUTHORS
+.nf
+Johannes Schauer Marin Rodrigues.
+.fi
+.SH COPYRIGHT
+.nf
+Copyright \[co] 2016 Johannes Schauer Marin Rodrigues <josch@debian.org>.
+.fi
+.SH "SEE ALSO"
+.BR sbuild (1).

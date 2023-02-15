@@ -1,0 +1,54 @@
+Build-essential and friends
+===========================
+
+sbuild-createchroot installs build-essentials so your working
+environment should already be ok. You will only need to add a few more
+packages in the chroot, using sbuild-apt. eg.
+
+	sbuild-apt <chroot> apt-get install sudo fakeroot ssmtp
+
+To show what needs to be added or removed from the unstable chroot you
+can use:
+
+	sbuild-checkpackages --list <chroot>
+
+To add packages:
+
+	sbuild-apt <chroot> apt-get install
+
+or if you wish to remove packages:
+
+	sbuild-apt <chroot> apt-get --purge remove
+
+
+Alternatively, to enter the chroot and work inside it, use:
+
+	sbuild-shell <chroot>
+
+
+With these new tools buildd.chroot has been made obsolete.
+
+
+Possible problems
+=================
+
+ssmtp won't install and debootstrap will fail if it can't
+find the hostname.  /etc/hosts not copied over?
+
+You may need to use the latest debootstrap.
+
+You'll have to log in again for you to be in group sbuild.
+
+debconf needs to be set noninteractive:
+$ sbuild-shell <chroot> ( or "sudo chroot /your/chroot /bin/sh" )
+$ dpkg-reconfigure -plow debconf
+    1. Dialog  2. Readline  3. Gnome  4. Editor  5. Noninteractive
+  What interface should be used for configuring packages? [1] 5
+    1. critical  2. high  3. medium  4. low
+  Ignore questions with a priority less than.. [3] 1
+  Show all old questions again and again? [no]
+
+md5sum mismatch when building a source package (sbuild --source):
+  - the original tarball has to be in the work directory -
+    $CHROOT/build/<user> - for a sourceful build or a new
+    orig.tar.gz will be created with an incorrect md5sum.

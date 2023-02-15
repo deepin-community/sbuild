@@ -1,0 +1,5 @@
+usr/bin/sbuild-qemu
+usr/bin/sbuild-qemu-boot
+usr/bin/sbuild-qemu-create
+usr/bin/sbuild-qemu-create-modscript    usr/share/sbuild/
+usr/bin/sbuild-qemu-update

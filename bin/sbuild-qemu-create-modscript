@@ -1,0 +1,80 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
+# Copyright © 2020      Christian Kastner <ckk@debian.org>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see
+# <http://www.gnu.org/licenses/>.
+#
+#######################################################################
+
+
+set -e
+umask 0022
+
+
+VMROOT="$1"
+if [ -z "$VMROOT" ]
+then
+	echo "$0 expects the mounted root of the VM as first argument." >&2
+	exit 1
+elif ! mountpoint -q "$VMROOT"
+then
+	echo "$VMROOT is not a mountpoint." >&2
+	exit 1
+fi
+
+
+echo "### Customizing base image ###"
+
+if [ -n "$SQC_SKEL" ]
+then
+	echo "Copying contents of $SQC_SKEL"
+	if [ ! -d "$SQC_SKEL" ]
+	then
+		echo "$SQC_SKEL is not a directory." >&2
+		exit 1
+	fi
+	cp -pr $SQC_SKEL/. $VMROOT/root
+fi
+
+if [ -n "$SQC_INSTALL_PACKAGES" ]
+then
+	echo "Installing additional packages"
+	chroot $VMROOT apt-get install --quiet --assume-yes $SQC_INSTALL_PACKAGES
+fi
+
+if [ -n "$SQC_EXTRA_DEBS" ]
+then
+	echo "Installing extra .debs"
+	VMTMP=`mktemp -d -p $VMROOT`
+	cp -t $VMTMP $SQC_EXTRA_DEBS
+	chroot $VMROOT dpkg --recursive -i `basename $VMTMP`
+	chroot $VMROOT apt-get update
+	rm -rf $VMTMP
+fi
+
+# Mount point for a shared folder, if the VM is launched with one
+echo "Adding 9p to initramfs"
+echo -e "9p\n9pnet\n9pnet_virtio" >> $VMROOT/etc/initramfs-tools/modules
+chroot $VMROOT update-initramfs -u
+echo "Adding shared folder to fstab"
+mkdir -m 755 $VMROOT/shared
+echo "sbuild-qemu /shared 9p trans=virtio,version=9p2000.L,auto,nofail 0 0" >> $VMROOT/etc/fstab
+
+echo "Updating GRUB menu"
+echo "GRUB_TIMEOUT=1" >> $VMROOT/etc/default/grub
+chroot $VMROOT update-grub
+
+echo "### Customization of base image complete. ###"

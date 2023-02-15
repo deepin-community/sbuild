@@ -1,0 +1,2 @@
+etc/sbuild-debian-developer-setup-update-all etc/cron.daily
+usr/bin/sbuild-debian-developer-setup

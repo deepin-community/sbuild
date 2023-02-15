@@ -1,0 +1,119 @@
+.\" Copyright © 2020-2022 Christian Kastner <ckk@debian.org>
+.\"
+.\" This program is free software: you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation, either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful, but
+.\" WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+.\" General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program.  If not, see
+.\" <http://www.gnu.org/licenses/>.
+.so defs.man
+.TH SBUILD\-QEMU "1" "\*[RELEASE_DATE]" "Version \*[VERSION]" "Debian sbuild"
+.SH NAME
+sbuild\-qemu \- sbuild using QEMU images
+.SH SYNOPSIS
+.B sbuild\-qemu
+.RB [ \-h ]
+.RB [ \-\-image=IMAGE ]
+.RB [ \-\-arch=ARCH ]
+.RB [ \-d=DIST ]
+.RB [ \-\-ram\-size=MiB ]
+.RB [ \-\-cpus=CPUs ]
+.RB [ \-\-overlay\-dir=OVERLAY_DIR ]
+.RB [ \-\-noexec ]
+.RB [ \-\-autopkgtest\-debug ]
+.PP
+Build Debian packages with \fBsbuild\fR using QEMU images, by using sbuild's
+\fB\-\-chroot\-mode=autopkgtest\fR.
+.PP
+All options other than the ones described below are passed on through to
+\fBsbuild\fR, with the exception of \fB\-\-dist\fR (it is both consumed here,
+and passed on). The image will be started in snapshot mode, so the image is
+never changed. Multiple processes can use the same image concurrently.
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Show this help message and exit.
+.TP
+\fB\-\-arch\fR=ARCH
+Architecture to use. Default is the host architecture. Currently supported
+architectures are: amd64, arm64, armhf, i386, ppc64el.
+.TP
+\fB\-d\fR=DIST, \fB\-\-dist\fR=DIST
+This corresponds to sbuild's \fB\-\-dist option\fR. It is used here to
+construct a candidate image name (if no image has been specified explicitly).
+.TP
+\fB\-\-image\fR=IMAGE
+QEMU image file to use for building. If not specified, will look for an image
+with the name \fBDIST\-autopkgtest\-ARCH.img\fR. Will first look in the current
+directory, and if no such file exists there, then the directory
+\fB$IMAGEDIR\fR is tried. A suitable image can be created with
+sbuild\-qemu\-create(1).
+.TP
+\fB\-\-ram\-size\fR=MiB
+VM memory size in MB. Default: 2048
+.TP
+\fB\-\-cpus\fR=CPUs
+VM CPU count. Default: 2
+.TP
+\fB\-\-overlay\-dir\fR=OVERLAY_DIR
+Directory for the temporary image overlay instead of autopkgtest's default of
+\fI\,/tmp\/\fP (or $TMPDIR).
+.TP
+\fB\-\-noexec\fR
+Don't actually do anything. Just print the sbuild(1) command string that would
+be executed, and then exit.
+.TP
+\fB\-\-autopkgtest\-debug\fR
+Enable debug output for the autopkgtest\-virt\-qemu(1) driver.
+.SH CONSIDERATIONS
+Using a fast temporary image overlay is key to faster build times. An overlay
+created on a \fItmpfs\fR would be ideal, and can speed up I/O by an order of
+magnitude, compared to a slow HDD. If \fI\,/tmp\fR or \fI$TMPDIR\fR are mountpoints
+for a tmpfs, then all should be fine by default.
+.PP
+However, tmpfs filesystems are backed by memory and swap on the host, so a build
+needing substantial disk space in the VM may fail. If this happens, the
+\-\-overlay\-dir option should be used to point to a host directory with more
+available disk space. Note that the base image itself must have been created
+with a suitable size, see the \fB\-\-size\fR option to sbuild\-qemu\-create(1).
+.SH LIMITATIONS
+Due to the nature of sbuild's \fB\-\-chroot\-mode=autopkgtest\fR, not all
+sbuild options are supported yet. In particular, getting an interactive
+shell, for example using \fB\-\-build\-failed\-command\fR is \fBNOT\fR possible.
+However, there are other ways to access the build environment (see below).
+.SH "VM ACCESS"
+sbuild's \fB\-\-chroot\-mode=autopkgtest\fR uses autopkgtest\-virt\-qemu under
+the hood, so you will find an SSH shell on port 10022 (or the first free port
+after that) if, and only if, the openssh\-server package is installed in the
+VM.
+.PP
+As a further consequence of this chroot mode, what is stated in
+autopkgtest\-virt\-qemu(1) generally also holds here.
+.PP
+.SH EXAMPLES
+\fB$ sbuild\-qemu \-d unstable \-s \-\-arch\-all FOO.dsc\fR
+.PP
+This will build the package \fBFOO.dsc\fR using \fBunstable\fR as the
+Distribution in the generated .changes file.
+.PP
+Because the \fB\-\-image\fR option was not specified, an image with the name
+\fBunstable\-autopkgtest\-amd64.img\fR will be looked for first in the current
+directory, and then in \fB$IMAGEDIR\fI.
+.PP
+The \fB\-s\fR and \fB\-\-arch\-all\fR aren't known to sbuild-qemu, and
+are therefore will be passed on through to sbuild for it to use.
+.SH ENVIRONMENT
+\fB$IMAGEDIR\fR defaults to \fI~/.cache/sbuild\fR.
+.SH COPYRIGHT
+Copyright \[co] 2020-2022 Christian Kastner <ckk@debian.org>
+.SH "SEE ALSO"
+.BR sbuild (1),
+.BR sbuild\-qemu\-create (1),
+.BR sbuild\-qemu\-update (1).

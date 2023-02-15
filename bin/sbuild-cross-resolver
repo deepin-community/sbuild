@@ -1,0 +1,77 @@
+#!/usr/bin/perl
+#
+# This script is in the public domain
+#
+# Author: Johannes Schauer Marin Rodrigues <josch@mister-muffin.de>
+#
+# Thin layer around /usr/lib/apt/solvers/apt which removes M-A:foreign and
+# Essential:yes packages that are not arch:all and not arch:native from the
+# EDSP before handing it to the apt solver. This is useful for resolving cross
+# build dependencies as it makes sure that M-A:foreign packages and
+# Essential:yes packages in the solution must come from the build architecture.
+
+use strict;
+use warnings;
+
+if (! -e '/usr/lib/apt/solvers/apt') {
+    printf STDOUT 'Error: ERR_NO_SOLVER\n';
+    printf STDOUT 'Message: The external apt solver doesn\'t exist. You must install the apt-utils package.\n';
+    exit 1;
+}
+
+my $buffer = '';
+my $architecture = undef;
+my $essential = 0;
+my $multiarch = 'no';
+my $build_arch;
+sub keep {
+    if ( $multiarch ne 'foreign' and !$essential ) {
+        return 1;
+    }
+    if ( !defined $architecture ) {
+        print STDOUT 'Error: ERR_NO_ARCH\n';
+        print STDOUT 'Message: package without architecture\n';
+        exit 1;
+    }
+    if ( $architecture eq 'all' or $architecture eq $build_arch ) {
+        return 1;
+    }
+    return 0;
+}
+open my $fh, '|-', '/usr/lib/apt/solvers/apt';
+my $first_stanza = 1;
+while ( my $line = <STDIN> ) {
+    $buffer .= $line;
+    if ( $line eq "\n" ) {
+        if ($first_stanza) {
+            if (! defined $architecture) {
+                print STDOUT 'ERROR: ERR_NO_ARCH';
+                print STDOUT 'Message: no Architecture field in first stanza';
+                exit 1;
+            }
+            $build_arch = $architecture;
+            $first_stanza = 0;
+        }
+        if (keep) {
+            print $fh $buffer;
+        }
+        $buffer       = '';
+        $architecture = undef;
+        $essential    = 0;
+        $multiarch    = 'no';
+        next;
+    }
+    if ( $line =~ /^Essential: yes\n$/ ) {
+        $essential = 1;
+    }
+    if ( $line =~ /^Multi-Arch: (.*)\n$/ ) {
+        $multiarch = $1;
+    }
+    if ( $line =~ /^Architecture: (.*)\n$/ ) {
+        $architecture = $1;
+    }
+}
+if (keep) {
+    print $fh $buffer;
+}
+close $fh;

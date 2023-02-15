@@ -1,0 +1,43 @@
+The list of contributors, in alphabetical order, is as follows.  The
+principal areas that each contributed to are listed in addition.
+
+Ben Collins			<bcollins@debian.org>
+	the "apt patch" for sbuild for finding source
+
+Enrico Zini			<enrico@debian.org>
+	support for disabling APT package authentication
+
+Marc 'HE' Brockschmidt		<he@debian.org>
+	buildd and sbuild maintenance
+
+Philipp Kern			<pkern@debian.org>
+	buildd and sbuild maintenance
+
+Roman Hodek			<Roman.Hodek@informatik.uni-erlangen.de>
+	wanna-build
+	sbuild
+
+Roger Leigh			<rleigh@debian.org>
+	schroot support
+	autotools
+	maintenance
+
+Andres Mejia			<mcitadel@gmail.com>
+       sbuild-createchroot improvements
+       sbuild-update and related script improvements
+       sbuild schroot namespace support
+       sbuild debuild-link functionality
+       sbuild source download improvements
+       architecture wildcard support
+       external command and lintian support
+
+Ryan Murray			<rmurray@debian.org>
+	modifications for security building
+	maintenance
+
+Simon McVittie			<smcv@debian.org>
+	--chroot option for sbuild
+
+Timothy G Abbott		<tabbott@mit.edu>
+	support for running "apt-get update" in chroots prior to
+	fetching sources and building

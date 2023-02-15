@@ -1,0 +1,6 @@
+debian/.forward var/lib/buildd/
+debian/tmp/etc/buildd/buildd.conf		etc/buildd
+debian/tmp/usr/bin/buildd*			usr/bin
+debian/tmp/usr/share/perl5/Buildd*		usr/share/perl5
+debian/tmp/usr/share/wanna-build/postgresql/install/*.sql	usr/share/wanna-build/postgresql/install
+debian/tmp/var/lib/buildd			var/lib
