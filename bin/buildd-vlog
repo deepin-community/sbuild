@@ -1,0 +1,132 @@
+#!/usr/bin/perl
+#
+# buildd-vlog: little utility to watch the logs written by sbuild
+# Copyright © 1999 Roman Hodek <Roman.Hodek@informatik.uni-erlangen.de>
+# Copyright © 2009 Roger Leigh <rleigh@debian.org>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see
+# <http://www.gnu.org/licenses/>.
+#
+#######################################################################
+
+use strict;
+use warnings;
+use POSIX;
+
+use Buildd;
+use Buildd::Conf qw();
+use Sbuild::OptionsBase;
+
+my $conf = Buildd::Conf::new();
+exit 1 if !defined($conf);
+my $options = Sbuild::OptionsBase->new($conf, "buildd-vlog", "1");
+exit 1 if !defined($options);
+
+my $logpath = $conf->get('HOME') . '/logs';
+
+sub read_progress ();
+sub newest_log ($);
+sub tail ($);
+
+while( 1 ) {
+
+    my $curr_pkg = read_progress();
+    if (!$curr_pkg) {
+	print "No build-progress -- waiting\n";
+	do {
+	    sleep 5;
+	} while (!($curr_pkg = read_progress()));
+    }
+
+    print("package '$curr_pkg'\n");
+
+    my $logf = newest_log( "$logpath/${curr_pkg}*" );
+
+    if ($logf eq "") {
+        sleep(1);
+	next;
+    }
+
+    print "\n\n", "="x78, "\n$logf:\n\n";
+
+    tail( $logf );
+}
+
+sub read_progress () {
+    my $f = $conf->get('HOME') . '/build/build-progress';
+    my $p = "";
+    my $state = "";
+
+    open( F, "<$f" ) || return "";
+    while( <F> ) {
+	s/_[0-9]+:/_/;
+	($p,$state) = ($1,$2) if /^(\S+): (\S+)$/;
+    }
+    return ""
+        if ($state ne "building");
+    close( F );
+    return $p;
+}
+
+sub newest_log ($) {
+    my $pattern = shift;
+
+    my @f = glob( $pattern );
+    my $maxtime = 0;
+    my $f = "";
+    my @s;
+
+    foreach (@f) {
+	@s = stat( $_ );
+	warn "Cannot stat $_: $!", next if !@s;
+	if ($s[9] > $maxtime) {
+	    $maxtime = $s[9];
+	    $f = $_;
+	}
+    }
+    return $f;
+}
+
+sub tail ($) {
+    my $f = shift;
+
+    my @s = stat( $f );
+    if (!@s) {
+	warn "Cannot stat $f: $!\n";
+	return;
+    }
+    my $size = $s[7];
+
+    if (!open( F, "<$f" )) {
+	warn "Cannot open $f: $!\n";
+	return;
+    }
+    if ($size > 3*1024) {
+	seek( F, -3*1024, SEEK_END );
+	my $junk = <F>; # throw away first incomplete line
+	print $size+3*1024, " bytes skipped...\n";
+    }
+
+    while( 1 ) {
+	while( <F> ) {
+	    print $_;
+	    if (/^Build needed \d\d:\d\d:\d\d/) {
+		close( F );
+		sleep( 1 );
+		return;
+	    }
+	}
+	sleep( 2 );
+    }
+}

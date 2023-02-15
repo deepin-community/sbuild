@@ -1,0 +1,78 @@
+#!/usr/bin/perl
+#
+# Abort the current build.
+# Copyright © 1998 Roman Hodek <Roman.Hodek@informatik.uni-erlangen.de>
+# Copyright © 2003 Ryan Murray <rmurray@debian.org>
+# Copyright © 2008 Roger Leigh <rleigh@debian.org>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see
+# <http://www.gnu.org/licenses/>.
+#
+#######################################################################
+
+use strict;
+use warnings;
+
+use Getopt::Long;
+use Sbuild qw(help_text version_text usage_error check_group_membership);
+use Sbuild::Conf qw();
+use Sbuild::OptionsBase;
+
+my $conf = Sbuild::Conf::new();
+exit 1 if !defined($conf);
+my $options = Sbuild::OptionsBase->new($conf, "sbuild-abort", "1");
+exit 1 if !defined($options);
+check_group_membership();
+
+my $buildcount = 0;
+my $linecount = 0;
+my $header = "";
+my @detail = ();
+
+open (PIPE, "/bin/ps xjww |") or die "Can't run /bin/ps: $!\n";
+while(<PIPE>) {
+    chomp;
+    if ($linecount == 0) {
+	$header = $_;
+    } elsif (m/\/usr\/bin\/perl \/usr\/bin\/dpkg-buildpackage/) {
+	push @detail, $_;
+	$buildcount++;
+    }
+    $linecount++;
+}
+close (PIPE) or die "Can't close /bin/ps pipe: $!\n";
+
+if ($buildcount == 0) {
+    print STDERR "E: No dpkg-buildpackage process found\n";
+    exit 1;
+} elsif ($buildcount > 1) {
+    print STDERR "E: More than one dpkg-buildpackage process found:\n";
+
+    print "I: $header\n";
+    foreach (@detail) {
+	print "I: $_\n";
+    }
+    exit 1;
+}
+
+# Get PGID from saved ps output.
+my @fields = split(/[[:space:]]+/, $detail[0]);
+die "Error parsing /bin/ps output" if (@fields < 1);
+my $pgid = $fields[2];
+
+# Kill process group.
+print "I: Killing process group $pgid\n";
+kill("TERM", -$pgid) or die "Error killing PGID $pgid: $!\n";
+
+exit 0;

@@ -1,0 +1,93 @@
+#!/usr/bin/perl
+#
+# buildd: daemon to automatically build packages
+# Copyright © 1998 Roman Hodek <Roman.Hodek@informatik.uni-erlangen.de>
+# Copyright © 2009 Roger Leigh <rleigh@debian.org>
+# Copyright © 2005 Ryan Murray <rmurray@debian.org>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see
+# <http://www.gnu.org/licenses/>.
+#
+#######################################################################
+
+use strict;
+use warnings;
+
+use Buildd::Conf qw();
+use Buildd::Daemon;
+use Sbuild::OptionsBase;
+
+sub shutdown_fast ($);
+sub reread_config ($);
+sub reopen_log ($);
+
+my $conf = Buildd::Conf::new();
+exit 1 if !defined($conf);
+my $options = Sbuild::OptionsBase->new($conf, "buildd", "1");
+exit 1 if !defined($options);
+my $daemon = Buildd::Daemon->new($conf);
+exit 1 if !defined($daemon);
+
+# Global signal handling
+foreach (qw(QUIT ILL TRAP ABRT BUS FPE USR2 SEGV PIPE XCPU XFSZ)) {
+    $SIG{$_} = \&shutdown_fast;
+}
+$SIG{'HUP'} = \&reopen_log;
+$SIG{'USR1'} = \&reread_config;
+$SIG{'INT'} = \&shutdown;
+$SIG{'TERM'} = \&shutdown;
+
+exit $daemon->run();
+
+sub shutdown_fast ($) {
+    my $signame = shift;
+    $daemon->log("buildd ($$) killed by SIG$signame\n")
+	if defined($daemon);
+    unlink( $conf->get('PIDFILE') );
+    exit 1;
+}
+
+sub shutdown ($) {
+    my $signame = shift;
+
+    if ($daemon) {
+	$daemon->shutdown($signame);
+    }
+    exit 1;
+}
+
+sub reread_config ($) {
+    my $signame = shift;
+
+    $daemon->log("buildd ($$) received SIG$signame -- rereading configuration\n")
+	if defined($daemon);
+
+    $Buildd::Conf::reread_config = 1;
+}
+
+sub reopen_log ($) {
+    my $signame = shift;
+
+    $daemon->log("buildd ($$) received SIG$signame -- reopening logfile\n")
+	if defined($daemon);
+
+    $daemon->reopen_log();
+}
+
+END {
+    unlink( $conf->get('PIDFILE') )
+	if (defined($conf) &&
+	    defined($daemon) &&
+	    $daemon->get('Daemon'));
+}

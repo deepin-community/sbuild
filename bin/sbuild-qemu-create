@@ -1,0 +1,213 @@
+#!/usr/bin/python3
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
+# Copyright © 2020-2022 Christian Kastner <ckk@debian.org>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see
+# <http://www.gnu.org/licenses/>.
+#
+#######################################################################
+
+
+import argparse
+import os
+import subprocess
+import sys
+import textwrap
+
+
+SUPPORTED_ARCHS = [
+    'amd64',
+    'arm64',
+    'armhf',
+    'i386',
+    'ppc64el',
+]
+
+DEFAULT_ARCH = subprocess.check_output(
+    ['dpkg', '--print-architecture'],
+    text=True,
+).strip()
+
+
+def gen_sourceslist(mirror, dist, components, with_bpo=False):
+    """Generate a sources.list file for the VM.
+
+    If distribution ends with '-backports', then its base distribution will
+    automatically be added.
+
+    If distribution is 'experimental', then the 'unstable' distribution will
+    automatically be added.
+    """
+    sl = textwrap.dedent(
+        f"""\
+        deb     {mirror} {dist} {' '.join(components)}
+        deb-src {mirror} {dist} {' '.join(components)}
+        """)
+    if dist == 'experimental':
+        sl += textwrap.dedent(
+            f"""
+            deb     {mirror} unstable {' '.join(components)}
+            deb-src {mirror} unstable {' '.join(components)}
+            """)
+    elif dist.endswith('-backports'):
+        sl += textwrap.dedent(
+            f"""
+            deb     {mirror} {dist[:-10]} {' '.join(components)}
+            deb-src {mirror} {dist[:-10]} {' '.join(components)}
+            """)
+    return sl
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Builds images for use with qemu-sbuild and autopkgtest.",
+        epilog="Note that qemu-sbuild-create is just a simple wrapper around "
+               "autopkgtest-build-qemu(1) that automates a few additional "
+               "steps commonly performed with package-building images.",
+    )
+    parser.add_argument(
+        '--arch',
+        action='store',
+        default=DEFAULT_ARCH,
+        help="Architecture to use. Default is the host architecture. "
+             "Currently supported architectures are: "
+            f"{', '.join(SUPPORTED_ARCHS)}.",
+    )
+    parser.add_argument(
+        '--install-packages',
+        action='store',
+        help="Comma-separated list of additional packages to install in the "
+             "image using 'apt-get install' from within the image.",
+    )
+    parser.add_argument(
+        '--extra-deb',
+        action='append',
+        help="Package file (.deb) from the local filesystem to install. Can "
+             "be specified more than once.",
+    )
+    parser.add_argument(
+        '--components',
+        action='store',
+        default='main',
+        help="Comma-separated list of components to use with sources.list "
+             "entries. Default: main.",
+    )
+    # Not yet merged into autopkgtest, see #973457
+    # parser.add_argument('--variant', action='store')
+    parser.add_argument(
+        '--skel',
+        type=str,
+        action='store',
+        help="Skeleton directory to use for /root.",
+    )
+    parser.add_argument(
+        '--size',
+        type=str,
+        action='store',
+        default='10G',
+        help="Image size to use. Note that the images are in qcow2 format, so "
+             "they won't consume that space right away. Default: 10G.",
+    )
+    parser.add_argument(
+        '-o', '--out-file',
+        action='store',
+        help="Output filename. If not supplied, then "
+             "DIST-autopkgtest-ARCH.img will be used.",
+    )
+    parser.add_argument(
+        '--noexec',
+        action='store_true',
+        help="Don't actually do anything. Just print the autopkgtest-build-"
+             "qemu(1) command string that would be executed, and then exit.",
+    )
+    parser.add_argument(
+        'distribution',
+        action='store',
+        help="The distribution to debootstrap.",
+    )
+    parser.add_argument(
+        'mirror',
+        action='store',
+        help="The mirror to use for the installation. Note that the mirror "
+             "will also be used for the sources.list file in the VM.",
+    )
+    parsed = parser.parse_args()
+
+    # Internal args
+    if parsed.arch not in SUPPORTED_ARCHS:
+        print(
+            f"Unsupported architecture: {parsed.arch}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if parsed.out_file:
+        out_file = parsed.out_file
+    else:
+        out_file = f"{parsed.distribution}-autopkgtest-{parsed.arch}.img"
+    components = parsed.components.split(',')
+
+    # We can only pass arguments to the other tools via the environment
+    #
+    # Args consumed by the modscript
+    if parsed.skel:
+        os.environ['SQC_SKEL'] = parsed.skel
+        print('export SQC_SKEL=' + os.environ['SQC_SKEL'])
+    if parsed.extra_deb:
+        extra_debs = ' '.join(parsed.extra_deb)
+        os.environ['SQC_EXTRA_DEBS'] = extra_debs
+        print('export SQC_EXTRA_DEBS=' + extra_debs)
+    if parsed.install_packages:
+        install_packages = parsed.install_packages.replace(',', ' ')
+        os.environ['SQC_INSTALL_PACKAGES'] = install_packages
+        print('export SQC_INSTALL_PACKAGES=' + install_packages)
+    # Args consumed by autopkgtest-build-qemu
+    os.environ['AUTOPKGTEST_APT_SOURCES'] = gen_sourceslist(
+        parsed.mirror,
+        parsed.distribution,
+        components,
+    )
+    print('sources.list (via export AUTOPKGTEST_APT_SOURCES)\n------------')
+    print(os.environ['AUTOPKGTEST_APT_SOURCES'])
+
+    #if parsed.variant:
+    #    args += ['--variant', parsed.variant]
+    dist = parsed.distribution
+    if dist.endswith('-backports'):
+        dist = dist[:-len('-backports')]
+    elif dist == 'experimental':
+        dist = 'unstable'
+
+    args = [
+        'autopkgtest-build-qemu',
+        '--architecture',   parsed.arch,
+        '--mirror',         parsed.mirror,
+        '--size',           parsed.size,
+        '--script',         '/usr/share/sbuild/sbuild-qemu-create-modscript',
+        dist,
+        out_file,
+    ]
+
+    if os.getuid() != 0:
+        print('Must be root to use this.', file=sys.stderr)
+        sys.exit(1)
+    os.umask(22)
+
+    print(' '.join(str(a) for a in args))
+    if not parsed.noexec:
+        os.execvp(args[0], args)
+
+
+if __name__ == '__main__':
+    main()

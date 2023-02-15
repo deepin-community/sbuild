@@ -1,5 +1,3492 @@
-template-repository (1.0-1) unstable; urgency=medium
+sbuild (0.85.0-0deepin) UNRELEASED; urgency=medium
 
-  * Initial release
+  * Initial deepin packaging.
 
- -- Tsic404 <liuheng@deepin.org>  Sat, 28 Jan 2023 13:46:49 +0800
+ -- Tianyu Chen <chentianyu1@uniontech.com>  Wed, 15 Feb 2023 15:33:27 +0800
+
+sbuild (0.85.0) unstable; urgency=medium
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * lib/Sbuild/Conf.pm: replace deprecated
+    Dpkg::Build::Info::get_build_env_allowed by
+    Dpkg::BuildInfo::get_build_env_allowed (Closes: #1027719)
+  * debian/control: bump libdpkg-perl dep to 1.21.14 because of
+    Dpkg::BuildInfo::get_build_env_allowed
+  * lib/Sbuild/ResolverBase.pm: copying debs can take a long time -- output log
+    messages
+  * the sbuild dummy repository should not be considered to create a deb-src
+    entry automatically
+  * lib/Sbuild/ChrootUnshare.pm: guard against empty /etc/subuid and
+    /etc/subgid
+  * debian/tests/unshare: uncompress source package before comparing to ignore
+    differences in the compression (dpkg recently started using threaded xz
+    compression for source packages)
+  * add get_default_release.py to figure out the archive used by the currently
+    running system
+  * debian/tests/unshare: put common sbuild invocation into a function
+  * debian/tests/unshare: do not run apt upgrade nor apt update
+  * debian/tests/control: add dependency on python3-apt
+  * debian/tests/unshare-qemuwrapper: do not cleanup apt list files or
+    otherwise we have to call apt update again later
+  * lib/Sbuild/Build.pm: reduce number of self->get_conf() calls
+  * debian/control: add debootstrap as dependency of
+    sbuild-debian-developer-setup
+  * bin/sbuild-createchroot: set MERGED_USR to 'auto' letting debootstrap
+    decide
+  * bin/sbuild-debian-developer-setup: inform the user where the chroot is and
+    that the current user has already been added to the sbuild group
+
+  [ Jochen Sprickerhof ]
+  * Make the DSC Dir configurable
+
+  [ Dave Jones ]
+  * Skip build-procenv when mknod would fail (Closes: #928364)
+
+  [ Benjamin Drung ]
+  * Fix building symlinks not ending on .dsc (Closes: #1012856)
+
+ -- Johannes Schauer Marin Rodrigues <josch@debian.org>  Wed, 04 Jan 2023 14:04:05 +0100
+
+sbuild (0.84.2) unstable; urgency=medium
+
+  [ Stefano Rivera ]
+  * fix autopkgtest LXD mode and sbuild-qemu (closes: #1024619)
+
+ -- Johannes Schauer Marin Rodrigues <josch@debian.org>  Thu, 08 Dec 2022 10:20:58 +0100
+
+sbuild (0.84.1) unstable; urgency=medium
+
+  [ Jochen Sprickerhof ]
+  * unshare_bind_mounts: use rbind to mount subtrees
+  * unshare: Use user/groupadd from outside the chroot
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * Revert "bin/sbuild-createchroot: Do not hardcode mirror argument" as this
+    creates invalid deb-src entries in sources.list
+
+ -- Johannes Schauer Marin Rodrigues <josch@mister-muffin.de>  Tue, 15 Nov 2022 08:05:31 +0100
+
+sbuild (0.84.0) unstable; urgency=medium
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * bin/sbuild-createchroot: die if move() fails
+  * bin/sbuild-debian-developer-setup: Don't alias to sid/UNRELEASED if suite
+    is not unstable (Closes: #1014574)
+  * debian/copyright: update copyright for makefiles and debian/*
+  * debian/tests/unshare-qemuwrapper: allow ~/.ssh to exist already
+  * debian/tests/unshare-qemuwrapper: bump disk size to 4G (Closes: #1016070)
+  * debian/tests/unshare: don't fail if gpghome cannot be removed
+  * debian/tests/unshare: gpgconf --kill all before removing gpghome
+  * debian/tests/unshare: run with --no-source-only-changes
+  * debian/tests/unshare: run with --nolog to output log to stdout
+  * lib/Sbuild/Build.pm: automatically add a deb-src entry if necessary
+  * lib/Sbuild/ResolverBase.pm: factor out add_extra_repositories()
+  * lib/Sbuild/ResolverBase.pm: stop emitting Packages.gz and Sources.gz
+  * man/sbuild-qemu-boot.1.in: fix typo Bood -> Boot
+  * man/sbuild.1.in: unshare chroot mode is not experimental anymore
+
+  [ Benjamin Drung ]
+  * Fix shellcheck issues in autopkgtests
+  * Revert "debian/tests/build-procenv: add deb-src repository"
+  * Run unshare autopkgtest against target release
+  * Set NO_PKG_MANGLE=1 when building dummy packages
+  * unshare-qemuwrapper: Cleanup guestfs appliance
+  * unshare-qemuwrapper: Disable SSH password authentication
+  * unshare-qemuwrapper: Support Ubuntu
+  * unshare-qemuwrapper: Use free port
+  * unshare-qemuwrapper: Use linux-image-cloud-amd64
+  * unshare-qemuwrapper: Use sbuild in temp directory name
+
+  [ Dave Jones ]
+  * Ensure umask is consistent with the comparison blobs
+
+  [ Christoph Berg ]
+  * run_autopkgtest: Accept exit 2 as pass
+
+  [ Andrea Pappacoda ]
+  * sbuild-debian-developer-setup: alias the chroot to UNRELEASED-$arch-sbuild
+    (Closes: #1006135)
+
+  [ Mattias Jernberg ]
+  * bin/sbuild-createchroot: Do not hardcode mirror argument to debootstrap
+    (Closes: #1010665)
+
+  [ Ben Westover ]
+  * sbuild-debian-developer-setup: Add option to specify chroot architecture
+
+  [ Jochen Sprickerhof ]
+  * Replace adduser by useradd
+  * Unshare: create sbuild group
+
+ -- Johannes Schauer Marin Rodrigues <josch@debian.org>  Wed, 02 Nov 2022 21:42:11 +0100
+
+sbuild (0.83.2) unstable; urgency=medium
+
+  [ Jochen Sprickerhof ]
+  * Support $path in unshare backend
+  * Support systems without a resolv.conf in unshare backend
+  * Unshare: add minimal etc/hosts
+
+  [ Dave Jones ]
+  * verify() in unshare uses the same (wrong) parameter for $verify_*
+  * devscripts is missing from EXTRA_DEPS
+  * Update verify_deb to match zstd compressed debs
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * lib/Sbuild/ChrootUnshare.pm: add /dev/{stdin,stdout,stderr}
+  * Mount a new instance of /dev/pts in the chroot
+
+  [ Aurelien Jarno ]
+  * Buildd::Mail: support MIME encoded Subject: header
+  * Buildd::Mail: also copy the Content-Type: header when forwarding mail
+
+ -- Aurelien Jarno <aurel32@debian.org>  Mon, 29 Aug 2022 22:44:02 +0200
+
+sbuild (0.83.1) unstable; urgency=medium
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * bin/sbuild-cross-resolver: we don't need the English module (closes:
+    #1005957)
+  * debian/tests/unshare: run with -x
+  * lib/Sbuild/Utility.pm: add warning about missing libwww-perl (closes:
+    #1009859)
+
+  [ Jochen Sprickerhof ]
+  * lib/Sbuild/ChrootUnshare.pm: mkdir for bind mounts
+
+  [ Daniel Kahn Gillmor ]
+  * Use --batch with gpg when importing secret key (Closes: #1010171)
+
+ -- Johannes Schauer Marin Rodrigues <josch@debian.org>  Tue, 26 Apr 2022 11:21:44 +0200
+
+sbuild (0.83.0) unstable; urgency=medium
+
+  * sbuild-qemu (package):
+    - Support for new architectures: armhf, arm64, ppc64el
+    - Move vmdb2 to Depends
+    - Depend on autopkgtest (>= 5.17~)
+  * sbuild-qemu:
+    - Fix looking for images when --arch was specified
+    - sbuild-qemu: rename --ram to --ram-size. This matches the
+      autopkgtest-virt-qemu option
+    - Reduce default CPU count to 2, rather than equal to host cores. This is
+      more likely to work on all platforms
+  * sbuild-qemu-create:
+    - Update shared dir setup (deprecated QEMU syntax). Existing images will no
+      longer work and will need to be recreated
+  * sbuild-qemu-update:
+    - Fix QEMU launch issues (network, serial)
+    - Reduce memory requirement. 1GiB is sufficient for apt-get operations
+  * sbuild-qemu-boot: New utility to boot to a VM console
+
+ -- Christian Kastner <ckk@debian.org>  Sat, 05 Feb 2022 18:02:40 +0100
+
+sbuild (0.82.1) unstable; urgency=medium
+
+  * fix sbuild-cross-resolver
+  * copy solvers from /usr/lib/apt/solvers into chroot if cross-building
+  * add dependency on apt-utils for /usr/lib/apt/solvers/apt
+  * chown /var/lib/sbuild 755 so that the _apt user can read apt.conf inside it
+  * remove maintainer script support for ancient package versions
+  * debian/control: bump Standards-Version (no changes)
+  * debian/source/include-binaries is not needed anymore
+
+ -- Johannes Schauer Marin Rodrigues <josch@debian.org>  Sat, 29 Jan 2022 16:52:05 +0100
+
+sbuild (0.82.0) unstable; urgency=medium
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * remove etc/99builddsourceslist as it is unused
+  * bin/sbuild-createchroot: avoid allowing execution of arbitrary Perl code
+    via a custom mirror URL (closes: #1001807)
+  * debian/tests/build-procenv: add deb-src repository
+  * debian/tests/unshare-qemuwrapper: use copy:// instead of file://
+  * man/sbuild.1.in: document the --arch-all and --no-arch-all defaults while
+    cross-building
+  * lib/Sbuild/ChrootUnshare.pm: also create /dev/console and /dev/ptmx and
+    mount /dev/pts and /dev/shm
+  * lib/Sbuild/Build.pm: fix error reporting of 'changes.new could not be
+    renamed'
+  * add sbuild-cross-resolver filtering out m-a:foreign and essential:yes
+    packages that are not arch:all and not arch:native during cross-building
+  * bump debhelper-compat to 13
+  * use dh-sequence-python3 instead of --with=python3
+  * run wrap-and-sort
+  * add myself to d/copyright -- better late than never ;)
+  * debian/control: add uidmap to Recommends (closes: #986962)
+  * use debian/*.manpages instead of debian/*.install to install manpages
+  * add UNSHARE_BIND_MOUNTS allowing to bind-mount directories into the chroot
+    in unshare mode (closes: #986694)
+
+  [ Samuel Thibault ]
+  * control: Fix git URLs.
+
+  [ Christian Kastner ]
+  * sbuild.1: Refresh unshare info
+
+  [ Jochen Sprickerhof ]
+  * Don't overwrite BUILD_DIR when compiling in src dir (Closes: #990734)
+
+  [ Vagrant Cascadian ]
+  * lib/Sbuild/Utility.pm: Add support for zstd compression. (Closes: #987655)
+
+ -- Johannes Schauer Marin Rodrigues <josch@debian.org>  Mon, 24 Jan 2022 23:30:27 +0100
+
+sbuild (0.81.2) unstable; urgency=medium
+
+  * Package sbuild-qemu should be arch:all, not arch:amd64.
+    Resolves a FTBFS.
+
+ -- Christian Kastner <ckk@debian.org>  Sun, 31 Jan 2021 15:34:54 +0100
+
+sbuild (0.81.1) unstable; urgency=medium
+
+  * lib/Sbuild/ChrootUnshare.pm: also ignore /dev/console when unpacking
+    rootfs becauke mknod is forbidden in unshare mode
+  * lib/Sbuild/Build.pm: add comment about #977674
+  * bin/sbuild: use umask 0022 as default for Debian -- see dpkg source:
+    scripts/Dpkg/Vendor/Debian.pm
+  * lib/Sbuild/Build.pm: run dpkg-buildpackage with --sanitize-env if dpkg
+    1.20.0 is available
+  * add new unshare autopkgtest with qemu wrapper
+
+ -- Johannes 'josch' Schauer <josch@debian.org>  Sun, 31 Jan 2021 10:41:30 +0100
+
+sbuild (0.81.0) unstable; urgency=medium
+
+  [ Johannes 'josch' Schauer ]
+  * make 'none' explicitly disable the bd-uninstallable-explainer.
+    Thanks helmut & vagrantc
+
+  [ Jochen Sprickerhof ]
+  * Cleanup link in /etc/sbuild if it exists
+
+  [ Christian Kastner ]
+  * Add package sbuild-qemu, replaces qemu-sbuild-utils
+    - The utilities have been renamed from qemu-sbuild-* to sbuild-qemu-* to
+      for consistency
+  * Add myself to Uploaders
+  * Set Rules-Requires-Root: no
+  * Bump Standards-Version to 4.5.1
+
+  [ Bruno Kleinert ]
+  * Removed obsolete script /usr/share/sbuild/create-chroot to fix 'bullseye:
+    /updates -> -security'. Neither sbuild itself, nor any reverse dependency
+    appear to depend on that script, so removed it. (Closes: #972747)
+
+ -- Johannes 'josch' Schauer <josch@debian.org>  Sun, 24 Jan 2021 23:13:34 +0100
+
+sbuild (0.80.1) unstable; urgency=medium
+
+  * Fix build system to rely on debian/changelog instead of VERSION file
+  * use mkdir -p when creating build_path (thanks Niels Thykier)
+
+ -- Johannes 'josch' Schauer <josch@debian.org>  Sat, 05 Dec 2020 17:46:22 +0100
+
+sbuild (0.80.0) unstable; urgency=medium
+
+  [ Johannes 'josch' Schauer ]
+  * New release
+  * Convert packaging to a native package to make maintenance easier by
+    avoiding the complicated upstream release and debian packaging procedure
+  * lib/Sbuild/Conf.pm: fix example for individual_stalled_pkg_timeout
+    (closes: #924500)
+  * man/sbuild.1.in: remove from docs of --autopkgtest-virt-server-opts
+    (closes: #948799)
+  * lib/Sbuild/Build.pm: check for defined-ness and even print a '0' Version
+    (closes: #950939)
+  * debian/control: due to using Dpkg::Build::Info::get_build_env_allowed, we
+    now require libdpkg-perl (>= 1.20)
+  * man/sbuild.1.in: starting/finished/failed-build-commands are run as root
+    (closes: #961623)
+  * bin/sbuild-createchroot: chown root dir 0755 (closes: #950684)
+  * use Dpkg::Build::Info::get_build_env_allowed instead of deprecated
+    Dpkg::Build::Info::get_build_env_whitelist for dpkg >= 1.20.0
+    (closes: #963845, #966428)
+
+  [ Pierre-Elliott Bécue ]
+  * Workaround to pass on dpkg-genchanges specific options until dpkg bug
+    #902856 is fixed (closes: #884428, #891247, #917849, #947755)
+
+ -- Johannes 'josch' Schauer <josch@debian.org>  Sat, 01 Aug 2020 14:07:53 +0200
+
+sbuild (0.79.1-1) unstable; urgency=medium
+
+  * Team upload.
+  * New upstream release.
+  * add option --dpkg-file-suffix to buildd
+  * switch to debhelper compat 12
+  * switch dh_installinit call to --no-stop-on-upgrade
+  * buildd: remove calls to dpkg-maintscript-helper
+  * test build-procenv: replace ADTTMP with AUTOPKGTEST_TMP
+
+ -- Ivo De Decker <ivodd@debian.org>  Wed, 22 Apr 2020 22:35:33 +0000
+
+sbuild (0.79.0-1) unstable; urgency=medium
+
+  * Team upload.
+  * New upstream release.
+  * remove debian/patches (have been applied upstream)
+  * add buildd depends on devscripts and recommends on sudo (closes: #920335,
+    #774856)
+  * debian/tests/build-procenv: don't install packages from a different distro
+    (closes: #928366)
+  * pass the right .changes file to lintian (closes: #934721)
+  * sbuild-createchroot: use umask 0022 (closes: #921675)
+  * fix etc/sbuild-debian-developer-setup-update-all (closes: #922148)
+  * add apt_keep_downloaded_packages option (closes: #933723)
+  * add option --dpkg-file-suffix
+
+ -- Ivo De Decker <ivodd@debian.org>  Wed, 05 Feb 2020 17:41:38 +0100
+
+sbuild (0.78.1-2) unstable; urgency=medium
+
+  [ Mike Gabriel ]
+  * debian/patches: Add support-gzip-in-wheezy.patch. The gzip command
+    in Debian wheezy lacks support for the --keep cmdline option, so
+    avoid using it. (closes: #926161)
+
+  [ Aurelien Jarno ]
+  * debian/patches: Add fix-disk-space-directory-check.patch. The right
+    directory has to be checked inside the chroot. (closes: #923484)
+
+ -- Johannes 'josch' Schauer <josch@debian.org>  Wed, 03 Apr 2019 14:08:12 +0200
+
+sbuild (0.78.1-1) unstable; urgency=medium
+
+  * New upstream release.
+  * fix syntax of generated Sources.gz files (Closes: #920227)
+
+ -- Johannes 'josch' Schauer <josch@debian.org>  Sat, 09 Feb 2019 07:25:07 +0100
+
+sbuild (0.78.0-2) unstable; urgency=medium
+
+  * Fix debian/sbuild-debian-developer-setup.postrm by removing wrong default
+    case
+
+ -- Johannes 'josch' Schauer <josch@debian.org>  Thu, 10 Jan 2019 17:03:25 +0100
+
+sbuild (0.78.0-1) unstable; urgency=medium
+
+  * New upstream release.
+  * remove debian/patches (have been applied upstream)
+  * Add libc-dev and libstdc++-dev when cross compiling (closes: #905346)
+  * default to --no-arch-all for cross builds (closes: #905347)
+  * Set build profiles cross and nocheck by default when cross building
+    (closes: #905345)
+  * bin/sbuild-createchroot: allow an empty lost+found directory in the target
+    directory (closes: #909378)
+  * add --no-source-only-changes option (closes: #904968)
+  * sbuild-createchroot: Do not check for empty directory if --setup-only
+    option is used (closes: #916009)
+  * do not check debian/tests/control when running autopkgtest (closes:
+    #916924)
+  * add sbuild and BUILD_USER if they didn't exist yet (closes: #911979)
+  * let --append-to-version imply --no-arch-all like it's the case for
+    --make-binNMU (closes: #911399)
+  * allow chroots with nothing more but Essenital:yes packages, apt and their
+    hard dependencies and create missing users and groups as needed
+    (closes: #909847)
+  * run wrap-and-sort
+  * let sbuild Suggests e2fsprogs for /usr/share/sbuild/create-chroot (closes:
+    #887264)
+  * remove /var/log/sbuild-update-all.log if sbuild-debian-developer-setup
+    gets purged (closes: #905513)
+  * bump debhelper compat to 11
+  * debian/control: bump Standards-Version to 4.3.0 (no changes)
+
+ -- Johannes 'josch' Schauer <josch@debian.org>  Wed, 09 Jan 2019 05:53:49 +0100
+
+sbuild (0.77.1-2) unstable; urgency=medium
+
+  * Add patch allowing to control merged /usr (closes: #913228)
+
+ -- Johannes 'josch' Schauer <josch@debian.org>  Tue, 13 Nov 2018 16:07:19 +0100
+
+sbuild (0.77.1-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Run dpkg-source --before-build and --after-build (closes: #886633)
+  * Move sbuild-debian-developer-setup man page to correct package (closes:
+    #907076)
+
+ -- Johannes 'josch' Schauer <josch@debian.org>  Tue, 11 Sep 2018 00:08:08 +0200
+
+sbuild (0.77.0-4) unstable; urgency=medium
+
+  * Add patch to fix the empty directory check of sbuild-create-chroot
+    (closes: #904722)
+
+ -- Johannes 'josch' Schauer <josch@debian.org>  Fri, 27 Jul 2018 14:03:10 +0200
+
+sbuild (0.77.0-3) unstable; urgency=medium
+
+  * Patch sbuild-destroychroot with an import of SchrootInfo (closes: #903513)
+
+ -- Johannes 'josch' Schauer <josch@debian.org>  Wed, 11 Jul 2018 21:32:04 +0200
+
+sbuild (0.77.0-2) unstable; urgency=medium
+
+  * Install /usr/sbin/sbuild-adduser and /usr/sbin/sbuild-destroychroot again
+    (closes: #903269)
+
+ -- Johannes 'josch' Schauer <josch@debian.org>  Sun, 08 Jul 2018 15:52:22 +0200
+
+sbuild (0.77.0-1) unstable; urgency=medium
+
+  * New upstream release.
+  * debian/control: move "exim4 | mail-transport-agent" from Recommends to
+    Suggests (closes: #863718)
+  * Set maintainer address to sbuild@packages.debian.org (closes: #899688)
+  * lib/Sbuild/Build.pm: filter out foreign essential and multiarch foreign
+    packages before passing them to dose3 (closes: #865432)
+  * man/sbuild.1.in: pre- and post-build-commands are run as non-root (closes:
+    #900916)
+  * Add null resolver which does not install, upgrade or remove any packages
+    (closes: #858899)
+  * lib/Sbuild/ResolverBase.pm: also print kernel version (closes: #866402)
+  * lib/Sbuild/Build.pm: install (cross-)build-essential, manual depends and
+    build depends with a single dummy package (closes: #871968)
+  * lib/Sbuild/Build.pm: dump .dsc content before extracting it (closes:
+    #901727)
+  * Add config variables that allow sbuild to fail if lintian, piuparts or
+    autopkgtest fail (closes: #891590)
+  * lib/Sbuild/ResolverBase.pm: run dpkg-scanpackages with -m to allow
+    multiple architectures of the same package (closes: #886257)
+  * lib/Sbuild/Build.pm: additional Lintian reasons info and warn (closes:
+    #893228)
+  * man/sbuild.1.in: fix typo (closes: #891588)
+  * lib/Sbuild/Build.pm: also cope with special characters when filtering the
+    log (closes: #901730)
+  * Add new log filtering for /build/pkg-minimal-XXX/resolver-YYY:
+    <<RESOLVERDIR>> (closes: #901725)
+  * lib/Sbuild/Build.pm: only run autopkgtest if debian/tests/control exists
+    (closes: #901167)
+  * lib/Sbuild/Options.pm: --make-binNMU implies --no-arch-all (closes:
+    #898946)
+  * etc/sbuild-update-all: set executable bit (closes: #870451)
+  * lib/Sbuild/ChrootSetup.pm: If BUILD_PATH is set, use it instead of /build
+    (closes: #868657)
+  * lib/Sbuild/ResolverBase.pm: clean /var/cache/apt/archive/*.deb after
+    package installation (closes: #861762)
+  * bin/sbuild-createchroot: also check exit status of schroot (closes:
+    #866006)
+  * Replace httpredir.debian.org with deb.debian.org (closes: #901372)
+  * lib/Sbuild/ChrootSetup.pm: run groupadd instead of copying entry from host
+    (closes: #867180)
+  * man/sbuild-createchroot.8.in: fix outdated path in text description
+    (closes: #901360)
+  * bin/sbuild-createchroot: error out early when the target directory exists
+    and is not empty (closes: #888710)
+  * Remove support for signing the dummy archive (closes: #837188)
+  * I now detect more directly if the source wasn't yet unpacked (closes:
+    #882057)
+  * debian/control: replace priority:extra by optional
+  * debian/copyright: use secure copyright format uri
+  * debian/copyright: fix some outdated information now that sbuild lives on
+    salsa
+  * debian/control: update vcs-git and vcs-browser to salsa
+  * debian/control: fix my name
+  * debian/control: depend on real cron as first alternative before virtual
+    cron-daemon
+  * debian/control: add alternative default-mta before mail-transport-agent
+  * debian/sbuild.postinst: avoid recursive chown
+
+ -- Johannes 'josch' Schauer <josch@debian.org>  Fri, 06 Jul 2018 23:11:45 +0200
+
+sbuild (0.76.0-1) unstable; urgency=medium
+
+  * Install sbuild-debian-developer-setup-update-all cronjob (closes: #893577)
+
+ -- Michael Stapelberg <stapelberg@debian.org>  Mon, 09 Apr 2018 18:58:38 +0200
+
+sbuild (0.75.0-1) unstable; urgency=medium
+
+  * New upstream release.
+  * buildd: only build arch:any packages (closes: #893608)
+  * buildd: do not run lintian
+  * remove harmful unnecessary lintian binary check (closes: #893226)
+
+ -- Michael Stapelberg <stapelberg@debian.org>  Wed, 21 Mar 2018 22:24:01 +0100
+
+sbuild (0.74.0-1) unstable; urgency=medium
+
+  * New upstream release
+  * Install dose-distcheck and lintian for the native architecture
+  * remove DCMD config value which is not used and just uselessly making
+    libsbuild-perl depend on devscripts
+  * use dpkg-query instead of grep-status so that dependency on grep-dctrl is
+    not needed anymore
+  * suppress schroot writing to stderr in sbuild-createchroot
+  * check for modprobe in sbuild-createchroot
+  * Add missing newline character to a bunch of error messages
+  * dose3 failures no longer mask the --build-deps-failed-commands
+  * Build arch: all packages by default (closes: #870263)
+  * Run lintian by default (closes: #870263)
+  * sbuild-createchroot: add --command-prefix (closes: #870260)
+  * add sbuild-debian-developer-setup package (closes: #859867)
+
+ -- Michael Stapelberg <stapelberg@debian.org>  Wed, 14 Mar 2018 21:55:42 +0100
+
+sbuild (0.73.0-4) unstable; urgency=medium
+
+  * Retroactively add two entries into debian/NEWS for the Stretch release.
+
+ -- Johannes Schauer <josch@debian.org>  Tue, 24 Jan 2017 10:58:18 +0100
+
+sbuild (0.73.0-3) unstable; urgency=medium
+
+  * Add patch installing dose-distcheck in the native architecture
+  * Refresh other patches as "git format-patch" from sbuild git master branch
+
+ -- Johannes Schauer <josch@debian.org>  Sun, 22 Jan 2017 15:03:49 +0100
+
+sbuild (0.73.0-2) unstable; urgency=medium
+
+  * Bump build-depends on libdpkg-perl to 1.18.14 as sbuild is using
+    Dpkg::Build::Info now (closes: #850075)
+
+ -- Johannes Schauer <josch@debian.org>  Wed, 04 Jan 2017 08:17:08 +0100
+
+sbuild (0.73.0-1) unstable; urgency=medium
+
+  * New upstream release
+  * man/sbuild.1.in: clarify docs for --append-to-version and --make-binNMU
+    (closes: #844583)
+  * Allow passing a directory to --extra-package which will add all .deb inside
+    (closes: #844457)
+  * Unconditionally update repositories given via --extra-repository
+    (closes: #842281)
+  * For binNMUs, instead of copying the timestamp of the last changelog entry,
+    generate a new one (closes: #843773)
+  * Output build type in buildlog in the format used by dpkg-buildpackage
+    --build (closes: #820977)
+  * Install extra packages into their own internal repository which is created
+    at resolver creation time so that extra packages are considered during the
+    upgrade step (closes: #843694)
+  * Also output .buildinfo in buildlog (closes: #843933)
+  * pass the absolute path of extra .deb package to dpkg-deb (closes: #843692)
+  * Always pass the source package to lintian (closes: #843622)
+  * Do not print negative used space but n/a instead (closes: #842947)
+  * bin/sbuild-apt: pass --yes to apt operations as the apt operations are not
+    interactive (closes: #842138)
+  * Do not set 'Changes File' in copy_changes to avoid it being set to the
+    source-only changes file (closes: #842705)
+  * starting-build-command and finished-build-commands are now run as root.
+  * The autopkgtest-virt backends are no longer supplied with the chroot name.
+  * Add SBUILD_BUILD_ARCH percent escape.
+  * Use Dpkg::Build::Info::get_build_env_whitelist() to generate the default of
+    ENVIRONMENT_FILTER.
+  * Add the --binNMU-timestamp command line option to allow one to pass a
+    custom timestamp for the new binNMU changelog entry.
+  * Add option --binNMU-changelog which allows one to pass a complete
+    debian/changelog entry for binary-only builds.
+  * The autopkgtest backend now runs into its own process group.
+  * Bump sbuild Depends on libdpkg-perl to at least 1.18.14 because of its use
+    of Dpkg::Build::Info::get_build_env_whitelist()
+  * Move most Build-Depends to Build-Depends-Indep
+  * Drop dependency and build dependency on libio-zlib-perl which is provided
+    by perl-modules even in old-stable
+  * Drop dependency on apt-utils because sbuild does not use apt-ftparchive
+    anymore
+  * Do not let libsbuild-perl depend on adduser, dctrl-tools and devscripts as
+    it doesn't use them.
+  * Make schroot and autopkgtest Recommends as they are both working backends
+  * Run dh_installinit with --no-start and --no-restart-on-upgrade so that the
+    buildd daemon does not get started on installation (closes: #842057)
+  * Update autopkgtest
+      - Don't sign internal dummy repository anymore
+      - Download source package inside the build chroot because the host might
+        not be having the requested release in its sources.list
+      - Do not depend on procenv build depends as they should be installed
+        inside the build chroot and not on the host
+      - use "apt install" instead of "dpkg -i" to also install dependencies
+      - Several tiny fixes to make the test suite succeed again
+  * Make schroot a hard dependency of buildd (it requires
+    /etc/schroot/chroot.d/ in its postinst script)
+  * Add patch to remove DCMD config value which is not used and just uselessly
+    making libsbuild-perl depend on devscripts
+  * Add kmod to Suggests of sbuild because modprobe is optionally used by
+    sbuild-createchroot
+  * Add patch to use dpkg-query instead of grep-status so that dependency on
+    grep-dctrl is not needed anymore
+  * Add patch that suppresses schroot writing to stderr in sbuild-createchroot
+  * Add patch that checks for modprobe in sbuild-createchroot
+  * Remove xs-testsuite header from debian/control
+  * Adapt libsbuild-perl short description to not say "Tool" anymore but
+    "Library"
+  * Replace git:// in Vcs-Git field by https://
+  * Bump Standard-Version to 3.9.8 (no changes required)
+  * Convert debian/copyright to DEP-5 (make machine readable)
+
+ -- Johannes Schauer <josch@debian.org>  Sat, 24 Dec 2016 02:28:48 +0100
+
+sbuild (0.72.0-2) unstable; urgency=medium
+
+  * Fix regression from 0.72.0 upload: install forward file as .forward and
+    not as buildd.forward (closes: #842057)
+  * Add myself to Uploaders
+
+ -- Johannes Schauer <josch@debian.org>  Wed, 26 Oct 2016 08:47:50 +0200
+
+sbuild (0.72.0-1) unstable; urgency=medium
+
+  * New upstream release
+  * Remove all patches (they have been integrated upstream)
+  * Convert package to dh 10, allowing the most simple d/rules file.
+  * Remove Roger Leigh from the Uploaders field (they left Debian)
+  * Add dependency of buildd on lsb-base (>= 3.0-6) because of the init script
+    it ships (/etc/init.d/buildd)
+  * lib/Sbuild/Build.pm: fixing that if build() raises an exception then build
+    time and space doesn't get set (closes: #835338)
+  * lib/Sbuild/AptitudeResolver.pm: Do not add architecture qualifiers to
+    dependencies if chroot doesn't support multiarch (closes: #836737)
+  * lib/Sbuild/Build.pm: Don't do architecture check if BUILD_SOURCE is true
+    (closes: #836154)
+  * lib/Sbuild/ChrootSudo.pm: Instead of forbidding single quotes, properly
+    quote the exec string (closes: #836175)
+  * When printing ASCII art boxes, cater for the situation where their content
+    is longer than their default width by increasing the box width (closes:
+    #841015)
+  * bin/sbuild-createchroot: do not overwrite /etc/hosts if it already existed
+    and also write ipv6 entries if it didn't (closes: #841165)
+  * sbuild-createchroot: clean up downloaded .deb archives (closes: #841169)
+  * Add --bd-uninstallable-explainer and make dose3 the default (closes:
+    #839566)
+  * Warn if a binary package of incompatible architecture with the chroot is
+    added via --extra-package (closes: #820882)
+  * Accommodate for the autopkgtest 4.0 release by renaming all adt command
+    line options and configuration variables from adt to autopkgtest because
+    the same renaming was done by the autopkgtest release (closes: #833436)
+  * Add Depends on gnupg (>= 2.1) because sbuild now makes use of features
+    like --pinentry-mode=loopback for key creation (closes: #840575)
+
+ -- Johannes Schauer <josch@debian.org>  Tue, 25 Oct 2016 07:43:07 +0200
+
+sbuild (0.71.0-2) unstable; urgency=medium
+
+  * add patch to not check for the fakeroot binary on the host. Thanks
+    Gianfranco Costamagna
+  * Do not recommend fakeroot anymore. It is not needed on the host but only
+    inside the chroot.
+
+ -- Johannes Schauer <josch@debian.org>  Sat, 27 Aug 2016 11:20:06 +0200
+
+sbuild (0.71.0-1) unstable; urgency=medium
+
+  * add autopkgtest to Suggests
+  * Undo exporting private keys in armored ASCII format as introduced by the
+    last release. It turns out, that this is not necessary to support gpg
+    cross-version compatibility. This should fix problems with gpg 2.x as well
+    as chroots not having gpg installed as apt stopped depending on it.
+    (closes: #827315, #834898)
+  * Undo the SUITE-VARIANT syntax of sbuild-createchroot as introduced by the
+    last release. It turns out that overloading the suite name argument with a
+    variant name was a bad idea because there exist distributions with a minus
+    in its name. Variant names can now be specified using the --chroot-prefix
+    option which works analogous to the --chroot-suffix option. (closes:
+    #834515)
+  * Add percent escape support to piuparts, autopkgtest and adt-virt options.
+    (closes: #833285, #833286)
+  * Add sbuild-destroychroot.
+  * Allow running autopkgtest when sbuild downloads the .dsc (closes: #833549)
+  * Run apt-cache without --only-source (closes: #834704)
+  * Avoid dropping extra repositories before using them (closes: #834497)
+  * lib/Sbuild/ResolverBase.pm: Fix copypaste error s/public/private/ (closes:
+    #834330)
+  * lib/Sbuild/ChrootSetup.pm: don't prompt the user during --keygen (closes:
+    #833547)
+  * Add an option to not prefix piuparts and autopkgtest with anything at all
+    (closes: #833390)
+  * lib/Sbuild/Build.pm: add red/green coloring to log when piuparts or
+    autopkgtest succeed/fail (closes: #833552)
+
+ -- Johannes Schauer <josch@debian.org>  Wed, 24 Aug 2016 13:42:26 +0200
+
+sbuild (0.70.0-1) unstable; urgency=medium
+
+  * new upstream version
+    - Fix reproducibility issue by not writing the $HOME as set during the
+      build into config files and man pages anymore (closes: #825991)
+    - Add an EXAMPLE section to the sbuild man page (closes: #824582)
+    - sbuild-createchroot now has support for SUITE-VARIANT chroot names. This
+      is useful to create variants of base suits like jessie-backports or
+      unstable-experimental. (closes: #826957)
+    - sbuild-createchroot now has the --no-deb-src option which allows one to
+      create a chroot without a deb-src entry in its sources.list. This is
+      useful to save bandwidth and disk space for chroots that will never be
+      used to download source packages as the source indices do not have to
+      downloaded, stored and later updated from the mirrors. (closes: #826847)
+    - sbuild-createchroot now has the --alias option which is useful to add a
+      shorthand alias to a chroot which will be used for chroot selection. This
+      is for example useful for a Debian unstable chroot which will be
+      automatically selected for package builds that have UNRELEASED in their
+      debian/changelog, if the UNRELEASED alias is added to the Debian unstable
+      chroot. (closes: #800593)
+    - suild-createchroot now has the --extra-repository which works like the
+      --extra-repository option for sbuild and permanently adds another line to
+      the chroot's sources.list.
+    - Private/public key pairs are now stored in armored ASCII format to
+      maintain compatibility between different gpg versions on the host and
+      within the chroot. Re-running `sbuild-update --keygen` will create the
+      new key types.
+    - Chroots can now have gpg >= 2.x installed as sbuild will properly clean
+      up any remaining gpg-agent processes and "apt-key add" is not used
+      anymore (it will leave a gpg-agent process around that cannot properly
+      be killed).
+    - Add the --source-only-changes option which will create a .changes file
+      suitable for a source-only upload alongside the normal binary .changes
+      file. (closes: #812361)
+    - Do not install debfoster by default in sbuild-createchroot to keep the
+      build chroot as minimal as possible. Users that use debfoster can use the
+      --include option of sbuild-createchroot.
+    - Drop requirement for gpg inside the chroot as external archive keys are
+      now processed without gpg and signing of the internal repository is
+      entirely optional with helpful warning and error messages in case
+      signing failed. (closes: #831462)
+    - Allow running autopkgtest after a successful build in the same manner
+      that piuparts can be run after a successful build. (closes: #824935)
+    - fix uninitialized value problem in loop (closes: #823993)
+    - Fix typo in APT::Get::AllowUnauthenticated config setting
+      (closes: #824165)
+    - Add up correct size when looping over files (closes: #825359)
+    - Make sure printed timestamps are in C locale, in UTC and in standard
+      formats (closes: #813895)
+    - Move addition of extra repositories from the creation of the dummy build
+      dependency repository to the initial setup (closes: #792037)
+    - Fix execution of man (closes: #831063)
+  * Remove patches
+    0001-lib-Sbuild-ResolverBase.pm-do-not-produce-non-error-.patch and
+    0001-bin-sbuild-createchroot-fix-chown-chmod-error-checks.patch as they
+    were merged upstream.
+
+ -- Johannes Schauer <josch@debian.org>  Wed, 03 Aug 2016 10:58:48 +0200
+
+sbuild (0.69.0-2) unstable; urgency=medium
+
+  * add patch 0001-lib-Sbuild-ResolverBase.pm-do-not-produce-non-error-.patch
+    to make sbuild not print on stderr during sbuild-update unless it is an
+    error (closes: #823788)
+  * 0001-bin-sbuild-createchroot-fix-chown-chmod-error-checks.patch which
+    fixes error checking of chown and chmod calls in sbuild-createchroot
+    (closes: #823897)
+
+ -- Johannes Schauer <josch@debian.org>  Thu, 12 May 2016 07:36:32 +0200
+
+sbuild (0.69.0-1) unstable; urgency=medium
+
+  * new upstream version
+    - Decouple chroot from host in terms of filesystem access to allow
+      chroot backends like qemu, ssh or lxc. Deprecate external command
+      percentage escape %SBUILD_CHROOT_DIR in favour of %SBUILD_CHROOT_EXEC.
+    - Experimental adt backend. Enable with --chroot-mode=adt. Choose the
+      virtualization server with --adt-virt-server and add options with
+      --adt-virt-server-opt. This allows sbuild to use qemu, ssh and lxc
+      chroots.
+    - Build packages without specifying a version. Earlier it was possible to
+      let sbuild "apt-get download" a dsc by specifying "package_version" as a
+      command line argument. The version part is not necessary anymore. No
+      manual version lookup by the user is required anymore. (closes: #693928)
+    - Disallow conflicting command line options, thus making command line
+      switches position independent and remove the deprecated --arch-all-only
+      option in the process.
+    - The aspcud resolver criteria is not hardcoded anymore but can be chosen
+      with --aspcud-criteria. The default criteria is -removed,-changed,-new.
+      To minimize the number of packages from experimental, use:
+      -count(solution,APT-Release:=/a=experimental/),-removed,-changed,-new
+      (closes: #821376)
+    - Apt doesn't download translations anymore.
+    - Dummy archive is now signed with SHA-512
+    - Cron script etc/sbuild-update-all allows one to periodically update all
+      sbuild chroots. (closes: #776438)
+    - Add another --*-failed-commands external command:
+      --chroot-update-failed-commands (closes: #803505)
+    - Documentation of configuration options in sbuild.conf(5) and in
+      /etc/sbuild/sbuild.conf now reference related command line options from
+      sbuild(1).
+    - Documentation of command line options in sbuild(1) now references the
+      respective configuration options from sbuild.conf(5).
+    - Remove configuration options which can be set on the command line from
+      the __INTERNAL group, thus exposing them in sbuild.conf as well and
+      referencing them in sbuild(1).
+    - Replace single by double quotes in external command (closes: #816493)
+    - Parse "apt-cache showsrc" output using Dpkg::Index (closes: #818579)
+    - Fix permissions of temporary directories (closes: #798835)
+    - Fix signing of build results (closes: #817121)
+    - do not remove architectures when cloned chroot is in use
+      (closes: #811558)
+    - check for overlayfs support (closes: #813360)
+
+ -- Johannes Schauer <josch@debian.org>  Sun, 08 May 2016 14:43:04 +0200
+
+sbuild (0.68.0-1) unstable; urgency=medium
+
+  * new upstream version
+    - Fix quoting when checking architectures (closes: #809175)
+    - bin/sbuild-createchroot: check for defined-ness first before using eq
+      (closes: #811042)
+    - When cross compiling, install dummy binary package instead of using
+      'apt-get build-dep'. See upstream commit #e227c8f3 for an extensive
+      rationale. (closes: #809730)
+    - Do architecture check after build-essential is installed (closes: #700317)
+    - Create directory where tarball is stored (closes: #811040)
+    - lib/Sbuild/ChrootInfoSchroot.pm: check if get_info_from_stream() was
+      successful and don't check if closing the pipe was successful if not
+      (closes: #811041)
+    - Extend explanation of --source and --no-source options (closes: #700317)
+    - Add documentation related to generated build artifacts (closes: #782553)
+    - Deprecate command line option --arch-all-only in favour of --arch-all
+      --no-arch-any. This option will be removed in the next upstream release.
+  * drop patch fix-quoting.patch as it has been applied upstream
+
+ -- Johannes Schauer <josch@debian.org>  Fri, 15 Jan 2016 10:18:53 +0100
+
+sbuild (0.67.0-2) unstable; urgency=medium
+
+  * backport patch fix-quoting.patch (closes: #809175)
+
+ -- Johannes Schauer <josch@debian.org>  Mon, 28 Dec 2015 03:23:42 +0100
+
+sbuild (0.67.0-1) unstable; urgency=medium
+
+  * fix Vcs-Browser and Vcs-Git fields to point at the debian/unstable branch
+    (closes: #805063)
+  * add Suggests: libwww-perl to libsbuild-perl because it can optionally make
+    use of LWP::UserAgent (closes: #703814)
+  * new upstream version
+    - ./man/sbuild.1.in: improve documentation of external commands
+      (closes: #802678)
+    - bin/sbuild: add --clean-source and --no-clean-source to allow building a
+      package from an unpacked directory without calling debian/rules clean
+      (closes: #655215)
+    - allow changing the user running dpkg-buildpackage inside the chroot
+      (closes: #661037)
+    - Check architecture wildcard matching with dpkg inside the chroot to avoid
+      situations in which dpkg outside the chroot doesn't know about a new
+      architecture yet (closes: #691539)
+    - lib/Sbuild/Build.pm: say --build instead of incorrect --build-arch
+      (closes: #709270)
+    - bin/sbuild-createchroot: honor --foreign (closes: #709864)
+    - man/sbuild-setup.7.in: correct section 8 for sbuild-createchroot and
+      sbuild-adduser (closes: #713033)
+    - Fix permission of public key (closes: #726866)
+    - sbuild-createchroot: use union-type=overlay for directory chroot and
+      promote tarball chroot in the manpage (closes: #751732)
+    - sbuild-createchroot: run debootstrap with --no-check-gpg if --keyring=""
+      is passed (closes: #760832)
+    - Quit processing when external commands fail (closes: #774351)
+    - bin/sbuild-createchroot: check if chroot already exists before creating a
+      new one (closes: #782534)
+    - Print better message when no chroot is specified (closes: #786456)
+    - Add the --no-arch-any and --arch-any options
+    - Successfully handle a source only build. (Closes: #799056)
+    - lib/Sbuild.pm: improve error message about sbuild group membership
+      (closes: #800317)
+    - bin/sbuild: turn path to input dsc or source directory into an absolute
+      path (closes: #801436)
+    - Set [trusted=yes] for internal dummy repository to make key generation
+      optional (closes: #801798)
+    - have a default for CROSSBUILD_CORE_DEPENDS (closes: #806931)
+    - lib/Sbuild/Chroot.pm: apply environment filter *before* setting
+      environment variables set by sbuild itself (closes: #807488)
+    - lib/Sbuild/ChrootInfo.pm: fix error handling (closes: #808290)
+    - lib/Sbuild/Build.pm: make sure regex only matches lines in the Files
+      field (closes: #808560)
+  * drop all patches which have now been applied upstream
+
+ -- Johannes Schauer <josch@debian.org>  Sat, 26 Dec 2015 15:19:29 +0100
+
+sbuild (0.66.0-5) unstable; urgency=medium
+
+  * Backport commit 6456b3da to make sbuild binary packages reproducible
+    independent of the build architecture and the build user (closes: #801882)
+
+ -- Johannes Schauer <josch@debian.org>  Fri, 16 Oct 2015 07:26:52 +0200
+
+sbuild (0.66.0-4) unstable; urgency=medium
+
+  * Backport commit 297dc84a fixing a regression in parsing the output of
+    `schroot --info` introduced by commit 8a3e12c3 and leading to
+    sbuild-update not updating the schroot. (closes: #801572)
+
+ -- Johannes Schauer <josch@debian.org>  Wed, 14 Oct 2015 10:32:58 +0200
+
+sbuild (0.66.0-3) unstable; urgency=medium
+
+  * backport commit 91229d5a calling deps_parse() with build_dep => 1 (closes:
+    #801637, #801400)
+
+ -- Johannes Schauer <josch@debian.org>  Tue, 13 Oct 2015 13:08:47 +0200
+
+sbuild (0.66.0-2) unstable; urgency=medium
+
+  * make changelog entry for 0.66.0-1 more explicit wrt the closed bugs.
+
+ -- Johannes Schauer <josch@debian.org>  Mon, 05 Oct 2015 09:54:58 +0200
+
+sbuild (0.66.0-1) unstable; urgency=medium
+
+  * new upstream version
+  * demote exim4 to Recommends (Closes: #774310)
+  * use dpkg --assert-multi-arch to check for multi-arch support (Closes:
+    #793561)
+  * allow to set custom configuration file through $SBUILD_CONFIG environment
+    variable (Closes: #790354)
+  * look for a BUILD_ARCH chroot instead of HOST_ARCH (Closes: #793951)
+  * Move running of pre-build-commands until after 'Chroot Dir' is defined
+    to prevent the %SBUILD_CHROOT_DIR percentage escape being empty when
+    running the pre-build-commands hook (Closes: #774359)
+  * external commands are now unparsed strings (Closes: #782672)
+  * properly setup buildd unstable chroot (Closes: #731062)
+  * Replaced all unicode-printed chars with plain ASCII (Closes: #665847,
+    #765886)
+  * Add --extra-repository-key flag for extra apt keys (Closes: #796539)
+  * Add a new --arch-all-only option (Closes: #657392)
+  * Instead of explicitly requesting core packages of the build architecture,
+    use :native (Closes: #798323)
+  * Report a proper error message in case /var/lib/sbuild inside the chroot is
+    not writable (Closes: #797783)
+  * close and unlink temporary files created by File::Temp::tempfile() (Closes:
+    #775091)
+  * external command %SBUILD_SHELL produces an interactive shell (Closes:
+    #783091)
+  * If Build-Depends can't be parsed, I now error loudly (Closes: #783335)
+  * consider stderr as well as stdout before timeout (Closes: #731940)
+  * make symlink to build log relative if in same directory (Closes: #685416)
+  * Handle $session being undefined properly (Closes: #745851, #798568,
+    #790547)
+  * man/sbuild.1.in: update docs for --dist option (Closes: #783135)
+  * sbuild-createchroot(8): default suffix is -sbuild, not -chroot (Closes:
+    #774521)
+  * Correct inaccurate dpkg Multi-Arch support comment (Closes: #793560)
+  * Fix call to add_foreign_architecture to actually have an effect (Closes:
+    #793359)
+  * Fix crossbuild dependency resolution for apt and aptitude (Closes: #770407)
+  * create ~/.gnupg if it did not exist before when running sbuild-update
+    (Closes: #792100)
+  * use httpredir.debian.org instead of ftp.debian.org or ftp.uk.debian.org
+    (Closes: #792092)
+  * add --build-path option and  configuration variable to set a deterministic
+    build path (Closes: #790868)
+
+ -- Johannes Schauer <josch@debian.org>  Sun, 04 Oct 2015 09:50:02 +0200
+
+sbuild (0.65.2-1) unstable; urgency=medium
+
+  * Team upload.
+
+  [ Ansgar Burchardt ]
+  * Sort keys in hashes dumped to sbuild.conf and sbuild.conf.man.
+    Thanks to Reiner Herrmann for the patch.
+    (Closes: #778482, #764504)
+  * sbuild-createchroot: set profile=sbuild also for tar-based chroots.
+    (Closes: #769289)
+
+  [ Aurelien Jarno ]
+  * lib/Sbuild/Build.pm: only list content for deb/udeb files. (Closes:
+    #781075)
+
+ -- Aurelien Jarno <aurel32@debian.org>  Tue, 24 Mar 2015 14:37:46 +0100
+
+sbuild (0.65.1-1) unstable; urgency=medium
+
+  * Team upload.
+
+  [ Roger Leigh ]
+  * Sbuild::Build: Build arch-all packages when other architectures
+    are present in the arch list (Closes: #771235).  Thanks to
+    Lennart Sorensen for this patch.
+
+  [ Ansgar Burchardt ]
+  * Handle :native architecture qualifier in build dependencies.
+    Thanks to Johannes Schauer for the patch. (Closes: #777204)
+  * Merge most changes from Debian's buildd-0.64 branch.
+
+ -- Ansgar Burchardt <ansgar@debian.org>  Tue, 24 Feb 2015 22:53:16 +0100
+
+sbuild (0.65.0-1) unstable; urgency=medium
+
+  [ Benjamin Drung ]
+  * Team upload.
+  * Fix various issues found by Lintian:
+    - Fix spelling mistake: indended -> intended
+    - Fix hyphen-used-as-minus-sign
+    - Fix debian-news-entry-uses-asterisk
+    - Fix copyright-refers-to-symlink-license
+    - Use canonical VCS fields
+  * Export additional variables to external commands: %SBUILD_CHROOT_DIR,
+    %SBUILD_BUILD_DIR, %SBUILD_PKGBUILD_DIR, and %SBUILD_HOST_ARCH
+    (Closes: #756265)
+  * Bump Standard-Version to 3.9.6
+  * Unset typical desktop variables XDG_RUNTIME_DIR, XDG_SEAT,
+    XDG_SESSION_COOKIE, XDG_SESSION_ID, and XDG_VTNR (Closes: #729012)
+  * Fail if dpkg subcommands fail instead of silently ignoring failures.
+    Thanks to Christoph Biedl for the patch (Closes: #745221)
+  * Fix build failure if the package version ends with Debian revision 0.
+    Thanks to Adam Borowski <kilobyte@angband.pl> (Closes: #679574)
+  * Fix broken man page symlinks in buildd package
+
+  [ Geoffrey Thomas ]
+  * Refactor temporary build-dep repository code to use apt-get update,
+    instead of hacking /var/lib/apt/lists.
+  * Add --extra-package (Closes: #700522) and --extra-repository (Closes:
+    #714883).
+  * Accept 0 as a source version number (Closes: #712627)
+  * Add DEP-8 autopkgtest to build procenv. (Closes: #705926)
+
+  [ Johannes Schauer ]
+  * sbuild:
+    - Add build-profiles support (Closes: 731798)
+
+  [ Geoffrey Thomas ]
+  * Sbuild::ChrootSetup: Pass --no-options to gpg (Closes: #722103)
+
+ -- Wookey <wookey@debian.org>  Fri, 17 Oct 2014 17:20:45 +0100
+
+sbuild (0.64.3-2) unstable; urgency=medium
+
+  * Ensure foreign-arch logging is correct (Closes: #763635)
+
+ -- Wookey <wookey@debian.org>  Wed, 01 Oct 2014 17:32:42 +0100
+
+sbuild (0.64.3-1) unstable; urgency=medium
+
+  * Team upload
+
+  [ Wookey ]
+  * sbuild:
+    - Add support for multiarch builds (enable foreign arch 'arch'
+       if Build-Depends includes specific foo:arch dependency)
+    - Enable chroot setup commands to be run as root
+    (Closes: #608840,#607228)
+    - Document command hooks
+    - Add Wookey to sbuild team/uploaders
+
+  [ Johannes Schauer ]
+  * sbuild:
+    - Add starting-/finished- build-commands hooks (Closes: #760991)
+
+ -- Wookey <wookey@debian.org>  Sat, 20 Sep 2014 00:38:58 +0100
+
+sbuild (0.64.2-1) unstable; urgency=low
+
+  * Team upload.
+
+  [ Colin Watson ]
+  * buildd:
+    - Unset some more locale environment variables, and sort these in the
+      same order as the output of locale(1), to make it easier to compare
+      visually.
+
+  [ Luca Falavigna ]
+  * sbuild-createchroot:
+    - Allow to define custom suffixes in chroot names (Closes: #741727).
+    - Allow to Define custom debootstrap variant (Closes: #715020).
+
+  [ Christoph Biedl ]
+  * lib/Sbuild/Build.pm:
+    - Sort output of package content listing (Closes: #743773).
+
+ -- Luca Falavigna <dktrkranz@debian.org>  Fri, 12 Sep 2014 20:02:46 +0200
+
+sbuild (0.64.1-1) unstable; urgency=low
+
+  [ Roger Leigh ]
+  * New release.
+  * sbuild:
+    - sbuild-createchroot now works with perl 5.18 (Closes: #724858).
+      Thanks to Alexander Chernyakhovsky for this patch, which corrects
+      the use of File::Temp.  Thanks also to Paul Elliott and Václav
+      Ovsík who also provided an equivalent patches.
+    - Sbuild::Conf: Add missing File::Spec (Closes: #722012).  Thanks to
+      Václav Ovsík for this patch.
+    - Sbuild::Build: Remove perl 5.10 autoflush workaround; flushing works
+      correctly wih perl 5.18.
+
+ -- Roger Leigh <rleigh@debian.org>  Sun, 13 Oct 2013 19:35:57 +0100
+
+sbuild (0.64.0-1) unstable; urgency=low
+
+  [ Thorsten Glaser ]
+  * Apply patch from Arnaud Patard to fix the uploader (Closes: #636477).
+  * Make sample configuration entries actually work (Closes: #696840).
+  * Avoid using undef as HASH reference (Closes: #696841).
+
+  [ Philipp Kern ]
+  * Forward port patches from the buildd-0.61.0 branch:
+    - Buildd::Client: Don't change the cwd.
+    - Buildd: Fix SSH control master restart.
+
+  [ Roger Leigh ]
+  * New release.
+  * Upgrade to Standards-Version 3.9.4 (no changes).
+  * buildd:
+    - Remove duplicate stop action from init script (Closes: #695513).
+    - Failure count before sleeping is configurable with
+      MAX_SBUILD_FAILS (Closes: #693790).
+    - buildd.init specifies correct Required-Stop dependencies.
+    - Remove empty preinst script.
+  * sbuild:
+    - Cross build-dependency installation failure throws an
+      exception (Closes: #693788).
+    - In Sbuild::ResolverBase, pass the correct options to deps_parse
+      for cross-building and foo:native build dependencies
+      (Closes: #697298).  Thanks to Colin Watson for this patch.
+    - In Sbuild::Build::copy_to_chroot, remove stray exit() which could
+      cause sbuild to hang with a "Failed to copy" error
+      (Closes: #699903).  Thanks to Stephan Sürken for this patch.
+    - Compute changes path correctly, to allow “--debbuildopt=-A” to
+      work correctly with _all.changes (Closes: #686509).  Thanks to
+      Daniel Dehennin for the original version of this patch.
+    - Run lintian from inside the chroot (Closes: #626361).  Thanks to
+      Reinhard Tartler for this patch.
+
+  [ Colin Watson ]
+  * sbuild:
+    - Resolve cross-build-dependencies from package being built rather than
+      from current apt sources (Closes: #695203).
+  * buildd:
+    - Reset sbuild failure count after sleeping.
+
+  [ Adam Conrad ]
+  * sbuild:
+    - Improve cross chroot detection to look for $dist-$build-$host as a
+      valid chroot for cross-build to avoid namespace clashes with native
+      chroots, and document this better in the manpage (Closes: #695273)
+
+  [ Geoffrey Thomas ]
+  * sbuild:
+    - When creating a changelog entry for binNMUs or
+      --append-to-version, tag it with "binary-only=yes" so that
+      dpkg-gencontrol uses the previous changelog entry for the source
+      version (Closes: #672711, #681292).
+
+ -- Roger Leigh <rleigh@debian.org>  Fri, 17 May 2013 23:06:13 +0100
+
+sbuild (0.63.2-1.1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Fix building packages with revision "0" (Closes: #687396)
+
+ -- Roland Stigge <stigge@antcom.de>  Wed, 05 Dec 2012 14:44:45 +0100
+
+sbuild (0.63.2-1) unstable; urgency=low
+
+  [ Roger Leigh ]
+  * New release.
+  * Sbuild::Conf: Fix typo sucess (Closes: #663089).
+  * Sbuild::Options:
+    - Add --no-run-lintian and --no-run-piuparts options
+      (Closes: #665372).  If lintian or piuparts are configured to run
+      automatically following a successful build, there options disable
+      this behaviour for the build.
+    - Add --purge-build option (Closes: #629109).  This behaves
+      identically to the old --purge option.  --purge now purges
+      everything (build directory, build dependencies and schroot
+      session) and is equivalent to using --purge-build, --purge-deps
+      and --purge-session together.  Thanks to Jan-Marek Glogowski for
+      this patch.
+  * Sbuild::Conf:
+    - Don't create the log directory unless logging is enabled or
+      using buildd mode (Closes: #673009).
+  * Sbuild::Build:
+    - Don't pass $key_id to the shell unescaped (Closes: #676475).
+    - Use _all.changes rather than _arch.changes if -A is passed to
+      dpkg-buildpackage (Closes: #674669).  Thanks to Daniel Dehennin
+      for this patch.
+  * Sbuild::Utility: Fix logging in download function (Closes: #637931).
+  * sbuild:
+    - If running sbuild from inside a build tree (like
+      dpkg-buildpackage), place the build logs outside the tree
+      (Closes: #676834).  Logs will be created in '..' rather than '.'.
+    - When packing source trees with "dpkg-source -b", always pass
+      "." as the directory to pack, so the orig.tar can be found
+      (Closes: #662785).
+  * sbuild-createchroot:
+    - Use profile=sbuild in place of script-config= in generated
+      schroot.conf configuration (Closes: #665215, #675861).
+    - Don't pass --keyring to dpkg-buildpackage unless explicitly set
+      by the user (Closes: #673676).
+
+ -- Roger Leigh <rleigh@debian.org>  Sat, 18 Aug 2012 13:46:45 +0100
+
+sbuild (0.63.1-1) unstable; urgency=low
+
+  [ Roger Leigh ]
+  * New release.
+  * Don't require xapt.  Remove duplicate and incorrect check.  Thanks
+    to Andres Mejia and Jakub Wilk (Closes: #675332, #675354).
+  * Remove /etc/schroot/setup.d/99builddsourceslist which was
+    provided with earlier versions of sbuild, but no longer works with
+    current schroot versions (Closes: #675349).
+
+ -- Roger Leigh <rleigh@debian.org>  Thu, 31 May 2012 21:59:16 +0100
+
+sbuild (0.63.0-1) unstable; urgency=low
+
+  [ Wookey ]
+  * Support for cross-compiling has been added.  This includes the
+    addition of $host and $build configuration variables, with
+    corresponding --host and --build command-line options.  This
+    includes the addition of a new 'xapt' dependency resolver.
+    - Merge cross-build support (thanks to Hector Oron,
+      Closes: #610689).
+    - Add multiarch cross-build support.
+
+  [ Roger Leigh ]
+  * The deprecated 'internal' dependency resolver has been removed,
+    along with the configuration variables $apt_policy,
+    $check_depends_algorithm and $resolve_virtual, and the
+    command-line option --check-depends-algorithm.  The 'apt'
+    resolver is the default replacement for 'internal'.
+    (Closes: #622788)
+  * Support for watches has been removed.  The configuration
+    variables $check_watches, $ignore_watches_no_build_deps and
+    $watches (and obsolete variables @ignore_watches_no_build_deps
+    and %watches) have also been removed.
+  * sbuild-stats and support for build time and space statistics
+    recording has been removed.  These statistics are recorded in
+    both the build log and are available as build metadata
+    internally.  The statistics recorded in the database were not
+    particularly informative; storing the statistics in a proper
+    relational database is recommended.  The configuration variables
+    $avg_time_db and $avg_space_db have been removed.
+  * Drop 25nssdatabases schroot setup script used on compatibility
+    mode (on buildds).  This has been replaced by the schroot
+    20nssdatabases for many years.
+
+ -- Roger Leigh <rleigh@debian.org>  Wed, 30 May 2012 22:49:18 +0100
+
+sbuild (0.62.6-1) unstable; urgency=low
+
+  * New release.
+  * All changes backported from buildd-0.61.0 branch.
+  * sbuild.1: Add --chroot to synopsis (Closes: #635203).
+  * sbuild:
+    - --jobs is an alias for -j, to match documented behaviour
+      (Closes: #635250).
+    - The use of alternatives in Build-Depends and Build-Depends-Indep
+      may be turned on or off by the configuration variable
+      $resolve_alternatives.  It may also be enabled or disabled at
+      build time using the --resolve-alternatives and
+      --no-resolve-alternatives options, respectively.
+    - Correctly support chroot namespaces, to work with schroot 1.5.x
+      (Closes: #612630).
+    - Support Build-Depends-Arch and Build-Conflicts-Arch fields in
+      debian/control.  These may be manually set with
+      --add-depends-arch and --add-conflicts-arch, respectively.
+
+ -- Roger Leigh <rleigh@debian.org>  Wed, 07 Dec 2011 20:41:43 +0000
+
+sbuild (0.62.5-1) unstable; urgency=low
+
+  * New release.
+  * sbuild:
+    - Correct use of Dpkg::Version for version parsing, to ensure
+      correct behaviour when using native package versions and epochs.
+    - Don't require an exact version when building a package directly
+      from a source tree.
+
+ -- Roger Leigh <rleigh@debian.org>  Wed, 13 Jul 2011 19:56:05 +0100
+
+sbuild (0.62.4-1) unstable; urgency=low
+
+  * New release.
+  * sbuild:
+    - Failing lintian checks are highlighted in red, and passes in
+      green (Closes: #631060).
+    - The distribution in the build summary is coloured yellow if it
+      does not match the distribution in the changelog.  This is to
+      indicate that there may be a potential problem, such as
+      potentially uploading a package intended for experimental to
+      unstable by building for unstable by accident.
+    - lintian test results are also coloured to highlight success and
+      failure.
+    - Log colouring may now be disabled using $log_colour.
+    - sbuild only permits building one source package at once.
+      Previously sbuild would allow building of more than one package
+      in a single invocation.  Making this change means that the exit
+      status will always be the status of the build rather than the
+      last build, and it also means the logging is simplified and may
+      be started earlier.
+    - Now that the main log has been removed, and packing of a source
+      tree takes place before starting the build for real, we no longer
+      create a log file in the build tree, confusing "dpkg-source -b"
+      (Closes: #612324).
+    - Added new directory /var/lib/sbuild/build to hold build trees for
+      sbuild when building.  This will be bind mounted on /build inside
+      the chroot following an update to the schroot sbuild and buildd
+      fstab configuration for schroot.  This saves significant amounts
+      of space when using LVM snapshot chroots, and it also makes it
+      easier to preserve build trees for failing builds when using
+      snapshots.
+    - Extra environment variables to be set when running
+      dpkg-buildpackage may now be set using $build_environment
+      (Closes: #631595).  These variables will supplement the existing
+      environment (e.g. PATH, LD_LIBRARY_PATH), and will not be subject
+      to filtering with $environment_filter.
+    - Existing hard-coded .dsc/.changes/dpkg-parsechangelog parsing has
+      been replaced with use of Dpkg::Control.  Existing reimplmentation
+      of the dpkg version comparison and regexes to split versions into
+      epoch/version/revision have been replaced with use of
+      Dpkg::Version.
+  * sbuild-adduser: Use current sbuild-update options in example
+    (Closes: #630791).
+
+ -- Roger Leigh <rleigh@debian.org>  Sat, 25 Jun 2011 11:39:44 +0100
+
+sbuild (0.62.3-1) unstable; urgency=low
+
+  * New release.
+  * sbuild:
+    - The apt and internal resolvers will resolve some alternatives
+      even when resolving alternative dependencies is disabled
+      (Closes: #622832).  For relations involving the same package,
+      the alternative will be permitted when the package names are
+      the same for each alternative.  For example,
+        foo (<< x) | foo (>= y) | bar
+      will be reduced to
+        foo (<< x) | foo (>= y)
+      while
+        foo | bar
+      will be reduced to
+        foo
+    - The sbuild-schroot wrapper program has been removed; sbuild is
+      now an arch-all package again.
+    - Move lock directory to /var/lib/sbuild/chroot-lock, rather than
+      using /var/lock/sbuild which could be a symlink to /run/lock on
+      the host (Closes: #626826).  This means parallel builds won't
+      block due to sharing the same lockfile.
+    - Remove schroot buildd profile.  This will now be provided by
+      the schroot package itself directly.  This requires schroot
+      1.4.22 or greater.
+    - Add lintian and piuparts results to build summary
+      (Closes: #617450).
+    - Remove directory correctly in postrm (Closes: #627641).  Thanks
+      to Daniel Baumann.
+    - Lock sbuild account on purge, and unlock on install
+      (Closes: #619892).
+    - Add -j option to run parallel builds (Closes: #626357).
+    - Log build environment prior to starting a build.  This will be
+      useful in diagnosing problems with a misconfigured chroot, such
+      as missing HOME which can lead to misbuilds.
+  * sbuild-createchroot:
+    - Don't call ChrootSetup::basesetup after initial bootstrap; wait
+      until actually running sbuild.  The users and groups used for
+      chown don't exist at this point, leading to (harmless) failure.
+      Closes: #622735.
+    - Don't overwrite existing symlinks under /etc/sbuild/chroot
+      (Closes: #608416).
+  * sbuild-update:
+    - Don't try to end the current chroot session if a signal is
+      received and no session is in progress (Closes: #629005).
+  * buildd:
+    - init script starts buildd in runlevels 2-5 rather than S, and
+      stops in 0, 1 and 6.
+    - Lock buildd account on purge, and unlock on install.
+  * buildd-mail:
+    - Remove empty newline from .changes (Closes: #627854).
+      ftp-master started refusing .changes files which have a trailing
+      empty line (after the GPG end of signature).  It happens that
+      mutt introduces one when signing GPG in traditional mode.  Other
+      tools probably do too.  buildd-mail-wrapper should probably drop
+      it automatically.  Thanks to Samuel Thibault.
+
+ -- Roger Leigh <rleigh@debian.org>  Sat, 04 Jun 2011 00:01:13 +0100
+
+sbuild (0.62.2-1) unstable; urgency=low
+
+  * New release.
+  * sbuild:
+    - New options --no-apt-clean, --no-apt-update, --no-apt-upgrade and
+      --no-apt-distupgrade have been added to allow these actions to be
+      disabled even when set as the default in the configuration.
+    - root is not required to be a member of the sbuild group in order
+      to run schroot via the sbuild-schroot wrapper
+      (Closes: #619128, #619002).
+    - Don't require HOME to be set in the environment (Closes: #619288).
+    - Work around broken build-essential on Ubuntu Lucid
+      (Closes: #619526).  Thanks to Marc Deslauriers.
+    - --keep-session is replaced by
+      --purge-session=(always|successful|never).  This will allow the
+      session to be purged for all, successful and no builds,
+      respectively (Closes: #619332).
+    - sources.list fragments stored in /etc/apt/sources.list.d have
+      0644 permissions, so that normal users can run apt-cache in the
+      chroot during a build (Closes: #620797).  Thanks to Julian Andres
+      Klode for identifying this problem.
+    - Log filtering may be disabled using $log_filter = 0 in the
+      configuration (Closes: #620589).  The replacement text is now
+      also surrounded with "«" and "»" so that strings such as CHROOT
+      and BUILDDIR can't be confused with any actual appearance of the
+      same string in the build log.
+    - Log colouring may be disabled using $log_colour = 0 in the
+      configuration.
+    - Improve binNMU handling to permit binNMUs for multiarch packages
+      (Closes: #620112).  Currently, binary NMUs use the current date
+      in the new changelog entry, but co-installable packages require
+      an identical changelog.  To avoid this, take the date from the
+      previous changelog entry to ensure the same date for all binNMUs.
+      Thanks to Anders Kaseorg for this patch.
+    - Abort early if maintainer is not defined when performing a binNMU
+      or appending a version suffix (Closes: #620758).
+  * sbuild.conf:
+    - Don't set a default value for $build_dir (Closes: #619416).
+      This value is set each run, and so varies between builds when
+      generating the configuration file.  Exclude from the generated
+      output to prevent unnecessary differences between builds.
+    - $purge_session uses the same purge modes as $purge_build_deps and
+      $purge_build_directory, rather than a boolean value.
+  * buildd:
+    - Merge latest changes from buildd-0.61.0.
+
+ -- Roger Leigh <rleigh@debian.org>  Tue, 05 Apr 2011 10:46:49 +0100
+
+sbuild (0.62.1-1) unstable; urgency=high
+
+  * New release.
+  * Fixed security issue in the sbuild-schroot wrapper program which
+    did not enforce sbuild group membership in order to allow users
+    to access the chroots as user sbuild.
+
+ -- Roger Leigh <rleigh@debian.org>  Sun, 20 Mar 2011 23:06:52 +0000
+
+sbuild (0.62.0-1) unstable; urgency=low
+
+  * New release.
+  * debian/control:
+    - Build-Depend upon libexception-class-perl.
+  * sbuild:
+    - Resolvers:
+      + 'apt' is now the default build dependency resolver.  Users should
+        not see any significant changes compared with the old 'internal'
+        resolver.  Please note that you may need to generate a GPG key
+        for the local archive created for dependency package
+        installation, if one does not already exist; see sbuild-update
+        (--keygen) for further details.
+      + The 'internal' build dependency resolver is deprecated.  It is
+        not recommended for future use, and will be removed once it is no
+        longer used by the buildd infrastructure.  Please use the 'apt'
+        resolver as a drop-in replacement.
+      + The 'aptitude' build dependency resolver will, unlike 'apt' and
+        'internal', consider alternative dependencies by default, rather
+        than only using the first alternative.  This is intended to both
+        preserve backward compatibility, and make the 'aptitude'
+        resolver the preferred choice for more complex situations, such
+        as building for experimental.
+      + The aptitude resolver can resolve complex dependencies, e.g.
+        A | B, where A is uninstallable now correctly falls back to B.
+        This is not the case for the internal or apt resolvers, which by
+        intent do not make use of alternatives (they use the first
+        alternative only.  sbuild now has full support for resolving
+        alternatives, but this is not the default behaviour
+        (Closes: #403246).  Please see #614807 for a proposed description
+        of autobuilder-imposed build dependency restrictions in Policy.
+      + All build dependency resolvers run dpkg with --force-confold.
+        This means packages with modified conffiles in the chroot to not
+        cause build failure.  This includes /etc/services and
+        /etc/protocols from netbase (Closes: #576508).
+    - Logging:
+      + Long paths such as the chroot location and the build directory
+        inside the chroot are now filtered in the build log and replaced
+        with small, constant, abbreviations (Closes: #605763).  This makes
+        the build logs comparable between builds with tools such as
+        diff(1).
+      + Logging messages have been improved, and important messages are
+        now coloured when running interactively (does not affect log
+        files).  Errors, warnings and informational messages are coloured
+        red, yellow and green, respectively.  Build status is coloured
+        green for success and red for all failure conditions.
+      + Build log mails are now compressed and mailed in MIME format by
+        default, together with a copy of the .changes file.  The old
+        behaviour (plain mailing of uncompressed logs) may be restored by
+        setting $mime_build_log_mails=0 in the configuration, and
+        compression may also be disabled in the MIME mails by setting
+        $compress_build_log_mails=0.  Note that it is no longer possible
+        to send compressed log mails unless MIME mailing is enabled.
+        Thanks to Philipp Kern for implementing this.
+    - Error handling:
+      + In order to handle errors more robustly, the build code now has
+        initial support for exception handling.  Normal operation will
+        not be affected, but fatal errors may be logged in a different
+        order than seen previously.  Fatal errors will now be seen at the
+        end of the build log, which should make it easier to spot
+        problems.
+      + sbuild now always cleans up fully when receiving a termination
+        signal such as SIGINT or SIGTERM.  Note that you may need to wait
+        while the cleanup actions are performed, or the current task is
+        completed prior to initiating cleanup.  When running
+        interactively, hitting Ctrl-C will sent SIGINT to the entire
+        process group; doing this while apt-get or aptitude are running
+        will potentially leave dpkg in an inconsistent state, so aborting
+        at this point is not recommended.  Sending a SIGTERM to the
+        sbuild process will always work cleanly.
+    - General:
+      + sbuild now performs an apt dist-upgrade at the start of each
+        build by default, rather than an upgrade.  This is to reduce the
+        amount of manual administration required to keep chroots up to
+        date, and is not much more risky than upgrade in this context.
+      + A new option, --keep-session, has been added (Closes: #609658).
+        This prevents the automatic removal of session-managed snapshot
+        chroots.  Previously, snapshots would not be deleted if purging
+        of the build directory or build dependencies was disabled, but
+        this was not always desirable, hence it is now configurable
+        separately.
+      + Internally, building and other actions in the chroot are
+        performed by the 'sbuild' system user, where previously the user
+        invoking sbuild would be used instead.  The aim of this change is
+        to separate privileges to increase security and reduce the chance
+        of accidental or deliberate tampering of the build environment.
+        While the latter is not addressed by these changes, this will be
+        taken care of during future architectural changes.
+      + The sbuild package build directory created inside the chroot now
+        has a reduced name length.  It's now /build/packagename-XXXXXX
+        where XXXXXX are random characters.  This helps reduce the chance
+        of hitting path length restrictions on some architectures,
+        particularly when using sockets.
+  * wanna-build:
+    - The wanna-build database has been removed entirely.  This part of
+      the sbuild package was not used, and was not maintained for some
+      time.  Users wishing to use wanna-build should investigate the
+      version in the wanna-build.git repository used by the Debian
+      autobuilding infrastructure.  This version is actively maintained
+      and in continual use.
+  * sbuild.conf:
+    - sbuild.conf is now automatically generated from the help text and
+      defaults in the source code.  This means that the examples will
+      always be syntactically correct, the help text will always be
+      current, and the defaults will always match the defaults in the
+      source code (Closes: #609932, #610995).
+    - Non-scalar (or reference) types are deprecated in sbuild.conf.
+      This is because it is not possible to tell the difference between
+      an empty and an undefined value.  Values using array or hash
+      types should use the equivalent array reference or hash
+      reference, which have been supported for some time.  The old
+      style array and hash values will remain supported for now, but
+      will be removed in a future release.
+  * buildd.conf:
+    - Automatically generated like sbuild.conf.  As for sbuild.conf,
+      non-scalar types are deprecated.
+  * sbuild.conf.5:
+    - All of the allowed values in sbuild.conf are now documented in a
+      new sbuild.conf(5) manual page.  Like sbuild.conf, this is
+      entirely generated from the source code, so will always match the
+      defaults for the same sbuild version.
+  * buildd.conf.5:
+    - New manual page.  Like sbuild.conf(5), this documents all allowed
+      values.
+
+ -- Roger Leigh <rleigh@debian.org>  Wed, 16 Mar 2011 16:10:31 +0000
+
+sbuild (0.61.0-1) unstable; urgency=low
+
+  * sbuild:
+    - The apt and aptitude build dependency resolvers now use only the
+      first alternative in alternative dependencies.  The other
+      alternatives are stripped out entirely.  This makes the apt and
+      aptitude resolvers behave exactly like the internal resolver.
+      Note that this is configurable with the $resolve_alternatives
+      option, so alternative resolving may be re-enabled with this
+      option if desired.  This is useful for e.g. backports, but not
+      for unstable where the strict consistency and reproducibility
+      offered by only using the first alternative is required.
+    - The aptitude resolver now runs dpkg with --force-confold, to
+      match the behaviour of internal and apt.  This prevents failure
+      when installing netbase into the build chroot, for example.
+
+ -- Roger Leigh <rleigh@debian.org>  Wed, 23 Feb 2011 13:08:58 +0000
+
+sbuild (0.60.9-1) unstable; urgency=low
+
+  * New release.
+  * sbuild:
+    - Don't automatically generate local archive signing key if
+      missing (Closes: #607945).  If missing, abort build with an error
+      message and instructions for how to generate the key.
+    - Do not filter out environment variables starting with DEBIAN_ by
+      default (Closes: #608659).  Thanks to Modestas Vainius.
+    - Do not filter out PATH environment variable (Closes: #610997).
+      Note this is not the user's PATH, but the $path in sbuild.conf.
+    - Aptitude resolver defines a custom SolutionCost in order to
+      improve resolver behaviour (Closes: #608789).  Thanks to
+      Modestas Vainius.
+    - When running apt-get, use "-o APT::Install-Recommends=false"
+      rather than "--no-install-recommends" in order to support older
+      releases (Closes: #609811).  Thanks to Marc Deslauriers.
+    - Purging the package removes generated files in /etc/sbuild/chroot
+      and /var/lib/sbuild (Closes: #608412).
+    - The architecture specified with --arch (defaulting to the host
+      system architecture) must match the chroot architecture
+      (Closes: #609151).  This was previously allowed to be superceded
+      by the chroot architecture.  This change is to avoid any abiguity
+      regarding the host/build architecture for the package being built.
+    - Add --no-arch-all option to force not building arch-all packages
+      (Closes: #613401).  Thanks to Sebastian Harl for this patch.
+  * sbuild-createchroot:
+    - Use less restrictive permissions on chroot directory and schroot
+      configuration file (Closes: #608414).  The chroot now has 0755
+      permissions, and the schroot configuration 0644.
+    - Don't require sudo access (Closes: #608429).  The
+      Sbuild::ChrootPlain module used to run commands inside the newly-
+      created chroot was using sudo to run commands when already
+      running as root.  sudo is no longer used when root.
+    - Remove use statement which prevented command-line options being
+      registered (Closes: #610007, #607606).  Command-line options now
+      work correctly.
+  * sbuild.conf:
+    - $environment filter is syntactically correct (Closes: #610997).
+      Thanks to Jakub Wilk.
+    - $apt_allow_unauthenticated is documented to use apt-secure(8)
+      (Closes: #608971).
+  * sbuild.1:
+    - Document the temporary local archive used by the apt and aptitude
+      build dependency resolvers to store and install dummy dependency
+      packages (Closes: #608972).
+
+ -- Roger Leigh <rleigh@debian.org>  Mon, 14 Feb 2011 20:37:05 +0000
+
+sbuild (0.60.8-1) unstable; urgency=low
+
+  * New release.
+  * sbuild:
+    - Don't use user's default GPG configuration and keyrings for
+      signing archives; use sbuild archive signing keys only
+      (Closes: #606668).  Thanks to Simon McVittie for this patch.
+    - Use an empty directory as GPG homedir.
+    - Don't run "apt-get update" to update local archive; copy files
+      directly into /var/lib/apt/lists.  This means the remote mirror
+      lists can't be updated during a build, and it also saves the
+      time needed to update the lists an additional two times.
+
+ -- Roger Leigh <rleigh@debian.org>  Sun, 12 Dec 2010 19:24:11 +0000
+
+sbuild (0.60.7-1) unstable; urgency=low
+
+  * New release.
+  * Correct building of dependency package using the apt and aptitude
+    resolver, where /tmp is not shared with the host (Closes: #606278).
+
+ -- Roger Leigh <rleigh@debian.org>  Wed, 08 Dec 2010 21:47:11 +0000
+
+sbuild (0.60.6-1) unstable; urgency=low
+
+  [ Roger Leigh ]
+  * New release.
+  * sbuild:
+    - sbuild now sanitises its environment when running external
+      commands.
+    - sbuild no longer generates the files REDO and SBUILD-REDO-DUMPED.
+    - sbuild now has a testsuite.
+    - apt and aptitude build-dependency resolvers now use a local apt
+      archive, which improves the behaviour of the apt resolver (the
+      dependency package will no longer be removed in some situations).
+    - Workaround uninstallable sysvinit on Ubuntu, where sysvinit is
+      still present in the build-essential package list.  Thanks to
+      Jamie Strandboge.
+  * sbuild-update:
+    - sbuild-update works on multiple chroots (Closes: #604715).
+    - sbuild-update works with multiple architectures (Closes: #606001).
+      Thanks to Ansgar Burchardt for this patch.
+    - sbuild-update now has a --keygen option to generate signing keys
+      for temporary apt archives.
+  * sbuild.1: Update description of --maintainer (Closes: #605745).
+    Thanks to Jakub Wilk.
+  * Sbuild::ConfBase: Only use MAILTO_HASH if defined (Closes: #589615).
+    Thanks to Marc Dequènes for this patch.
+
+  [ Modestas Vainius ]
+  * sbuild:
+    - Do not skip purging of build directory if chroot is cloned
+      (Closes: #605997).  This is necessary if /build in chroots is
+      (bind-)mounted to the outside of the session.  However, if /build
+      is part of the cloned session, $purge_build_directory='never'
+      could be used in order to avoid wasting time when the session
+      ends.
+
+ -- Roger Leigh <rleigh@debian.org>  Tue, 07 Dec 2010 21:08:28 +0000
+
+sbuild (0.60.5-1) unstable; urgency=low
+
+  * Chroot upgrade and dist-upgrade commands run with
+    "dpkg --force-confold" as done for build dependency installation
+    (Closes: #603397).  Thanks to Loïc Minier.
+
+ -- Roger Leigh <rleigh@debian.org>  Sat, 13 Nov 2010 18:43:25 +0000
+
+sbuild (0.60.4-1) unstable; urgency=low
+
+  * New release.
+  * Allow the user to specify chroot namespaces in the distribution
+    name (Closes: #602789).
+  * Revert default build dependency resolver to 'internal' for the
+    time being.
+
+ -- Roger Leigh <rleigh@debian.org>  Tue, 09 Nov 2010 19:46:38 +0000
+
+sbuild (0.60.3-1) unstable; urgency=low
+
+  * New release.
+  * sbuild-createchroot:
+    - Allow direct creation of tarballs from chroots, with various
+      options for compression (Closes: #545215).  Thanks to Andres
+      Mejia.
+  * sbuild-update:
+    - sbuild-clean functionality has been merged into sbuild-update.
+      Thanks to Andres Mejia.
+  * sbuild:
+    - Dependency resolving:
+      . 'aptitude' is now the default dependency resolver.  Users
+        wishing to use the old resolver should set
+        $build_dep_resolver='internal' in their configuration.
+      . The aptitude resolver can resolve complex dependencies.
+        A | B, where A is uninstallable now correctly falls back to B
+        (Closes: #403246).
+      . Removal of Build-Conflicts now works, due to using apt-get
+        or aptitude to perform the removal (Closes: #464376).
+      . Default to not enabling virtual dependency resolving with the
+        internal resolver ($resolve_virtual=0).  This is to avoid
+        changing the historical behaviour by default.
+    - Don't set Sbuild::debug_level to undef (Closes: #602318).
+      Thanks to Andres Mejia.
+    - Add debuild-like feature to run sbuild on an unpacked source
+      tree (Closes: #551311).  In addition to specifying a package
+      version to build, or a source package .dsc, a directory may be
+      used.  This will be packaged with 'dpkg-source -b' prior to
+      building.  Thanks to Andres Mejia.
+    - Add support for running lintian after a build.  Thanks to Andres
+      Mejia.
+    - Add support for running external commands before and after a
+      build, and during chroot setup and cleanup.  These may be used
+      to run piuparts, for example.  Thanks to Andres Mejia.
+  * Run sbuild-* chroot maintenance commands in the 'source' chroot
+    namespace for chroots providing such a facility (Closes: #567505).
+    This means that update/distupgrade etc. operations will occur in
+    the source volume for lvm-snapshot and btrfs-snapshot chroot types.
+    Note that the sbuild chroot lock (/var/lock/sbuild) may be copied
+    into cloned chroots if a build is started during a maintenance
+    operation and the build will block until the operation is completed.
+
+ -- Roger Leigh <rleigh@debian.org>  Mon, 08 Nov 2010 17:07:40 +0000
+
+sbuild (0.60.2-1) unstable; urgency=low
+
+  * New release.
+  * sbuild:
+    - Dependency resolving:
+      . The aptitude build dependency resolver now sets
+        Aptitude::CmdLine::Ignore-Trust-Violations based upon the
+        $apt_allow_unauthenticated option (Closes: #588035).  Thanks to
+        Ansgar Burchardt for this patch.
+      . Improve handling of alternative build dependencies and Provides
+        using the interal build dependency resolver.  (Closes: #586275,
+        #578810, #591187, #591188, #591189, #595863, #595866, #595872).
+        Thanks to Ansgar Burchardt for this patch.
+      . Remove virtual build-dependency resolving using the "internal"
+        resolver using the static ALTERATIVES (%alternatives) list.  This
+        was already limited, non-functional, and is obsoleted by the
+        "aptitude" resolver.
+      . Added the ability to resolve virtual dependencies using the
+        "internal" build dependency resolver by calling "apt-cache
+        --names-only" to get candidate packages to satisfy the
+        dependency.  The first package (sorted alphabetically) is
+        chosen (Closes: #595934).  This may be disabled using the
+        $resolve_virtual option.
+      . Use apt-get to remove build conflicts using the internal
+        resolver and correctly reinstall post build.
+    - Log the package source version as well as binary version in the
+      package build log, since these may differ when making binNMUs
+      (Closes: #569823).
+    - Always attempt to install ESSENTIAL (build-essential) packages
+      if they aren't already installed (Closes: #380113).
+    - Don't end session on build failure (Closes: #567506).  This allows
+      examination of build trees and cloned chroots on build failure,
+      rather than unconditionally deleting them, which prevents this.
+      Thanks to Jan-Marek Glogowski.
+    - Remove support for parsing output of apt-get stderr
+      (Closes: #571806).
+    - Check for sbuild group membership using gid and supplementary
+      groups (Closes: #599350).
+  * buildd:
+    - Read entire contents of pipes (Closes: #567821).  Thanks to
+      Samuel Thibault.  This ensures receipt of complete log
+      messages.
+    - Replace/Breaks with ubuntu-dev-tools <= 0.83 (Closes: #590153).
+      Thanks to Lorenzo De Liso.
+  * buildd-vlog: Fix breakage (Closes: #567822).  Thanks to
+    Samuel Thibault.  This fix introduces sleeps, and is not a
+    complete or entirely optimal fix, but corrects the existing
+    breakage.
+  * Documentation:
+    - Remove trailing 'q' from sbuild-createchroot(8) manual page
+      (Closes: #579971).  Thanks to Salvatore Bonaccorso.
+    - sbuild(1):
+      . Remove and rewrite obsolete parts of the manpage
+        (Closes: #599348).
+      . .sbuildrc is no longer required for sbuild to function
+        (Closes: #598054).
+
+ -- Roger Leigh <rleigh@debian.org>  Tue, 02 Nov 2010 13:02:50 +0000
+
+sbuild (0.60.1-1) unstable; urgency=low
+
+  * New release.
+  * debian/control:
+    - Upgrade to Standards-Version 3.9.1.
+  * sbuild:
+    - Add --no-source option (Closes: #571726).  Thanks to David
+      Bremner for this suggestion.
+    - Hint aptitude to produce better solutions in AptitudeBuildDepSatisfier.
+      Thanks to Modestas Vainius.  (Closes: #570463)
+    - AptitudeBuildDepSatisfier: Handle the case when default negative dep is
+      not available gracefully.  Thanks to Modestas Vainius.
+      (Closes: #571565).
+    - Improve support for aptitude.
+    - Set DEBIAN_FRONTEND=noninteractive when using aptitude
+      (Closes: #588818).
+    - Improve dpkg-source v3 source format handling.  Don't hard-code
+      assumptions about how the source files are named
+      (Closes: #559533).
+    - Remove conflict with schroot from oldstable.
+  * buildd:
+    - Retry the current suite if --take fails.  (Closes: #570463)
+  * buildd-uploader:
+    - Don't remove the uploader lock if not already the owner
+      Closes: #591620).  Thanks to Sebastian Andrzej Siewior.
+  * libsbuild-perl:
+    - depend on schroot 1.4.0 or greater due to sbuild-createchroot
+      creating schroot.conf fragments with 1.4.x-specific features.
+
+ -- Roger Leigh <rleigh@debian.org>  Sun, 24 Oct 2010 19:56:34 +0100
+
+sbuild (0.60.0-1) unstable; urgency=low
+
+  * debian/control:
+    - Upgrade to Standards-Version 3.8.4.
+    - Use ${misc:Depends} as required by debhelper.
+  * sbuild:
+    - Only run "schroot --info" once on startup, to speed up the startup
+      time when many chroots exist (Closes: #546624).  Thanks to
+      Nelson Elhage for finding this issue and suggesting a suitable
+      approach for fixing it.
+    - Don't append binNMU or extra version to version number for use
+      in the DSC filename (Closes: #546647).  Thanks to Nelson Elhage
+      for finding this issue.
+    - Distinguish between failed/attempted builds (Closes: #538083).
+    - Build directory cleaned under all failure conditions
+      (Closes: #538085).
+    - Flush stdout explicitly in logger to avoid "choppy" output when
+      monitoring interactively.  Autoflushing stdout appears to be
+      broken in Perl 5.10 so flush explicitly in addition to
+      enabling autoflush.  Thanks to Ryan Niebur for spotting this.
+    - Print a list of all installed packages and versions, in addition
+      to toolchain packages (Closes: #553301).  Thanks to Felipe
+      Sateler for this suggestion.
+    - Don't default distribution to unstable (Closes: #559659).
+      Defaulting to unstable can result in unintentional uploads of
+      packages targetted at other distributions, such as experimental,
+      which can potentially cause serious breakage.  As a result, it is
+      safer to require manually specifying the distribution, or
+      explicitly setting it in the configuration file.
+    - Set the man-db man-db/auto-update parameter to false to disable
+      unnecessary work in a build environment.
+    - Don't give back packages failing the arch check (Closes: #561936).
+      Thanks to Philipp Kern for reporting this.
+    - Add command-line and configuration options to enable running
+      apt-get clean, upgrade and dist-upgrade prior to building.  These
+      complement the existing option to update the chroot, which is now
+      also fixed (Closes: #521096).
+    - Add $build_source variable to sbuild.conf to complement the
+      --source command-line options (Closes: #564528).  Thanks to
+      David Bremner for this suggestion.
+    - Allow setting of $build_dir in sbuild.conf (Closes: #535911).
+      Thanks to Andres Mejia for this patch.
+    - Add $check_space option to allow free space checking to be
+      disabled (Closes: #551917).  Thanks to Bruno Kleinert for this
+      suggestion.
+    - --apt-update both updates and upgrades the chroot
+      (Closes: #521096).  Thanks to Gustavo Noronha Silva for this
+      patch.  Note the original bug report 'get_apt_command' error
+      was fixed on the 17th March 2009.
+    - Allow the use of -C as well as --check-depends-algorithm as
+      documented (Closes: #546673).  Thanks to Nelson Elhage for this
+      patch.
+  * Add sbuild-clean script (Closes: #551310).  Thanks to Andres Mejia
+    for this patch.
+  * sbuild-createchroot:  Compute an absolute path for the chroot
+    location.  Thanks to Cyril Brulebois for this patch.
+  * wanna-build:
+    - Depend on postgresql-8.4-debversion in place of
+      postgresql-8.3-debversion (Closes: #559607).  Thanks to Martin Pitt
+      for reporting this.
+    - wanna-build now reads its system configuration from the correct
+      location (/etc/buildd/wanna-build.conf, not
+      /etc/wanna-build/wanna-build.conf).
+    - Remove extra parenthesis from wanna-build-merge-packages
+      (Closes: #553364).  Thanks to Felipe Sateler for this patch.
+  * Remove absent -t option for --top from sbuild-stats.1
+    (Closes: #566320).  Thanks to Kurt Roeckx.
+  * buildd:
+    - Don't bind-mount /home into the schroot. (Closes: #566315)
+    - Extract architecture for .changes filename from the .changes file
+      instead of just using the system arch. (Closes: #566398)
+    - Fix NO_WARN_PATTERN default to not warn about sbuilds build/current-*
+      symlinks. (Closes: #566722)
+    - Do all w-b interaction, leave nothing of it to sbuild. (Closes: #567646,
+      #566321)
+
+ -- Roger Leigh <rleigh@debian.org>  Tue, 23 Feb 2010 22:24:52 +0000
+
+sbuild (0.59.0-1) unstable; urgency=low
+
+  [ Roger Leigh ]
+  * New release.
+  * Use version comparison functions in WannaBuild::Database
+    (Closes: #521486).  Thanks to Florian Weimer.
+  * WannaBuild::Database: Allow whitespace in Architecture field
+    (Closes: #535415).  Thanks to John Wright for this patch.
+  * Sbuild::Build, WannaBuild::Database: Add support for architecture
+    aliases/wildcards (Closes: #501230).  Thanks to Andres Mejia for
+    these patches.
+  * Sbuild::Conf doesn't require STATS_DIR to exist, and
+    Sbuild::Build::write_stats only uses STATS_DIR in batch mode
+    (Closes: #539570).
+
+ -- Roger Leigh <rleigh@debian.org>  Sun, 02 Aug 2009 11:15:26 +0100
+
+sbuild (0.58.6-1) unstable; urgency=low
+
+  [ Roger Leigh ]
+  * New release.
+  * debian/control: Update package descriptions to use correct
+    English in full sentences (Closes: #531022).  Thanks to
+    Gerfried Fuchs for pointing this out.
+  * Don't include Epoch in DSC filename (Closes: #529786).  Thanks
+    to Gustavo Noronha Silva for spotting this.
+
+ -- Roger Leigh <rleigh@debian.org>  Sat, 20 Jun 2009 10:48:45 +0100
+
+sbuild (0.58.5-1) unstable; urgency=low
+
+  [ Roger Leigh ]
+  * New release.
+  * Install README.Debian in sbuild package (rename to
+    debian/sbuild.README.Debian, Closes: #533029).
+  * debian/sbuild.install: Don't install Perl modules, which should
+    only be included in libsbuild-perl (Closes: #533143).
+  * debian/control:
+    - libsbuild-perl: Replace sbuild <= 0.58.4 (due to also providing
+      perl modules)
+    - sbuild: Depend on the same version of libsbuild-perl.
+
+ -- Roger Leigh <rleigh@debian.org>  Mon, 15 Jun 2009 20:30:34 +0100
+
+sbuild (0.58.4-1) unstable; urgency=low
+
+  [ Roger Leigh ]
+  * New release.
+  * sbuild:
+    - A $purge_build_deps configuration option, and --purge-deps
+      command-line option have been added to control build-dependency
+      removal (Closes: #528312).
+    - Use the isin function from the Sbuild module (Closes: #529470).
+      Thanks to Gustavo Noronha Silva for spotting this.
+  * Sbuild:
+    - Use Filesys::Df (libfilesys-df-perl) in place of invoking /bin/df
+      and parsing its output.  This is more robust and efficient, and
+      works whatever the user environment (Closes: #509133).
+
+ -- Roger Leigh <rleigh@debian.org>  Tue, 19 May 2009 22:16:46 +0100
+
+sbuild (0.58.3-1) unstable; urgency=low
+
+  [ Roger Leigh ]
+  * New release.
+  * debian/control:
+    - Update to Standards Version 3.8.1.
+    - Add buildd package.
+    - Add libsbuild-perl package.
+    - All packages depend upon libsbuild-perl.
+  * Add support for appending a tag to version numbers (Closes: #475777).
+    Thanks to Timothy G Abbott for this patch.
+  * When using the --help or --version options, don't abort if not
+    in the sbuild group (Closes: #523670).  Group membership is now
+    only performed after options parsing, and only if required.
+  * Allow config files to use $HOME (Closes: #524564).  Thanks to
+    James Vega for this patch.
+  * Restore buildd package.
+  * Split common library functions into new libsbuild-perl package.
+  * debian/sbuild.(preinst|postinst|postrm):
+    - Remove special cases for versions older than oldstable.  Update
+      addition and removal of sbuild group to use return value of getent
+      rather than parsing getent output.
+    - Use addgroup/delgroup in place of adduser/deluser.
+    - Use --system when adding and deleting group, to ensure creation
+      of a system group.  Migrate existing non-system group and group
+      members if the system group is not present.
+    - Handle removal of 50sbuild setup script.
+  * debian/buildd.(preinst|postinst|postrm): Add maintainer scripts for
+    buildd package.  Move configuration file from /etc/buildd.conf to
+    /etc/buildd/buildd.conf if present.  Also create buildd user and
+    group for running the buildd daemon.
+  * Sbuild::Conf: Don't default MAINTAINER_NAME to $DEBEMAIL if unset
+    in the configuration file (Closes: #520158).
+  * /etc/schroot/setup.d/50sbuild: Remove.  The setup tasks performed by
+    this script are now handled internally by sbuild.
+
+ -- Roger Leigh <rleigh@debian.org>  Sun, 17 May 2009 15:52:53 +0100
+
+sbuild (0.58.2-1) unstable; urgency=low
+
+  [ Roger Leigh ]
+  * New release.
+  * etc/50sbuild: Don't create user home directory inside the build
+    chroot.  Home directories are not required for building.
+  * lib/Sbuild/ChrootInfoSchroot.pm: Run schroot in a C locale, to
+    avoid localisation of the output which breaks parsing
+    (Closes: #520755).  This was preventing the detection of chroots
+    in some locales.
+  * debian/buildd.cron.d: Move example crontab here, with entries
+    commented out for now.
+  * debian/rules: Use dh_installcrontab to install crontabs.
+  * Remove buildd package for this release, because it's not yet
+    ready for use.
+
+ -- Roger Leigh <rleigh@debian.org>  Sat, 11 Apr 2009 10:20:25 +0100
+
+sbuild (0.58.1-1) unstable; urgency=low
+
+  [ Roger Leigh ]
+  * debian/rules: Run configure setting DCMD, SUDO and SCHROOT.
+    (Closes: #519097). It's not possible to install sudo as a
+    build-dependency due to it not allowing automatic removal, and
+    none of the commands are actually needed for the build, just
+    setting the default path.
+  * sbuild: Don't erase default chroot environment (Closes: #519276).
+    This removed APT_CONFIG, preventing sbuild from working correctly.
+    Thanks to Francois-Denis Gonthier.
+
+ -- Roger Leigh <rleigh@debian.org>  Wed, 11 Mar 2009 23:16:41 +0000
+
+sbuild (0.58.0-1) unstable; urgency=low
+
+  [ Roger Leigh ]
+  * New release.
+  * debian/rules:
+    - Clean up old unused code.
+    - Correct patching of config.status and config.guess.
+    - Add functional binary-arch target.
+    - Use dh_prep in place of dh_clean -k.
+    - Don't configure with --with-postgresql (debversion code moved
+      to postgresql-debversion).
+  * debian/compat: Update to debhelper version 7.
+  * debian/control:
+    - Build-Depend on debhelper 7.
+    - wanna-build recommends postgresql-8.3-debversion.
+  * debian/NEWS: Document incompatible changes from previous versions.
+  * debian/sbuild.docs: New file.  Add NEWS.
+  * debian/wanna-build.docs: New file.  Add NEWS.
+  * buildd-mail-wrapper: Use more portable BSD getloadavg in place of
+    Linux-specific sysinfo.  Thanks to Robert Millan for this
+    patch (Closes: #511095).
+  * wanna-build: --help output now documents --create-db, since --help
+    now displays the full manual page (Closes: #511314).
+
+  [ Kees Cook ]
+  * lib/Sbuild.pm: always perform version checks on provided packages
+    (Closes: #505747).
+
+ -- Roger Leigh <rleigh@debian.org>  Sun, 08 Mar 2009 21:53:54 +0000
+
+sbuild (0.57.5-1) unstable; urgency=low
+
+  * New release.
+  * Sbuild::Build::new: Check if 'DSC' exists rather than 'DSC File' to allow
+    the .dsc to be in any directory (Closes: #489794).  Thanks to
+    Francois-Denis Gonthier for this patch.
+  * $Sbuild::Conf::apt_allow_unauthenticated: New configuration parameter
+    to disable APT package authentication, which is now enabled by default
+    (Closes: #492327).  Thanks to Enrico Zini for this patch.
+  * Sbuild::Options: Use isin from Sbuild.pm (Closes: #492577).
+  * Sbuild::Log: Add version number and correctly-formatted date to the
+    package log name instead of a raw time_t (Closes: #493150).
+    Additionally add user and architecture to the name.
+  * Sbuild::Options: --make-binNMU no longer tries to assign an lvalue
+    (Closes: #493325).  Thanks to Greg Hudson for this patch.
+  * $maintainer_name, $uploader_name and $key_id are now optional in
+    .sbuildrc; one is only required with performing binary NMUs for the
+    entry in debian/changelog (Closes: #489557).
+  * debian/sbuild.postrm: Correct use of local to remove bashisms.
+
+ -- Roger Leigh <rleigh@debian.org>  Sat, 02 Aug 2008 21:23:13 +0100
+
+sbuild (0.57.4-1) unstable; urgency=low
+
+  * New release.
+  * debian/control: Update to Standards Version 3.8.0.
+  * Use schroot "Session Purged" flag rather than "Session Cloned"
+    (Closes: #482804).  Thanks to Timothy G Abbott.
+  * Handle version provides correctly, by using "~*=PROVIDED=*=" in place
+    of "=*=PROVIDED=*=" as the package version (Closes: #395271).  Thanks
+    to Niko Tyni for this patch.
+  * Don't include epoch version in directory names (Closes: #482456).
+    Thanks to Raphael Hertzog.
+  * man/sbuild-setup.7.in: Replace references to buildd.chroot with
+    sbuild-createchroot, and adduser with sbuild-adduser (Closes: #483654).
+    Thanks to Marc Fargas.
+  * Package name, version, build directory and associated information are
+    now contained within Sbuild::Build objects.  This allows stripping of
+    epoch to construct correct unpack directory location
+    (Closes: #482931, #482922).
+  * Warnings due to uninitialised variables are no longer reproducible
+    (Closes: #449251).
+
+ -- Roger Leigh <rleigh@debian.org>  Sun, 06 Jul 2008 12:21:06 +0100
+
+sbuild (0.57.3-1) unstable; urgency=low
+
+  * New release.
+  * --chroot and --arch now work together (Closes: #479714).
+
+ -- Roger Leigh <rleigh@debian.org>  Sun, 11 May 2008 10:49:17 +0100
+
+sbuild (0.57.2-1) unstable; urgency=low
+
+  * debian/copyright: Update copyright holders and copyright information.
+  * debian/rules: Run dh_link in binary-indep target to correct symlinks.
+  * debian/wanna-build.install: Install manual pages.
+  * man/sbuild.1.in:
+    - Add missing character, thanks to LI Daobing (Closes: #474487).
+    - Document --binNMU (Closes: #466927).
+    - --distribution should be --dist (Closes: #477693).  Thanks to Martin
+      F Krafft.
+  * debian/README.Debian: Remove reference to README-buildd.chroot
+    (Closes: #474030), thanks to Marc Fargas.  Update sbuild statistics
+    information.
+  * Add --apt-update option to sbuild to run "apt-get update" in the
+    chroot prior to fetching sources and building (Closes: #472350).
+    Thanks to Timothy G Abbott for this patch.
+  * Add --chroot option to specify a chroot separately from the
+    distribution name (Closes: #474160).  Thanks to Simon McVittie for
+    this patch.
+  * debian/control: Depend on debhelper version 6 or greater (Closes:
+    #477655).  Thanks to Martin F Krafft.
+  * lib/Sbuild/Conf.pm: Don't require $mailto to be set if not running in
+    a buildd environment (Closes: #478045).  Thanks to Martin F Krafft.
+  * Use dcmd to parse dsc files, rather than hand-parsing.  This allows
+    support of the new dpkg source format.
+  * All files used in a build are stored in
+    /build/username-package_version-arch-XXXXXX inside the chroot (Closes:
+    #478044).
+
+ -- Roger Leigh <rleigh@debian.org>  Sun, 27 Apr 2008 21:22:19 +0100
+
+sbuild (0.57.1-1) unstable; urgency=low
+
+  * New upstream release.
+  * debian/control:
+    - Depend upon schroot >= 1.1.6.  This version includes a
+      SESSION_CLONE property, used to determine if a chroot is cloned,
+      and hence package removal may be skipped.
+    - Add wanna-build package.
+  * debian/rules: set libexecdir to /usr/share, for compatibility with
+    locations of scripts in earlier versions.
+  * debian/sbuild.install: use /usr/share in place of /usr/lib
+    (Closes: #458779).
+  * debian/wanna-build.install: New file: files for wanna-build.
+  * sbuild: Don't parse output of dpkg-source (Closes: #471747).
+
+ -- Roger Leigh <rleigh@debian.org>  Thu, 27 Mar 2008 20:42:56 +0000
+
+sbuild (0.57.0-1) unstable; urgency=low
+
+  * Sbuild/*.pm: Reindent to increase readability.
+  * Sbuild/Chroot.pm: set APT::Install-Recommends to false inside the
+    chroot (Closes: #449253).
+  * Sbuild/Conf.pm: Add and export $check_depends_algorithm.
+    [Jan-Marek Glogowski]
+  * sbuild:
+    - Reindent to increase readability.
+    - Add additional syntax checks.  Thanks to Jan-Marek Glogowski.
+    - build: Use unicode line drawing characters instead of ASCII.
+    - filter_dependencies: Remove redundant conditional.
+      [Jan-Marek Glogowski]
+    - Add check for check-depends-algorithm option. [Jan-Marek Glogowski]
+    - filter_dependencies: Change dependency behaviour depending upon
+      check_depends_algorithm.  [Jan-Marek Glogowski]
+    - Move to bin/.
+  * avg-pkg-build-time:
+    - Move to bin/.
+  * bin/*: Reindent to increase readability.
+  * chroot/*: Reindent to increase readability.
+  * bin/sbuild-createchroot:
+    - Moved from chroot/buildd.chroot.
+    - Also install fakeroot and build-essential.
+  * sbuild-createchroot.1.in: Add manual page.
+  * chroot/buildd.chroot:
+    - Add GPL boilerplate.
+    - Remove /etc/passwd creation (already done by debootstrap).
+    - Remove sbuild directory creation (already done by schroot).
+    - Use here doc to set up /etc/apt/sources.list.
+    - List sources.list.
+  * chroot/README: Rename from README.buildd-chroot.  Remove
+    buildd.chroot section.
+  * example.sbuildrc: Add missing variable types.  [Jan-Marek Glogowski]
+  * example.sbuildrc: Add missing variable types and add
+    $check_depends_algorithm.  [Jan-Marek Glogowski]
+  * sbuild.1: Document --check-depends-algorithm [Jan-Marek Glogowski]
+  * Move manual pages to man/.
+  * debian/manpages: Move manual pages to man/.
+  * sbuild.conf: Move to etc/.
+  * example.sbuildrc: Move to etc/.
+  * debian/compat: Move to debhelper v6 compatibility level.
+  * debian/control: Update to Standards-Version 3.7.3.
+  * debian/copyright:
+    - Update git repository location.
+    - Update GPL boilerplate.
+  * debian/sbuild.dirs:
+    - Rename from debian/dirs.
+    - Remove all but -var/lib/sbuild/srcdep-lock.
+  * debian/manpages: Remove.
+  * debian/sbuild.postinst: Rename from debian/postinst.
+  * debian/sbuild.preinst: Rename from debian/preinst.
+  * debian/sbuild.postrm: Rename from debian/postrm.
+  * debian/sbuild.install:
+    - New file.
+    - Install files from usr/sbin and usr/share/man/man8.
+  * debian/rules:
+    - Install sbuild-createchroot, and add buildd.chroot compatibility
+      symlink.
+    - Move -stamp files to debian/.
+    - Remove GENFILES.
+    - Run configure, make, and make install in appropriate rules.
+    - Use dh_install.
+    - Remove all special-cased installation rules (now handled by automake).
+  * Note: All upstream changes are now in an upstream ChangeLog.
+
+ -- Roger Leigh <rleigh@debian.org>  Tue, 01 Jan 2008 11:36:55 +0000
+
+sbuild (0.56) unstable; urgency=low
+
+  * sbuild
+    - Fix --force-orig-source option which was renamed to
+      --force_orig_source while rewriting the options parsing logic to use
+      Getopt::Long (Closes: #428205).  Thanks to Alec Berryman for
+      reporting this regression.
+    - Accept arguments for options requiring a string (Closes: #431216).
+      Thanks to Anders Kaseorg for the patch for this regression.
+  * debian/preinst: Use dpkg-query in place of /var/lib/dpkg/status.
+
+ -- Roger Leigh <rleigh@debian.org>  Sat, 07 Jul 2007 20:36:35 +0100
+
+sbuild (0.55) unstable; urgency=low
+
+  * sbuild:
+    - Parse options with Getopt::Long.
+    - Remove trailing whitespace.
+    - Initialise $main::sub_task with a value, in case the build gets
+      terminated prior to it being used.
+    - Change the position of begin_session, so that it matches the cleanup
+      order on shutdown.
+    - build:
+      + Document the regex which strips the epoch from the version
+        number.
+      + Remove the call to setsid when forking dpkg-buildpackage, because
+        this broke shell job control.  Some packages might possibly hang
+        while building if they detect they have a controlling terminal, but
+        IMO this is a bug in the package.
+      + When handling the timeout for dpkg-buildpackage, make the $SIG{'ALRM'}
+        handler local, so that it is restored to the default once the build
+        has finished.
+      + When calling mv to move files, use -f to make sure it doesn't run
+        interactively.
+    - check_dependencies: If a toolchain package is missing, print a
+      "not installed" message, rather than a blank version.
+    - dsc_md5sums: Log failure to open the .dsc.
+    - fetch_source_files: Strip the epoch of the version number, so that
+      $dscbase matches the .dsc filename in the filesystem (Closes: #425715).
+      Thanks to Lucas Nussbaum.
+    - merge_pkg_build_deps: Replace references to "central" src deps with
+      build-essential deps.
+    - parse_manual_srcdeps: New function, to replace the addition of manual
+      source dependencies from the removed read_deps() function.
+    - shutdown: Call end_session to clean up the chroot.
+  * Sbuild/Chroot.pm:
+    - end_session:
+      + Add a debugging message.
+      + Clear $schroot_session.
+  * Sbuild/Conf.pm: Add linux-libc-dev, gnumach-dev, hurd-dev and
+    kfreebsd-kernel-headers to @toolchain_regex.  Thanks to Clint Adams
+    (Closes: #425855).
+  * Sbuild/Log.pm.in:
+    - Remove trailing whitespace.
+    - open_log, open_pkg_log: Ignore SIGINT, SIGQUIT, SIGTERM and SIGPIPE
+      in the logger processes, so that logging continues if the process
+      group is signalled to terminate.  They will exit when the group leader
+      exits or closes the pipe.
+  * debian/changelog: Fix missing colon in bug closure for revision 0.2.4.
+  * debian/compat: New file.  Set to debhelper compatibility level 5.
+  * debian/control: Depend on debhelper v5.
+  * debian/NEWS: Renamed from debian/NEWS.Debian (Closes: #425370).
+    Thanks to Lucas Nussbaum for spotting this.
+  * debian/rules: Remove DH_COMPAT.
+
+ -- Roger Leigh <rleigh@debian.org>  Mon, 28 May 2007 00:38:46 +0100
+
+sbuild (0.54) unstable; urgency=low
+
+  * debian/control:
+    - Remove sudo from Depends.
+    - Add schroot to Depends.
+    - Remove schroot from Recommends.
+    - Depend on dctrl-tools rather than the transitional grep-dctrl package.
+      Thanks to Jonh Wendell (Closes: #417573).
+  * debian/rules:
+    - Don't install sbuild.conf.local.
+    - Install sbuild.conf into /etc/sbuild.
+  * debian/NEWS.Debian:
+    - New file.
+    - Document removal of manual source dependencies and sudo.
+    - Document removal of support for building from a directory.
+    - Document removal of building on the host system.
+    - Document sudo->schroot migration.
+    - Document change in $sbuild_mode default.
+  * debian/README.Debian:
+    - Document removal of manual src-deps.
+    - Remove requirements for chroot symlinks in working directory.
+  * sbuild:
+    - Remove read_deps, so manual src-deps are no longer read.  The
+      remainder of the manual src-deps support remains to be removed.
+    - Quote all arguments to system commands such as "rm -rf", to prevent
+      potential disasters.
+    - Update copyrights, and encode in UTF-8.
+    - Use "du -k -s" instead of "du -s" to increase portability.  Thanks to
+      Martin Koeppe (Closes: #418061).
+    - Compute package, version, directory and whether to download sources
+      before calling fetch_source_files, because all the needed information
+      is available at this point.
+    - cleanup_packages:
+      + Remove check for schroot when removing build dependencies, since
+        schroot is the default.
+      + Remove undo_specials().
+    - build:
+      + Remove do_apply_patches.
+      + Replace "822-date" with "date -R".  Thanks to Guillem Jover for
+        this patch (Closes: #415798).
+      + Remove support for building from a directory.
+      + Run dpkg-source from within the chroot.
+      + Don't chdir before running dpkg-source.
+      + Don't chdir before running dpkg-parsechangelog (do it in the
+        schroot child process).
+      + Remove obsolete code for running dpkg-buildpackage outside a chroot.
+    - fetch_source_files:
+      + Remove support for building from a directory.
+      + Download sources directly into the chroot build directory.  For
+        sources already existing outside the chroot, copy them into the
+        chroot build directory.
+      + Add extra directory, package, version and download arguments.
+      + Only call dsc_md5sums once, rather than twice.
+    - apply_patches: Remove.
+    - get_special: Remove use of @main::global_patches.
+    - Remove SVN Id:.
+    - install_deps: Remove @special use.
+    - unpack_special_source: Remove.
+    - undo_specials: Remove.
+    - filter_dependencies: Remove @special use.
+    - run_script: Remove.
+    - parse_one_srcdep: Remove @special use.
+    - get_special: Remove.
+    - write_srcdep_lock_file: Remove @special use.
+    - check_srcdep_conflicts: Remove @special use.
+    - dump_main_state: New function to dump the program state using
+      Data::Dumper.  Use to dump the state after each build.
+    - Add / separators to all users of $main::chroot_build_dir in paths.
+    - Replace all users of regular expressions to strip the chroot dir
+      from paths with strip_chroot_path.
+    - get_dpkg_status: Print debugging messages with defined variables
+      only, to avoid Perl warning.
+    - verify_md5sums: Remove obsolete comment regarding chroots.
+    - check_group_membership: New function to check the user is a member
+      of the sbuild group (Closes: #414064).
+    - Added new command-line argument --arch to specify the architecture,
+      and pass this to begin_session (Closes: 410576).
+  * Sbuild/Chroot.pm:
+    - Remove all special casing for sudo and schroot.  schroot is now the
+      only supported method of accessing chroots.
+    - end_session: Only attempt to end a session when $schroot_session is
+      non-empty.
+    - _setup_options:
+      + Remove use of $chroot_only.
+      + Remove trailing / from 'Build Location'.
+    - init: Add newline to debugging message.
+    - strip_chroot_path: New function to strip the chroot location from a
+      path.
+    - log_command: Correctly log commands when no APT Options stripping is
+      needed.
+    - get_command_internal: Set the working directory inside the chroot to
+      the build location.
+    - begin_session: take the architecture as a second argument, and check
+      if a chroot specific for the architecture exists.
+  * Sbuild/Conf.pm:
+    - Don't export $source_dependencies.
+    - Don't define $source_dependencies.
+    - Abort with an error if $source_dependencies is defined.
+    - Don't export $sudo or $chroot_mode.
+    - Don't define $sudo or $chroot_mode.
+    - Remove sudo sanity checks.
+    - Abort with an error if $sudo or $chroot_mode are defined.
+    - Don't export $chroot_only.
+    - Don't define $chroot_only.
+    - Abort with an error if $chroot_only is defined.
+    - Define and export %alternatives.  Thanks to Martin Koeppe
+      (Closes: #418060).
+    - Define and export @no_auto_upgrade and %watches.
+    - Remove the requirement for /usr/share/sbuild/sbuild.conf.
+    - Mark deprecated/obsolete variables for removal post-Lenny.
+    - Set defaults from global sbuild.conf.
+  * sbuild.conf:
+    - Remove $source_dependencies.
+    - Remove $sudo.
+    - Remove $chroot_only.
+    - Add and document all options from Sbuild/Conf.pm.
+    - Reorder into sections.
+    - Merge with sbuild.conf.local, and install into /etc/sbuild.
+  * sbuild.conf.local:
+    - Remove $source_dependencies.
+    - Remove.
+  * example.sbuildrc:
+    - Replace all options with documented options from sbuild.conf.
+    - Add additional user-centric options from sbuild.conf.
+    - Reorder into sections.
+  * sbuild.1.in: Document --arch and chroot search order.
+  * sbuild-setup.7.in:
+    - Remove sudo setup.
+    - Update user section to document sbuild group membership and
+      add_sbuild_user.  Remove chroot setup, which is now handled by
+      schroot (Closes: #413524).
+  * bin/README.bins: Remove sudo from extra package list.
+  * bin/updatechroot, bin/upgradechroot, bin/chrapt: Remove chroot_mode.
+  * chroot/add_sbuild_user:
+    - Remove sudo setup instructions and copying of /etc/sudoers to the
+      chroot.
+    - Rewrite in perl.  Only call adduser; all other chroot setup is
+      taken care of by the 50sbuild schroot chroot setup script
+      (Closes: #413908).
+  * TODO: New file.  Document needed changes.
+
+ -- Roger Leigh <rleigh@debian.org>  Fri, 18 May 2007 17:46:31 +0100
+
+sbuild (0.53) unstable; urgency=low
+
+  * Sbuild/Conf.pm: Add and export check_watches configuration variable.
+  * sbuild:
+    - Set umask to 022 so that dpkg-buildpackage always runs with a sane
+      umask (Closes: #405836).
+    - check_watches: Don't check watches if check_watches configuration
+      variable isn't set (Closes: #397123).
+    - get_apt_policy: Allow ~ in version numbers.  Thanks to Frank
+      Lichtenheld for this patch (Closes: #407293).
+    - When running apt-cache, divert STDOUT to the package log, so that
+      warnings do not get mailed separately (Closes: #399178).
+    - fetch_source_files:
+      + Correct indentation, and error with brace placement which caused
+        apt-cache output to not be used.
+      + Add package information into the key of the %entries hash, in
+        order to cope with multiple packages being returned by apt-cache.
+        Based on a patch by Goswin von Brederlow for Bug #408091.
+  * sbuild.conf: Obsolete $source_dependencies.
+  * sbuild.conf.local:
+    - Add pgp_options from sbuild.conf (Closes: #398128).
+    - Add check_watches.
+    - Obsolete $source_dependencies.
+  * update-sourcedeps, update-sourcedeps.1.in: Remove (Closes: 409642).
+    Thanks to Kenshi Muto for reporting that it no longer works.
+  * debian/rules, debian/manpages, debian/README.Debian: Remove support
+    for update-sourcedeps, and note that sourcedeps support is obsoleted
+    and will be removed in Lenny.
+
+ -- Roger Leigh <rleigh@debian.org>  Sun, 11 Feb 2007 10:18:12 +0000
+
+sbuild (0.52) unstable; urgency=low
+
+  * New upstream release.
+  * sbuild: Remove incorrect WannaBuild:: prefix from version_compare.
+
+ -- Roger Leigh <rleigh@debian.org>  Sat, 21 Oct 2006 21:23:16 +0100
+
+sbuild (0.51) unstable; urgency=high
+
+  * Urgency is high because this version fixes an RC bug in testing.
+  * Sbuild.pm: Fix handling of ~ in versions (merge from upstream SVN cset
+    100; Closes: 392752).
+  * sbuild, Sbuild/Conf.pm, sbuild.conf.local: Add support for setting APT
+    policy, to allow building from experimental and sarge-backports.
+    Thanks to Wouter Verhelst for this patch, which has been slightly
+    modified to add configurability and adapt to this version of sbuild.
+  * sbuild:
+    - Don't run md5sum inside the chroot.  Thanks to Michael Banck
+      (Closes: #392323).
+    - chroot_arch():  New function to detect build architecture from
+      within the chroot.  Thanks to Kees Cook (Closes: #392992).
+  * Sbuild/Conf.pm: Fix check for schroot.  Thanks to Julien Danjou for
+    finding this (Closes: #392751).
+  * sbuild-setup.7.in: Correct example commandline for debootstrap.
+    Thanks to Alex Pennace (Closes: #391277).
+
+ -- Roger Leigh <rleigh@debian.org>  Sat, 21 Oct 2006 10:13:00 +0100
+
+sbuild (0.50) unstable; urgency=low
+
+  * debian/copyright: Add Alioth file download location.
+  * chroot/add_sbuild_user:
+    - Fix chrapt command examples in output to use correct option syntax,
+      thanks to Matthias Julius (Closes: #381186).
+    - Add SHELL to sudoers env_keep.
+  * sbuild:
+    - dsc_md5sums: Return hashref on failure, rather than -1.
+    - verify_md5sums: Only run md5sum if there is one or more md5sum to
+      verify, to prevent md5sum waiting forever on stdin if there are no
+      files to check.  Thanks to Daniel Stone.
+  * Sbuild.pm: Use new binNMU versioning scheme (+bn), taken from
+    wanna-build SVN.  Thanks to Clint Adams (Closes: #384137).
+  * Sbuild/Conf.pm: Check sudo does not strip SHELL from the environment.
+  * sbuild-setup.7.in: Document needed addition of SHELL to sudoers
+    env_keep (Closes: #389815).
+
+ -- Roger Leigh <rleigh@debian.org>  Fri, 29 Sep 2006 14:08:11 +0100
+
+sbuild (0.49) unstable; urgency=low
+
+  * Sbuild/Conf.pm: init checks if APT_CONFIG and DEBIAN_FRONTEND are
+    being stripped from the environment by sudo (when running in split
+    mode), and aborts with instructions for correctly configuring sudo.
+    This prevents apt-get silently using the configuration from the host
+    system instead of the chroot.
+  * Sbuild/Chroot.pm: When running in split mode, use the -s option of
+    su to set the shell used inside the chroot to /bin/sh.  This
+    ensures that a valid shell is always used when the $SHELL is not
+    available inside the chroot (Closes: 378283).
+  * sbuild.conf, sbuild.conf.local, update-sourcedeps, sbuild.1.in,
+    avg-pkg-build-time.1.in: Update to use the new configuration file
+    locations.
+
+ -- Roger Leigh <rleigh@debian.org>  Sat, 15 Jul 2006 23:42:09 +0100
+
+sbuild (0.48) unstable; urgency=low
+
+  * Sbuild/Chroot.pm: Use su, rather than sudo, inside the chroot.  This
+    prevents the APT_CONFIG and DEBCONF_FRONTEND environment variables
+    from being removed (Closes: #376020).
+  * Sbuild/Conf.pm: Add $Sbuild::Conf::su.
+  * sbuild-setup.7.in: Remove sudo configuration inside the chroot, now
+    this is no longer required.
+
+ -- Roger Leigh <rleigh@debian.org>  Sun,  9 Jul 2006 18:18:33 +0100
+
+sbuild (0.47) unstable; urgency=low
+
+  * bin/checkchroot: Correct uninitialised value warnings due to using an
+    undefined variable (Closes: #369709).
+  * bin/chrapt, bin/updatechroot, bin/upgradechroot: When chroot_mode is
+    "schroot", chdir to / to ensure the CWD exists inside the chroot.
+    Thanks for Clint Adams for finding this (Closes: #372806).
+  * sbuild: fetch_source_files: When running apt-cache, check if we got
+    valid output, and warn appropriately if the output is invalid
+    (Closes: #369707).  Output may be invalid if there are no deb-src
+    lines in /etc/apt/sources.list in the chroot.
+  * Sbuild/Conf.pm: Remove $Sbuild::Conf::log_dir checks.
+  * Sbuild/Log.pm.in: If $Sbuild::Conf::log_dir does not exist, try to
+    create it, and if this fails, warn and log to stdout
+    (Closes: #369718).
+
+ -- Roger Leigh <rleigh@debian.org>  Sat, 17 Jun 2006 12:04:36 +0100
+
+sbuild (0.46) unstable; urgency=low
+
+  * sbuild:
+    - fetch_source_files: Only print "apt-get update" invocation in debug
+      mode.
+    - get_dpkg_status: Make sure $version is defined before checking its
+      value, to ensure the Debian version can have a value of 0.  Thanks
+      to Santiago Vila for this fix (Closes: #368066).
+  * Update svn::ignore properties to ignore generated files.
+  * debian/control:
+    - Update to Standards-Version 3.7.2.
+    - Use Build-Depends, rather than Build-Depends-Indep.
+
+ -- Roger Leigh <rleigh@debian.org>  Sat, 27 May 2006 15:22:02 +0100
+
+sbuild (0.45) unstable; urgency=low
+
+  * bin/checkchroot:
+    - Check if the dpkg and reference files contained any data, and exit
+      with an error if either were empty (Closes: #363351).
+    - On error, use Sbuild::Utility::shutdown to clean up.
+  * bin/chr-hold, bin/chr-unhold: On error, use Sbuild::Utility::shutdown
+    to clean up.
+  * sbuild:
+    - build: Only print dpkg-buildpackage invocation in debug mode.
+    - uninstall_debs: Only print dpkg invocation in debug mode.
+  * debian/control: Update to Standards-Version 3.7.0.
+
+ -- Roger Leigh <rleigh@debian.org>  Mon,  1 May 2006 09:48:20 +0100
+
+sbuild (0.44) unstable; urgency=low
+
+  * avg-pkg-build-time: Use Sbuild::Conf.
+  * bin/checkchroot: Convert to Perl, using Sbuild::Utility.
+  * bin/chrapt: Convert to Perl, using Sbuild::Utility.
+  * bin/chr-hold: Convert to Perl, using Sbuild::Utility.
+  * bin/chr-unhold: Convert to Perl, using Sbuild::Utility.
+  * bin/gochroot: Convert to Perl, using Sbuild::Utility.
+  * bin/updatechroot:
+    - Convert to Perl, using Sbuild::Utility.
+    - chrapt is no longer used (Closes: #355035).
+    - Sbuild::Chroot is used for chroot access:
+      + Suite names are no longer hardcoded (Closes: #355037).
+      + APT Options are set correctly (Closes: #355038).
+  * bin/upgradechroot: Convert to Perl, using Sbuild::Utility.
+  * bin/common_functions: Remove; this is no longer used.
+  * sbuild:
+    - Treat schroot chroots with a "-sbuild" suffix in the same way as
+      chroots without a suffix (Closes: #360124).
+    - Use the new modules Sbuild::Chroot, Sbuild::Conf and Sbuild::Log.
+      The functions moved into the modules have been removed.
+    - Import needed module functions into the local namespace, to avoid
+      long namespace prefixes on functions.
+    - Remove $main::chroot_apt_options.
+    - Move $main::debug to Sbuild::Conf.
+    - Import Sbuild::Conf into package "conf".  This allows the package
+      name used by upstream to be used for backward compatibility.
+    - Use $conf::HOME instead of $main::HOME.
+    - Move $main::username to Sbuild::Conf.
+    - Set $main::chroot_dir, $main::chroot_build_dir,
+      $main::srcdep_lock_dir and $main::ilock_file from the current
+      chroot $Sbuild::Chroot::current.  $main::srcdep_lock_dir replaces
+      $conf::srcdep_lock_dir (which is still used to set when the chroot
+      is set up).
+    - Pass $main::distribution to open_log and open_pkg_log.
+    - Remove $main::cwd, $main::nolog and $main::verbose, now provided by
+      Sbuild::Conf.  They are imported from Sbuild::Conf for backward
+      compatibility.
+    - Remove unused $main::HOSTNAME.
+    - Add build statistics to close_pkg_log.
+    - Die if no maintainer_name, uploader_name or key_id is specified.
+    - Set and unset $main::binNMU_name in the main loop, rather than when
+      opening and closing the package log.  In consequence, open_pkg_log
+      now needs the package name only, and close_pkg_log does not need
+      the package name passing.
+    - build:
+      + Set $firstline to "" to quell a warning.
+      + Use debian_files_list to check for missing or extra packages, and
+        warn appropriately.
+      + Delete erroneous _all.deb files (Closes: #357042).
+    - Don't use File::Temp (only needed by modules).
+    - Remove build directory check.
+    - Use File::Basename::basename instead of Sbuild::basename.
+    - Don't import internal Sbuild::Chroot functions.
+    - Split verify_dsc_md5sums into two parts: dsc_md5sums and
+      verify_md5sums.
+    - debian_files_list: New function to parse debian/files.
+  * Sbuild/Chroot.pm:
+    - New perl module for chroot operations.  It contains the functions
+      begin_session, end_session, log_command, get_command_internal,
+      get_command, run_command, exec_command, get_apt_command_internal,
+      get_apt_command and run_apt_command.
+    - Don't export init and log_command.
+    - Don't hardcode a list of chroots; use a glob to search for chroot-*
+      instead.  This allows any distribution name to be specified with -d.
+    - Add an "APT Options" attribute to the chroot hash, to replace
+      $main::chroot_apt_options.
+    - Use STDERR instead of PLOG (which may not be available).
+    - Replace $main::debug with $Sbuild::Conf::debug.
+    - Replace $main::username with $Sbuild::Conf::username.
+    - begin_session takes the distribution as its first argument, rather
+      than using $main::distribution.
+    - Don't use $main::chroot_dir.  Add the build paths as 'Build Location',
+      'Srcdep Lock Dir' and 'Install Lock' to the chroot metadata.
+    - Use File::Temp.
+    - Don't export "internal" functions.
+    - _setup_options: Set "APT Options" for schroot chroots.
+    - log_command: Don't substitute CHROOT_APT_OPTIONS when no APT options
+      are in use.
+  * Sbuild/Conf.pm:
+    - New perl module for configuration variables.  It reads the system
+      and user configuration.
+    - Add $debug.
+    - Add $username.
+    - Add $cwd, $nolog and $verbose.  They exported and used by the other
+      modules in place of the variables in the main package.
+    - Add and export $avg_time_db, $avg_space_db, $maintainer_name,
+      $uploader_name and $key_id.
+    - Add build directory check (moved from sbuild).
+  * Sbuild/Log.pm:
+    - New perl module for logging.  It contains the functions open_log,
+      close_log, open_pkg_log, close_pkg_log, add_time_entry,
+      add_space_entry, send_mail and log_symlink.
+    - $main::main_logfile and $main::pkg_logfile are package variables.
+    - Removed use of $main::distribution.  The distribution name must be
+      passed to open_log or open_pkg_log.
+    - Don't use $main::HOSTNAME or $main::arch.  Get the values directly.
+    - open_pkg_log: Save the package name for future use; the binNMU name
+      (if any) is passed, so this no longer needs computing.
+    - close_pkg_log:
+      + Obtain $main::pkg_status, $main::pkg_start_time,
+        $main::pkg_end_time and $main::this_space from the function
+        arguments.
+      + Don't pass the package name, which was saved in open_pkg_log.
+    - add_space_entry: Use $space rather than $t, and don't use
+      $main::this_space.
+    - Use File::Temp.
+    - Use File::Basename::basename instead of Sbuild::basename.
+  * Sbuild/Utility.pm: New perl module for utility programs.  This is a
+    perl replacement for bin/common_functions.
+  * bin/checkchroot:
+    - Quote all variables.
+    - Sort ref-chroot file before diffing (Closes: 360058).
+  * avg-pkg-build-time.1.in, sbuild.1.in, sbuild-setup.7.in,
+    update-sourcedeps.1.in, Sbuild/Log.pm.in: Rename and embed version and
+    date tags for substitution.
+  * COPYING: New file (GPL licence text).
+  * debian/control: Update uploaders.
+  * debian/copyright:
+    - Update with new subversion repository locations for upstream and
+      Debian.
+    - Add Roger Leigh as a copyright holder.
+    - Add a reference to /usr/share/common-licenses/GPL.
+  * debian/dirs: Add usr/share/perl5/Sbuild.
+  * debian/rules:
+    - Install Sbuild/Chroot.pm, Sbuild/Conf.pm, Sbuild/Log.pm and
+      Sbuild/Utility.pm into /usr/share/perl5/Sbuild.
+    - Generate all manual pages and Log.pm in the build rule, and remove
+      them in the clean rule.
+
+ -- Roger Leigh <rleigh@debian.org>  Fri,  7 Apr 2006 09:47:00 +0100
+
+sbuild (0.43) unstable; urgency=low
+
+  * sbuild:
+    - verify_dsc_md5sums(): New function to verify the MD5SUM of files in a
+      .dsc file.
+    - Add $conf::md5sum for security.
+    - fetch_source_files():
+      + Use verify_dsc_md5sums to check for incomplete downloads, and
+        redownload sources if needed; also verify again after download
+        (Closes: #270439).
+      + Remove redundant braces and reindent.
+    - build(), shutdown(): Quote kill command correctly (Closes: #356686).
+    - When using schroot, look for a distribution named
+      "$distribution-sbuild" in preference to "$distribution".
+    - open_log(), open_pkg_log():
+      + Use fork() rather than tee to multiplex log output.
+      + Don't buffer log output (Closes: #358717).
+    - close_log(), close_pkg_log(): Close all dup'd log streams, and don't
+      kill the child log processes, which avoids dataloss in the pipeline.
+    - log_symlink(): New function to create a symbolic link to the current
+      package log.  This replaces the use of /bin/ln, which has races if
+      concurrent builds use it.
+    - open_log(), close_log():
+      + Save a references to the initial STDOUT and STDERR, and restore
+        them when the log is closed.
+      + Create the build log using File::Temp, in the form
+        build-distribution-date.XXXXXX.log.  This prevents races during
+        logfile creation when running concurrent builds.  If the file
+        is empty, it is unlinked on close, irrespective of whether
+        verbose mode is used or not.
+    - open_pkg_log(): Use the saved STDOUT for verbose logging.  This
+      prevents the package log being also directed to the build log.
+    - setup_options(): Remove unused call to tmpnam().
+    - check_dependencies(): Print kernel information along with the
+      toolchain package versions, in the same style as reportbug.
+    - build(): Check for _all.udeb files which are built when they
+      shouldn't (merge from upstream SVN cset 98).
+    - Strip "./" from $pkg, so the name used for source dependencies is
+      correct (Closes: #359747).
+    - Add --force-orig-source option to force the inclusion of the
+      .orig.tar.gz (Closes: #318030).
+    - Add $conf::force_orig_source to allow --force-orig-source to be
+      specified in a .sbuildrc.
+  * sbuild.1:
+    + Document schroot chroot naming.
+    + Document --force-orig-source option.
+    + Correctly escape hyphens in option and file names.
+  * sbuild-setup.7: Use debootstrap rather than cdebootstrap.
+  * bin/common_functions: Allow any chroot name to be specified
+    (Closes: #356785).
+  * bin/README.bins: Document changed chroot syntax.
+  * bin/checkchroot: Set LC_COLLATE=POSIX to prevent collation issues
+    (mismatches with the reference file; Closes: #294883).
+  * bin/common_functions, bin/README.bins: Remove ~/build/ from the
+    chroot path, to match sbuild behaviour of searching in the
+    current directory (Closes: #355034).
+  * chroot/README-buildd.chroot: Fix typo.
+  * chroot/buildd.chroot: Use debootstrap rather than cdebootstrap
+    (Closes: #358668).
+  * debian/control: Recommend debootstrap rather than cdebootstrap.
+  * example.sbuildrc: Add example $force_orig_source, with documentation.
+
+ -- Roger Leigh <rleigh@debian.org>  Wed, 29 Mar 2006 14:58:32 +0100
+
+sbuild (0.42) unstable; urgency=low
+
+  * sbuild:
+    - get_apt_command_internal(): Always add $main::chroot_apt_options.
+    - log_command(): Add an additional priority argument.  If nonzero,
+      the message is always logged, otherwise is only logged if debug is
+      enabled.
+    - get_command_internal(): When running schroot, preserve the user
+      environment, needed for APT_CONFIG, DEBIAN_FRONTEND, etc..
+    - get_command(), run_command(), exec_command(), get_apt_command(),
+      run_apt_command():
+      + chdir to $main::cwd to make sure the directory location also exists
+        inside the chroot.
+      + Add an additional priority argument to control the urgency of the
+        log message, and pass this to log_command().
+    - get_virtuals(): Remove usage of $main::chroot_apt_options, which is
+      added automatically by get_apt_command().
+    - get_command(), run_command() and exec_command() only log the full
+      command when debugging is enabled, otherwise only the short form is
+      logged (Closes: #355043).
+    - setup_options():
+      + Ensure APT_CONFIG is set to the correct path depending upon the
+        chroot_mode.  $chroot_aptconf is the absolute path to the file from
+        the host system, while $aptconf is the absolute path when apt is
+        run.
+      + Only set $main::chroot_apt_options when chroot_mode is "split".
+      + Always regenerate apt.conf, because when chroot_mode is changed, it
+        will break APT unless rewritten.
+      + Don't set "Dir" in $chroot_aptconf when in chroot_mode is "schroot"
+        (because apt is run inside the chroot).
+    - Remove setpgrp() calls, so that all child processes run in the same
+      process group as the parent.
+    - Add a $conf::sbuild_mode, used to switch behaviour between user and
+      buildd defaults.  The default is "buildd".  This allows package build
+      errors to be reported (Closes: #170742).
+    - Add a --quiet option, the opposite action to --verbose.
+    - open_pkg_log():
+      + Use correct Sbuild:: namespace for binNMU_version (Closes: #355861).
+      + Create current-distribution symlink in addition to current.
+    - Set the in the environment SHELL=/bin/sh, in case the user
+      invoking sbuild uses a shell not available inside the chroot.
+    - Remove unused variables @dist_parts and $main::nomail.
+    - Use correct use syntax for File::Temp and Cwd, and initialise a
+      number of variables which would otherwise be undefined, in order
+      to remove run-time warnings.
+    - Add a number of checks for undefined variables to remove run-time
+      warnings.
+    - Add -w to the shebang line, so sbuild always runs with warnings
+      enabled.
+    - All exec commands other than writing logfiles now use exec_command,
+      so they get logged.
+    - Require /usr/share/sbuild/sbuild.conf and optionally require
+      /etc/sbuild/sbuild.conf.
+    - Use named signals, rather than numbers, for portability.
+    - close_log(), close_pkg_log: If verbose is enabled, flush the log and
+      wait a second before killing tee, to prevent data loss in the pipeline.
+    - $main::verbose is set by default if running on a tty (Closes: #355802).
+    - LOG and PLOG are set to autoflush using IO::Handle.
+    - $conf::build_dir defaults to $main::cwd if undefined.  It is used as
+      the directory containing the build chroots, build logs, and current
+      symlinks (Closes: #183022).
+    - Always print toolchain packages.  This is done by always calling
+      merge_pkg_build_deps(), and running all the way through
+      install_deps(), even when the package does not supply any build
+      dependencies or conflicts (Closes: #355040).
+    - install_deps():
+      + If there are no package dependencies, create an
+        empty anonymous array reference to hold the (nonexistent)
+        dependencies, required by filter_dependencies.
+      + Make sure %entries is initialised.
+    - fetch_source_files(): Check that the dsc specified is valid.
+  * sbuild.conf: Don't require local config file.
+  * sbuild.conf.local: Add $sbuild_mode, defaulting to "buildd".
+  * example.sbuildrc: Add $build_dir example.
+  * sbuild.1: Document --quiet.
+  * sbuild-setup.5:
+    - Split chroot setup and user setup into two sections.
+    - Document sudoers env_keep setup (Closes: #355072, #355604).
+  * Sbuild.pm: Remove unused module 'IO'.
+  * chroot/add_sbuild_user: Add sudoers env_keep example.
+  * debian/README.Debian: Document existence of sbuild-setup(7).
+  * debian/control:
+    - Depend on perl-modules (for File::Temp).
+    - Recommend schroot 0.2.7 or later (for preserving the environment).
+  * debian/dirs: Add etc/sbuild.
+  * debian/rules:
+    - Remove "make clean" in clean target; there is no Makefile, so this is
+      redundant.
+    - Install sbuild.conf as /usr/share/sbuild/sbuild.conf and
+      sbuild.conf.local as /etc/sbuild/sbuild.conf.
+  * debian/preinst:
+    - New conffile.
+    - Remove /etc/sbuild.conf.local if not locally modified.
+  * debian/postinst:
+    - Move /etc/sbuild.conf.local to /etc/sbuild/sbuild.conf if needed.
+    - Reindent.
+  * debian/postrm:
+    - Unlink /etc/sbuild.conf if present.
+    - Unlink files under /var/lib/sbuild.
+    - Reindent.
+
+ -- Roger Leigh <rleigh@debian.org>  Mon, 13 Mar 2006 00:14:00 +0000
+
+sbuild (0.41) unstable; urgency=low
+
+  * sbuild:
+    - setup_options(): Set $main::chroot_apt_options in the same
+      manner as upstream.
+    - setup_options(): Correct usage of a scalar reference rather than
+      the scalar $main::chroot_dir (Closes: #354520).
+
+ -- Roger Leigh <rleigh@debian.org>  Mon, 27 Feb 2006 19:07:59 +0000
+
+sbuild (0.40) unstable; urgency=low
+
+  * sbuild:
+    - Fix typos in debug statement ($main::distribution rather than
+      $main::distribtion, and $main::schroot_session rather than
+      $main::scroot_session).  Thanks to Adeodato Simó for this fix
+      (Closes: #354456).
+    - get_schroot_info(): Parse schroot "--info" Path (chroot location)
+      output.
+    - get_schroot_info(): Parse schroot "--info" Type (chroot type)
+      output, and if "plain", always set $main::dist_sessioncaps to 0
+      ("plain" chroots may say they are session-managed, but do not
+      support full session management, so they always need cleaning).
+  * debian/control:
+    - Recommend schroot (>= 0.2.5), for its "Path" information in --info
+      output, used for determining the chroot location.
+
+ -- Roger Leigh <rleigh@debian.org>  Sun, 26 Feb 2006 22:19:04 +0000
+
+sbuild (0.39) unstable; urgency=low
+
+  * sbuild:
+    - fetch_source_files(): Merge from upstream SVN (cset 94); Strip trailing
+      whitespace from each line in $dscfile/debian/.sbuild-build-deps
+      early on, making all subsequent regexes simpler.
+    - Update copyright notice (add myself as a copyright holder).
+    - Add %main::sessioncaps to store whether or not a chroot is
+      session-capable.  Check the schroot "Session Managed" attribute to
+      determine session capability.
+    - If a chroot is session-capable, skip running uninstall_deps() (thanks
+      to Reinhard Tartler).
+    - Add debugging messages for distribution selection and schroot
+      session creation (thanks to Reinhard Tartler).
+  * debian/control:
+    - Recommend schroot (>= 0.2.3-2), for its "Session Managed"
+      information in --info output, used for skipping chroot cleanup.
+
+ -- Roger Leigh <rleigh@debian.org>  Tue, 21 Feb 2006 23:44:19 +0000
+
+sbuild (0.38) experimental; urgency=low
+
+  * Full sudo access is no longer mandatory when using the schroot
+    chroot_mode (Closes: #287669, #331506).
+  * schroot session management is now fully implemented and completely
+    functional.
+  * sbuild:
+    - Move schroot metadata parsing to a separate function,
+      get_schroot_info().  Parse both "Location" (for
+      backwards-compatibility) and "Mount Location".
+    - Move path and APT setup into a separate function, setup_options().
+    - Remove check_dpkg_version().  This has not been necessary since the
+      release of potato (Debian 2.2), which had a dpkg version 1.6.14.
+    - When $chroot_mode == "schroot", clear %main::dist_order and
+      %main::dist_locations using an empty array, rather than undef.
+    - New functions get_command(), run_command(), get_apt_command() and
+      run_apt_command() to run a command inside or outside the build
+      chroot under the specified user, or run apt inside or outside the
+      chroot (depending on the chroot_mode), respectively.
+    - New function exec_command().  This is the same as run_command(), but
+      runs the command with exec rather than system().
+    - New functions log_command() to log a command being run,
+      get_command_internal() and get_apt_command_internal() to get a
+      command string without logging it; these are used by get_command(),
+      run_command, exec_command(), get_apt_command() and run_apt_command(),
+      which do log the command being run.  Commands are logged in for all
+      chroot modes.
+    - get_apt_command() and run_apt_command() take an additional parameter,
+      the command to run (apt-get or apt-cache).
+    - get_apt_command() and run_apt_command() take an additional parameter,
+      the user to run as, because not all commands need (or should) run as
+      root.
+    - Use new commands for running commands inside and outside chroots:
+      + Signing options for dpkg-buildpackage are double-quoted rather than
+        single-quoted (because the main command is single-quoted).
+      + All commands run in a pipeline are obtained with get_command() or
+        get_apt_command().
+      + All other commands are run with run_command(), exec_command() or
+        run_apt_command().
+      + check_space() only requires root access in the chroot.
+    - Add schroot session management.  Sessions are created, run and
+      removed automatically.  The current session is stored in
+      $main::schroot_session.  setup_options is called once per build, in
+      order to set up the session options.
+    - Add missing newline to log message.
+  * sbuild.1:
+    - Update outdated information.
+    - Correct macro usage and reindent.
+    - Correct command-line summary (Closes: #311589).
+  * sbuild-setup.7: New manpage.  This describes how to set up a chroot
+    (Closes: #311363).
+  * avg-pkg-build-time.1: Clean up.
+  * update-sourcedeps.1: Clean up.
+  * sbuild.conf: $schroot_options defaults to "-q" to match the built-in
+    default.
+  * example.sbuildrc: Single quote example email addresses in
+    $maintainer_name, $uploader_name, and $key_id (Closes: #341327).
+  * chroot/buildd.chroot:
+    - Use "set -e" to abort on all errors (Closes: #342357).
+    - Correctly quote all shell variables.
+    - Use cdebootstrap rather than debootstrap.
+  * chroot/buildd.chroot.pre-sarge: Remove.
+  * chroot/README-buildd.chroot.pre-sarge: Remove (Closes: #308065).
+  * debian/control:
+    - Recommend schroot.
+    - Recommend cdebootstrap rather than debootstrap.
+  * debian/README.Debian: Update information about src-deps and schroot.
+
+ -- Roger Leigh <rleigh@debian.org>  Wed, 15 Feb 2006 18:13:23 +0000
+
+sbuild (0.37) unstable; urgency=low
+
+  * Sync with upstream SVN:
+    - avg-pkg-build-time, avg-pkg-build-time.1, sbuild, sbuild.1,
+      update-sourcedeps, update-sourcedeps.1: Update copyright notices with
+      current FSF postal address.
+    - sbuild:
+      + Split changes files sent in the log every 989 characters, to better
+        conform to mail RFCs.
+      + Always show versions of installed build dependencies.
+      + Always purge packages when building in a chroot.
+      + Output purged packages line by line, rather than all at once.
+      + Use strftime() and getpwuid() instead of the external commands
+        date and whoami.
+      + Use /var/lib/sbuild/apt.conf if it exists, and create it if it does
+        not.  This fixes the problem of the root filesystem
+        /etc/apt/apt.conf and /etc/apt/apt.conf.d directories being used,
+        while the copies in the chroot filesystem are ignored.
+      + Allow arch: all packages to be built when $main::build_arch_all
+        is true.
+      + Hardware DEBIAN_FRONTEND to "noninteractive" when installing and
+        purging packages.  "apt-get update" is also run when the package
+        cache is out of date (closes: 331546).
+      + Fix support for '~' in version numbers.
+      + Add Sbuild.pm (upstream WannaBuild.pm), and replace version_cmp()
+        with Sbuild::version_compare().
+      + Add REDO support for binNMUs.
+      + Add stats generation for download+install, build and remove times.
+      + Disassociate from the controlling terminal and make stdin /dev/null
+        for the dpkg-buildpackage process.
+      + Don't create entries to the sbuild log when a package claims to
+        build an _all.deb, but doesn't.  Instead, warn to the build log.
+      + Delete binary-all packages that we didn't ask to be built.
+      + By default, set APT::Get::AllowUnauthenticated to "true".
+      + Add $conf::chroot_only for compatibility with upstream
+        (closes: #302628).
+      + Add $conf::dpkg_source.
+      + Add $conf::build_env_cmnd.
+      + Merge whitespace and indentation changes.
+      + Fix typos.
+      + shutdown(): Don't close the package log if there is no current job.
+      + read_build_essential(): Read build-essential from $main::chroot_dir
+        instead of the root filesystem.
+      + Add @main::toolchain_pkgs and @toolchain_regex.
+      + check_space(): Redirect stderr of du to /dev/null.
+      + run_apt(): Complete support for "install-deps-env".
+      + Add --use-snapshot for building with gcc-snapshot.
+      + build(): Remove dpkg-buildpackage debugging statements.
+      + merge_pkg_build_deps(): Correctly separate dependencies in $deps,
+        and don't immediately return if there are missing packages.
+      + Remove support for --store-built-packages.
+      + get_dpkg_status(): Check $version is set and compute $result in the
+        same manner as upstream.
+      + run_apt(): Remove '*' from $pkgs and $rpkgs.
+      + install_deps(): purge packages with "dpkg --set-selections".
+        schroot support added in addition to upstream changes.
+      + fetch_source_files(): Support versioned fetches with apt-get.
+      + Add support for auto_giveback_socket: add an extra argument to
+        --auto-give-back and add an ssh '-S' option to analyze_fail_stage().
+      + Support new --make-binNMU options.
+      + Add support for $conf::chroot_only, and default to only running in
+        a chroot for security and safety.
+      + cleanup_close: Set $main::current_job to "" and shutdown if
+        $main::HOME/EXIT-DAEMON-PLEASE exists and we are running in
+        batchmode.
+      + Move "Package claims to have built" error message to the same place
+        as upstream.
+    - sbuild.conf:
+      + Remove watches.
+      + Update alternatives (closes: #280689).
+      + Comment out example %individual_stalled_pkg_timeout.
+      + Empty @ignore_watches_no_build_deps.
+    - sbuild.conf.local:
+      + Add $chroot_only.
+    - avg-pkg-build-space.1: Update text.
+    - example.sbuildrc:
+      + Remove $hack_changes_for_frozen.
+      + Update comments.
+  * sbuild.conf.local:
+    - Use FHS-compliant pathnames, as in sbuild.conf.
+  * Add support for building from experimental.
+  * sbuild:
+    - Parse the .changes rather than debian/files, so that the
+      .dsc/.diff.gz/.orig.tar.gz are also copied back to ~/build.
+    - Print information and contents of arch-all packages (closes: #321640).
+  * debian/control: The maintainer field contains the list address.
+
+ -- Roger Leigh <rleigh@debian.org>  Tue, 31 Jan 2006 12:58:57 +0000
+
+sbuild (0.36) unstable; urgency=low
+
+  Roger Leigh:
+
+  * debian/changelog: Convert to UTF-8.
+  * sbuild:
+    - Don't fail in the absence of central sourcedeps.  These are no longer
+      required now source packages are required to have build dependencies,
+      so this should not be fatal.
+    - Added support for schroot:
+      + Added $conf::chroot_mode.  This may be set to "split" (the
+        historical default), or "schroot" (use schroot instead of sudo).
+      + All operations using sudo now check the value of $chroot_mode, and
+        use sudo or schroot accordingly.
+      + When using schroot, %main::dist_order is filled using the schroot
+        chroot priorities.
+      + Added %main::dist_locations to store the location of the
+        available chroots.
+    - Print a readable error if a chroot does not exist.
+  * debian/control: Update to Standards-Version 3.6.2.
+  * debian/copyright: Use the new FSF address.
+  * debian/conffiles: Remove.
+  * debian/rules:
+    - Use debhelper version 4 compatibility mode.
+    - Move the find -maxdepth option to before non-option arguments, to
+      fix find warnings.
+    - Remove template comments.
+    - avg-pkg-build-space symbolic link should be relative.
+
+ -- Roger Leigh <rleigh@debian.org>  Sun, 11 Sep 2005 10:02:19 +0100
+
+sbuild (0.35) unstable; urgency=low
+
+  Michael Banck:
+
+  * bin/abort-current-build: Remove the `-B' from the grep line as
+    `sbuild -s' does not pass that option to dpkg-configure and abort-
+    current-build fails in that case.
+  * sbuild: Set the locale to `POSIX' to make debconf and debhelper calls in
+    the chroot not spew out locale warnings all the time.
+    (closes: #287672)
+  * sbuild: Removed check for specific distributions. Instead, fail if
+    build/chroot-$dist is not there.
+  * sbuild: Only override Distribution in .changes if specified as option on
+    the command-line.
+    (closes: #300145)
+  * sbuild: Specify full path for Dir::Etc::main and Dir::Etc::parts.
+  * example.sbuildrc: Clarify that $maintainer_name is not mandatory and
+    overrides Maintainer: field, whereas $uploader_name overrides
+    the Changed-By: field in changes.
+  * Applied patch by Santiago Vila:
+    - Moves scripts from /usr/lib/sbuild to /usr/share/sbuild and modifies
+      all callers accordingly.
+    - Add -n option to tail to comply with POSIX.
+    - Call /usr/sbin/sendmail instead of /usr/lib/sendmail.
+    (closes: #292717)
+  * sbuild: Tolerate '0' as version number, thanks Santiago Vila.
+    (closes: #300205)
+
+ -- Michael Banck <mbanck@debian.org>  Fri,  1 Apr 2005 21:23:30 +0200
+
+sbuild (0.34) unstable; urgency=high
+
+  Francesco Paolo Lovergine:
+
+  * Removed searchscripts recommendation in debian/control. That was requested
+    by ppack now removed in archive.
+    (closes: #272318)
+  * checkchroot now uses grep-dctrl, thanks Clint Adams.
+    Introduced dependency from grep-dctrl due to checkchroot.
+    (closes: #260881,#265994)
+  * Updated ref-* files for unstable and testing as well as the related README file.
+  * This is the first revision CVS-enabled.
+
+ -- Francesco Paolo Lovergine <frankie@debian.org>  Sat, 25 Sep 2004 17:42:57 +0200
+
+sbuild (0.33) unstable; urgency=low
+
+  * Man page sbuild.1 revised.
+
+ -- Francesco Paolo Lovergine <frankie@debian.org>  Thu, 16 Sep 2004 16:42:18 +0200
+
+sbuild (0.32) unstable; urgency=low
+
+  * Added ~ as a legal character for debian version (post-sarge).
+  * A few minor changes in README.chroot-buildd and man page.
+  * Added -k and -e options as overriding for -m default in package signing.
+    Man page changed to reflect new features.
+    (closes: #260870)
+  * Removed the CVS log variable in sbuild in order to import a new sane
+    tree onto Alioth repo. Old logs are now stored in a new cvslogs.old file.
+  * Minor revisions to ducumentation files.
+  * Added Michael Banck as Uploader.
+
+ -- Francesco Paolo Lovergine <frankie@debian.org>  Thu, 16 Sep 2004 16:14:27 +0200
+
+sbuild (0.31) unstable; urgency=low
+
+  * Patch for #239339 revised:
+        Escaping to manage correctly possible nested RE.
+        (closes: #268712)
+        Doing removes only in chroot environment.
+        (closes: #264834).
+  * Changed a bit man page to clarify better synopsis.
+    (closes: #265998)
+
+ -- Francesco Paolo Lovergine <frankie@debian.org>  Sat, 28 Aug 2004 21:27:12 +0200
+
+sbuild (0.30) unstable; urgency=high
+
+  The "later better than never" release.
+
+  Thanks Michael Banck, Martin Michlmayr and other submitters for useful patches.
+
+  * example.sbuildrc now return 1 to satisfy perl require syntax.
+    (closes: #228410)
+  * Now copies the orig.tar.gz into $(CHROOT)/build/<user>/ for non-native packages.
+    (closes: #239339)
+  * Corrected abort-current-build to manage correctly ps output.
+    (closes: #249995)
+  * Now should manage packages which provides the same pkgs of other yet installed ones.
+    (closes: #259315)
+  * build.chroot rewritten to use dbootstrap straight on.
+    (closes: #235726,#228412,#228412)
+  * Using dh_installman instead of obsolete dh_installmanpages. Added
+    debian/manpages for that.
+  * Alternatives modified for current ones in testing/sid.
+    (closes: #228792)
+
+ -- Francesco Paolo Lovergine <frankie@debian.org>  Tue,  3 Aug 2004 18:21:22 +0200
+
+sbuild (0.29) unstable; urgency=low
+
+  * Now depends on exim4
+    (closes: #228591)
+  * Non "noninteractive" is in lowercase currently.
+    (closes: #228800)
+  * Added /usr/bin/avg-pkg-build-space as symlink to /usr/bin/avg-pkg-build-time
+    (closes: #228445)
+  * add_sbuild_user corrected to show the true path of example.sbuildrc
+    (closes: #228411)
+  * removing obsolete packages in sid, and updated required ones
+    (closes: #220932)
+  * README.buildd-chroot updated
+    (closes: #220933)
+
+ -- Francesco Paolo Lovergine <frankie@debian.org>  Fri, 23 Jan 2004 20:09:56 +0100
+
+sbuild (0.28) unstable; urgency=low
+
+  * Using latest instead of lastest.
+    (closes: #202740)
+  * Changing dependencies in buildd.chroot for current gcc.
+    (closes: #180447)
+  * Configuration examples now moved into /usr/share/doc/sbuild/examples
+    Man changed as consequence.
+    (closes: #208965)
+  * Policy bumped to 3.6.1.
+
+ -- Francesco Paolo Lovergine <frankie@debian.org>  Tue, 11 Nov 2003 16:21:33 +0100
+
+sbuild (0.27) unstable; urgency=low
+
+  * sg is not available in hurd, removed in postinst and postrm (patch by Michael Banck).
+   (closes: #206270)
+
+ -- Francesco Paolo Lovergine <frankie@debian.org>  Wed, 20 Aug 2003 09:03:41 +0200
+
+sbuild (0.26) unstable; urgency=low
+
+  * Ugh! Wrong control file. Now really updated as needed.
+    (closes: #191203)
+
+ -- Francesco Paolo Lovergine <frankie@debian.org>  Fri, 20 Jun 2003 15:54:11 +0200
+
+sbuild (0.25) unstable; urgency=low
+
+  * New maintainer.
+    Uploaders: Roger Leigh <roger@whinlatter.uklinux.net>
+    (closes: #191203)
+
+ -- Francesco Paolo Lovergine <frankie@debian.org>  Fri, 20 Jun 2003 15:17:25 +0200
+
+sbuild (0.24) unstable; urgency=low
+
+  * remove -qq from apt-get call in the updatechroot script
+  * fix upgradechroot output and add -u to -y
+  * added oldstable to distribution options
+  * fix for dependency calculation for --arch-all builds from
+    Martin Kögler (Closes: #180859)
+  * libpng-dev => libpng12-0-dev in sbuild.conf
+  * add dpkg-dev to package dependencies - thanks Michael Banck
+    (Closes: #182234)
+  * chroot building fix and waldi's patch still to come
+
+ -- Rick Younie <younie@debian.org>  Sat, 19 Apr 2003 14:41:03 -0700
+
+sbuild (0.23) unstable; urgency=low
+
+  * fixed chroot building - thanks Matt Kraai for the patch and
+    the heads-up - Closes: #167822
+  * use separate stable and testing/unstable required lists
+  * updated the ref-* package lists
+  * added -o/oldstable option to the helper scripts and fixed
+    their usage strings
+
+ -- Rick Younie <younie@debian.org>  Wed,  6 Nov 2002 06:07:22 -0800
+
+sbuild (0.22) unstable; urgency=low
+
+  * dpkg --root isn't fixed so use ppack for the checkchroot
+    script, recommend searchscripts instead of suggest
+  * add a note to README.Debian and the man page that sbuild must be
+    run in ~/build (or wherever the chroot-* symlink is) for sbuild
+    to find the chroot (thanks Otavio)
+
+ -- Rick Younie <younie@debian.org>  Sat, 14 Sep 2002 19:38:16 -0700
+
+sbuild (0.21) unstable; urgency=low
+
+  * the new dpkg has gone into testing so add dselect to the
+    buildd.chroot required list there as well
+
+ -- Rick Younie <younie@debian.org>  Mon, 19 Aug 2002 22:35:24 -0700
+
+sbuild (0.20) unstable; urgency=low
+
+  * added a note that the original tarball has to be in the sbuild work
+    directory $CHROOT/build/<user> for an "sbuild --source" build
+  * removed the old potato chroot description; it can be gotten from the
+    woody version of the package if needed
+  * have sbuild make a ~/build/current symlink to the current build log
+
+ -- Rick Younie <younie@debian.org>  Sat, 17 Aug 2002 09:26:55 -0700
+
+sbuild (0.19) unstable; urgency=low
+
+  * ref-stable = woody
+  * re-added deborphan, searchscripts Suggests
+  * add a note about setting up .sbuildrc
+  * have sbuild, chrapt ignore base apt.conf{,.d}
+  * handle dpkg/dselect unstable split in buildd.chroot; copy over
+    /etc/hosts to chroot
+
+ -- Rick Younie <younie@debian.org>  Sat, 20 Jul 2002 06:26:05 -0700
+
+sbuild (0.18) unstable; urgency=low
+
+  * split ref-testing from ref-unstable instead of symlink as they
+    differ now
+  * unstable dpkg --root is broken currently so use ppack instead of
+    dpkg for checkchroot
+  * don't 'touch' downloaded source; in buildd context, buildd-watcher
+    should use ctime not mtime to look for old files
+  * add a blurb about using chrapt to finish off the chroot build, in
+    case debootstrap doesn't quite get it right
+
+ -- Rick Younie <younie@debian.org>  Sat, 20 Jul 2002 06:26:05 -0700
+
+sbuild (0.17) unstable; urgency=low
+
+  * removed debconf-utils from unstable reference list
+  * include Ryan's sbuild changes to allow the buildds to
+    autobuild for security
+  * include Ryan's debootstrap script for chroot building
+  * the SBUILD_CHROOT_ROOT environment variable is gone.  The chroots
+    are now found by the ~/build/chroot-$DIST symlinks or absolute path.
+  * moved the helper scripts to /usr/lib/sbuild
+  * wrong switch so the 0.5 changelog was skipped; again, Closes: #138915
+  * create blank source-dependencies files on install
+
+ -- Rick Younie <younie@debian.org>  Thu, 11 Jul 2002 01:22:56 -0700
+
+sbuild (0.6) unstable; urgency=low
+
+  * added dobuildlog, a shell script for processing build logs:
+    file a bug, sign the changelog, reply to buildd if you're
+    an admin
+  * recommend fakeroot instead of depend as some arches don't have
+    it.  (Closes: #145753)
+
+ -- Rick Younie <younie@debian.org>  Fri,  3 May 2002 22:22:41 -0700
+
+sbuild (0.5) unstable; urgency=low
+
+  * fix copyright file lintian errors
+  * added ~/.wgetrc warning to man update-sourcedeps man page,
+    Closes: #138915
+
+ -- Rick Younie <younie@debian.org>  Wed, 10 Apr 2002 00:27:25 -0700
+
+sbuild (0.4) unstable; urgency=low
+
+  * made /etc/sbuild.conf a conffile - thanks Gergely Nagy.
+    (Closes: #136374)
+
+ -- Rick Younie <younie@debian.org>  Sun,  3 Mar 2002 21:51:51 -0800
+
+sbuild (0.3) unstable; urgency=low
+
+  * added mailfrom config item so the msg body From: can be
+    overridden
+  * noninteractive -> Noninteractive for Ryan Murray
+  * (re-)added conffile sbuild.conf.local for local changes that aren't
+    suitable for ~/.sbuildrc
+  * removed the bashrc & profile example files; they were part of my
+    original local sbuild deb and are just clutter
+
+ -- Rick Younie <younie@debian.org>  Sat, 23 Feb 2002 11:44:12 -0800
+
+sbuild (0.2.5) unstable; urgency=low
+
+  * add From/To headers to sbuild mail - thanks Gergely Nagy
+   (Closes: #129850)
+  * added deborphan to Suggests; -f is useful for finding the
+    minimal chroot for an arch
+
+ -- Rick Younie <younie@debian.org>  Fri, 18 Jan 2002 18:46:33 -0800
+
+sbuild (0.2.4) unstable; urgency=low
+
+  * Closes: #120309 (the ITP)
+  * the sbuildrc:$source_dependencies config item got lost
+  * removed Phil Blundell's apt "Replaces:" patch.  This is a
+    workaround for an apt weakness that shouldn't be depended on.
+  * added fakeroot dependency.  Thanks Michael Schmitz.
+
+ -- Rick Younie <younie@debian.org>  Thu,  8 Dec 2001 05:55:08 -0800
+
+sbuild (0.2.3) unstable; urgency=low
+
+  * show all changes in initial *.changes
+
+ -- Rick Younie <younie@debian.org>  Thu,  6 Dec 2001 05:55:08 -0800
+
+sbuild (0.2.2) unstable; urgency=low
+
+  * don't copy /etc/fstab to chroot
+
+ -- Rick Younie <younie@debian.org>  Sun,  2 Dec 2001 00:34:38 -0800
+
+sbuild (0.2.1) unstable; urgency=low
+
+  * dpkg-buildpackage craps out on the unknown -d switch in the
+    stable chroot.
+
+ -- Rick Younie <younie@debian.org>  Fri, 30 Nov 2001 06:53:24 -0800
+
+sbuild (0.2) unstable; urgency=low
+
+  * Initial package
+
+ -- Rick Younie <younie@debian.org>  Thu,  8 Nov 2001 00:18:34 -0800

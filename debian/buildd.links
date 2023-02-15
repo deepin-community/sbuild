@@ -1,0 +1,3 @@
+sbuild-abort.1.gz usr/share/man/man1/buildd-abort.1.gz
+sbuild-createchroot.8.gz usr/share/man/man8/buildd-make-chroot.8.gz
+sbuild-update.1.gz usr/share/man/man1/buildd-update-chroots.1.gz

@@ -1,0 +1,58 @@
+#!/usr/bin/perl -w
+# changes the dpkg status of a package in a chroot to "installed"
+#
+# Copyright © 2006,2008 Roger Leigh <rleigh@debian.org>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see
+# <http://www.gnu.org/licenses/>.
+#
+#######################################################################
+
+use strict;
+use warnings;
+
+use Getopt::Long;
+use Sbuild qw(help_text version_text usage_error check_group_membership);
+use Sbuild::Utility qw(setup cleanup shutdown);
+use Sbuild::ChrootSetup qw(unhold_packages list_packages);
+use Sbuild::Conf qw();
+use Sbuild::OptionsBase;
+
+my $conf = Sbuild::Conf::new();
+exit 1 if !defined($conf);
+my $options = Sbuild::OptionsBase->new($conf, "sbuild-unhold", "1");
+exit 1 if !defined($options);
+check_group_membership();
+
+usage_error("sbuild-unhold", "Incorrect number of options") if (@ARGV < 2);
+
+my $chroot = Sbuild::Utility::get_dist($ARGV[0]);
+
+my $session = setup('source', $ARGV[0], $conf) or die "Chroot setup failed for $chroot chroot";
+
+print STDOUT "Unholding packages in $chroot chroot:";
+shift @ARGV;
+foreach (@ARGV) {
+    print STDOUT " $_";
+}
+print STDOUT ".\n\n";
+
+my $status = unhold_packages($session, $conf, @ARGV);
+$status >>= 8;
+
+list_packages($session, $conf, @ARGV);
+
+cleanup($conf);
+
+exit $status;

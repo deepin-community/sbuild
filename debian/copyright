@@ -1,22 +1,105 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: template-repository
-Source: https://github.com/deepin-community/template-repository
+Upstream-Name: sbuild
+Source: https://salsa.debian.org/debian/sbuild
+Comment:
+ sbuild is maintained by the Debian buildd-tools project team.  It was
+ downloaded from https://salsa.debian.org/debian/sbuild.git.
+ .
+ The upstream source was originally downloaded from the CVS repository
+   :pserver:anon@cvs.linux-m68k.org:/CVS (module: wanna-build)
+ (up to version 0.36; September 2006), and the SVN repository
+   http://svn.cyberhqz.com/svn/wanna-build
+ (version 0.37; January 2006 to November 2006).  All future changes are
+ in the buildd-tools GIT repository, with occasional merges from the
+ upstream SVN repository.
+ .
+ Roman Hodek - wanna-build (and sbuild)
+ Ben Collins - the "apt patch" for sbuild for finding source
+ Ryan Murray - modifications for security building, maintenance
+ Roger Leigh - schroot support and general maintenance
 
 Files: *
-Copyright: 2023 Tsic404 <liuheng@deepin.org>
+Copyright: © 1998-2000 Roman Hodek <roman@hodek.net>
+           © 1998-1999 James Troup <troup@debian.org>
+           © 2003-2006 Ryan Murray <rmurray@debian.org>
+           © 2001-2003 Rick Younie <younie@debian.org>
+           © 2003-2004 Francesco Paolo Lovergine <frankie@debian.org>
+           © 2005      Michael Banck <mbanck@debian.org>
+           © 2005-2008 Roger Leigh <rleigh@debian.org>
+           © 2015-2022 Johannes Schauer Marin Rodrigues <josch@debian.org>
+           © 2020      Christian Kastner <ckk@debian.org>
 License: GPL-2+
- This package is free software; you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation; either version 2 of the License, or
- (at your option) any later version.
+
+Files: Makefile.am
+       bin/Makefile.am
+       configure.ac
+       db/Makefile.am
+       etc/Makefile.am
+       lib/Buildd/Makefile.am
+       lib/Makefile.am
+       lib/Sbuild/Makefile.am
+       man/Makefile.am
+       scripts/global.mk
+       test/Makefile.am
+       tools/Makefile.am
+Copyright: © 2004-2009  Roger Leigh <rleigh@debian.org>
+           © 2016-2022  Johannes Schauer Marin Rodrigues <josch@debian.org>
+License: GPL-3+
+
+Files: debian/*
+Copyright: © 2001-2003 Rick Younie <younie@debian.org>
+           © 2003-2004 Francesco Paolo Lovergine <frankie@debian.org>
+           © 2005 Michael Banck <mbanck@debian.org>
+           © 2005-2008 Roger Leigh <rleigh@debian.org>
+           © 2015-2022  Johannes Schauer Marin Rodrigues <josch@debian.org>
+License: GPL-2+
+
+Files: debian/buildd.init
+Copyright: © 2006-2009  Roger Leigh <rleigh@debian.org>
+           © 2007       Federico Di Gregorio <fog@debian.org
+           © 2015-2022  Johannes Schauer Marin Rodrigues <josch@debian.org>
+License: GPL-3+
+
+License: GPL-2+
+ This program is free software; you can redistribute it
+ and/or modify it under the terms of the GNU General Public
+ License as published by the Free Software Foundation; either
+ version 2 of the License, or (at your option) any later
+ version.
  .
- This package is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
+ This program is distributed in the hope that it will be
+ useful, but WITHOUT ANY WARRANTY; without even the implied
+ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ PURPOSE.  See the GNU General Public License for more
+ details.
  .
- You should have received a copy of the GNU General Public License
- along with this program. If not, see <https://www.gnu.org/licenses/>
+ You should have received a copy of the GNU General Public
+ License along with this package; if not, write to the Free
+ Software Foundation, Inc., 51 Franklin St, Fifth Floor,
+ Boston, MA  02110-1301 USA
  .
- On Debian systems, the complete text of the GNU General
- Public License version 2 can be found in "/usr/share/common-licenses/GPL-2".
+ On Debian systems, the full text of the GNU General Public
+ License version 2 can be found in the file
+ `/usr/share/common-licenses/GPL-2'.
+
+License: GPL-3+
+ This program is free software; you can redistribute it
+ and/or modify it under the terms of the GNU General Public
+ License as published by the Free Software Foundation; either
+ version 3 of the License, or (at your option) any later
+ version.
+ .
+ This program is distributed in the hope that it will be
+ useful, but WITHOUT ANY WARRANTY; without even the implied
+ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ PURPOSE.  See the GNU General Public License for more
+ details.
+ .
+ You should have received a copy of the GNU General Public
+ License along with this package; if not, write to the Free
+ Software Foundation, Inc., 51 Franklin St, Fifth Floor,
+ Boston, MA  02110-1301 USA
+ .
+ On Debian systems, the full text of the GNU General Public
+ License version 3 can be found in the file
+ `/usr/share/common-licenses/GPL-3'.

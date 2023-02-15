@@ -1,0 +1,1091 @@
+ChangeLog                                                       -*- outline -*-
+---------
+
+Welcome to @PACKAGE@ @VERSION@.  Please read these release notes carefully.
+
+Full installation instructions are provided in the INSTALL file.  The
+README file also contains more specific notes regarding building and
+configuration.
+
+ * Major changes in 0.80.0:
+
+   1) sbuild became a Debian native package -- consult debian/changelog or
+      /usr/share/doc/sbuild/changelog.Debian.gz instead
+
+ * Major changes in 0.79.1:
+
+   1) buildd: add --dpkg-file-suffix option
+
+ * Major changes in 0.79.0:
+
+   1) sbuild-createchroot: handle building armel/armhf on arm64, mipsel on
+      mips64el and powerpc on ppc64
+
+   2) avoid using gzip --keep option, gzip in wheezy doesn't have it
+
+   3) sbuild: add --dpkg-file-suffix option
+
+   4) sbuild: pass the right .changes file to lintian
+
+   5) sbuild-createchroot: use umask 0022
+
+   6) sbuild: add APT_KEEP_DOWNLOADED_PACKAGES config variable
+
+ * Major changes in 0.78.1:
+
+   None (bugfix release)
+
+ * Major changes in 0.78.0:
+
+   1) core: Add libc-dev and libstdc++-dev to Build-Depends when cross
+      compiling
+
+   2) core: default to --no-arch-all when cross compiling
+
+   3) core: Set build profiles cross and nocheck by default when cross
+      compiling
+
+   4) core: Switch to C.UTF-8 for $LC_ALL
+
+   5) core: allow chroots with nothing more but Essenital:yes packages, apt
+      and their hard dependencies and create missing users and groups as
+      needed
+
+   6) sbuild: add --build-dir option
+
+   7) sbuild: add --no-source-only-changes option
+
+   8) sbuild: add --post-build-failed-commands hook
+
+   9) sbuild: let --append-to-version imply --no-arch-all
+
+   10) sbuild-createchroot: Don't usrmerge even if it is the debootstrap default
+
+ * Major changes in 0.77.1:
+
+   1) sbuild: run dpkg-source --before-build and --after-build
+
+   2) core: fix bd-uninstallable dose explainer for cross-building
+
+ * Major changes in 0.77.0:
+
+   1) core: New chroot mode "unshare" which allows unprivileged package builds
+      by using Linux user namespaces. Only requires lightweight newuidmap and
+      newgidmap suid binaries. Chroots can be created and updated without
+      needing sudo and are stored in ~/.cache/sbuild or an arbitrary absolute
+      path given via the --chroot option.
+
+   2) core: Add null resolver which does not install, upgrade or remove any
+      packages. This allows one to take full control over the package
+      installation process by using hooks.
+
+   3) core: Remove support for signing the dummy archive because Squeeze LTS
+      support ended in February 2016: remove the --keygen option from
+      sbuild-update, remove the SBUILD_BUILD_DEPENDS_SECRET_KEY and
+      SBUILD_BUILD_DEPENDS_PUBLIC_KEY configuration variables.
+
+   4) core: disable network during dpkg-buildpackage for backends that support
+      it (currently only the unshare backend)
+
+   5) core: Install (cross-)build-essential, manual depends and build depends
+      with a single dummy package instead of using a multi-step process to
+      avoid having later steps change what was installed in earlier steps.
+
+   6) core: Filter out foreign essential and multiarch foreign packages before
+      passing them to dose3 when cross building to prevent solutions that use
+      essential and multiarch foreign packages from the non-native
+      architecture.
+
+   7) sbuild: Command line option --make-binNMU now implies --no-arch-all
+
+   8) sbuild: only run autopkgtest if debian/tests/control exists
+
+   9) sbuild: Add new build log filtering for /build/pkg-minimal-XXX/resolver-YYY:
+      <<RESOLVERDIR>>
+
+   10) sbuild: Additional Lintian reasons in build log: info and warn.
+
+   11) sbuild: Dump content of the input .dsc before extracting it.
+
+   12) sbuild: Also print kernel version in build log
+
+   13) sbuild-createchroot: do not attempt several setup options when the user
+       specified --setup-only together with --make-sbuild-tarball because then
+       the unpacked directory does not exist
+
+   14) sbuild-createchroot: make the mirror argument optional as well (just as
+       it is in debootstrap)
+
+   15) sbuild-createchroot: add --chroot-mode=unshare which allows running
+       debootstrap and creating a chroot tarball without needing sudo
+
+   16) sbuild-createchroot: refuse to operate if output tarball or directory
+      already exist
+
+   17) sbuild-update: add --chroot-mode option and support for unshare
+      backend
+
+ * Major changes in 0.76.0:
+
+   1) sbuild-update-all: exit 0 when no chroots are set up.
+
+ * Major changes in 0.75.0:
+
+   1) buildd: only build arch:any packages
+
+   2) buildd: do not run lintian
+
+   3) remove harmful unnecessary lintian binary check
+
+ * Major changes in 0.74.0:
+
+   1) Install dose-distcheck and lintian for the native architecture
+
+   2) remove DCMD config value which is not used and just uselessly making
+      libsbuild-perl depend on devscripts
+
+   3) use dpkg-query instead of grep-status so that dependency on grep-dctrl is
+      not needed anymore
+
+   4) suppress schroot writing to stderr in sbuild-createchroot
+
+   5) check for modprobe in sbuild-createchroot
+
+   6) Add missing newline character to a bunch of error messages
+
+   7) dose3 failures no longer mask the --build-deps-failed-commands
+
+   8) Build arch: all packages by default.
+
+   9) Run lintian by default.
+
+   10) sbuild-createchroot: add --command-prefix
+
+   11) add sbuild-debian-developer-setup package
+
+ * Major changes in 0.73.0:
+
+   1) starting-build-command and finished-build-commands are now run as root.
+
+   2) Output .buildinfo in buildlog.
+
+   3) The autopkgtest-virt backends are no longer supplied with the chroot
+      name.
+
+   4) Add SBUILD_BUILD_ARCH percent escape.
+
+   5) Use Dpkg::Build::Info::get_build_env_whitelist() to generate the default
+      of ENVIRONMENT_FILTER.
+
+   6) For binNMUs, instead of copying the timestamp of the last changelog
+      entry, generate a new one.
+
+   7) Add the --binNMU-timestamp command line option to allow one to pass a
+      custom timestamp for the new binNMU changelog entry.
+
+   8) Add option --binNMU-changelog which allows one to pass a complete
+      debian/changelog entry for binary-only builds.
+
+   9) Extra packages can now be used to upgrade already installed packages.
+
+  10) The autopkgtest backend now runs into its own process group.
+
+  11) Extra repositories are now unconditionally updated.
+
+  12) Allow passing a directory to --extra-package which will add all .deb
+      inside.
+
+ * Major changes in 0.72.0:
+
+   1) Add option --purge-extra-packages which makes sure to remove all
+      non-essential packages before the package build starts.
+
+   2) Stop depending on newlines being produced by the build to detect timeouts
+
+   3) Accommodate for the autopkgtest 4.0 release by renaming all adt command
+      line options and configuration variables from adt to autopkgtest because
+      the same renaming was done by the autopkgtest release.
+
+   4) Add --bd-uninstallable-explainer which gives an explanation of why
+      the build dependencies of a source package cannot be installed.
+
+ * Major changes in 0.71.0:
+
+   1) Undo exporting private keys in armored ASCII format as introduced by the
+      last release. It turns out, that this is not necessary to support gpg
+      cross-version compatibility. This should fix problems with gpg 2.x
+      as well as chroots not having gpg installed as apt stopped depending on
+      it.
+
+   2) Undo the SUITE-VARIANT syntax of sbuild-createchroot as introduced by the
+      last release. It turns out that overloading the suite name argument with
+      a variant name was a bad idea because there exist distributions with a
+      minus in its name. Variant names can now be specified using the
+      --chroot-prefix option which works analogous to the --chroot-suffix
+      option.
+
+   3) Add percent escape support to piuparts, autopkgtest and adt-virt options.
+
+   4) Add sbuild-destroychroot.
+
+ * Major changes in 0.70.0:
+
+   1) Fix reproducibility issue by not writing the $HOME as set during the
+      build into config files and man pages anymore
+
+   2) Add an EXAMPLE section to the sbuild man page
+
+   3) sbuild-createchroot now has support for SUITE-VARIANT chroot names. This
+      is useful to create variants of base suits like jessie-backports or
+      unstable-experimental.
+
+   4) sbuild-createchroot now has the --no-deb-src option which allows one to
+      create a chroot without a deb-src entry in its sources.list. This is
+      useful to save bandwidth and disk space for chroots that will never be
+      used to download source packages as the source indices do not have to
+      downloaded, stored and later updated from the mirrors.
+
+   5) sbuild-createchroot now has the --alias option which is useful to add a
+      shorthand alias to a chroot which will be used for chroot selection. This
+      is for example useful for a Debian unstable chroot which will be
+      automatically selected for package builds that have UNRELEASED in their
+      debian/changelog, if the UNRELEASED alias is added to the Debian unstable
+      chroot.
+
+   6) suild-createchroot now has the --extra-repository which works like the
+      --extra-repository option for sbuild and permanently adds another line to
+      the chroot's sources.list.
+
+   7) Private/public key pairs are now stored in armored ASCII format to
+      maintain compatibility between different gpg versions on the host and
+      within the chroot. Re-running `sbuild-update --keygen` will create the
+      new key types.
+
+   8) Chroots can now have gpg >= 2.x installed as sbuild will properly clean
+      up any remaining gpg-agent processes and "apt-key add" is not used
+      anymore (it will leave a gpg-agent process around that cannot properly
+      be killed).
+
+   9) Add the --source-only-changes option which will create a .changes file
+      suitable for a source-only upload alongside the normal binary .changes
+      file.
+
+  10) Do not install debfoster by default in sbuild-createchroot to keep the
+      build chroot as minimal as possible. Users that use debfoster can use the
+      --include option of sbuild-createchroot.
+
+  11) Drop requirement for gpg inside the chroot as external archive keys are
+      now processed without gpg and signing of the internal repository is
+      entirely optional with helpful warning and error messages in case
+      signing failed.
+
+  12) Allow running autopkgtest after a successful build in the same manner
+      that piuparts can be run after a successful build.
+
+ * Major changes in 0.69.0:
+
+   1) Decouple chroot from host in terms of filesystem access to allow
+      chroot backends like qemu, ssh or lxc. Deprecate external command
+      percentage escape %SBUILD_CHROOT_DIR in favour of %SBUILD_CHROOT_EXEC.
+
+   2) Experimental adt backend. Enable with --chroot-mode=adt. Choose the
+      virtualization server with --adt-virt-server and add options with
+      --adt-virt-server-opt. This allows sbuild to use qemu, ssh and lxc
+      chroots.
+
+   3) Allow to build packages without specifying a version. Earlier it was
+      possible to let sbuild "apt-get download" a dsc by specifying
+      "package_version" as a command line argument. The version part is not
+      necessary anymore. No manual version lookup by the user is required
+      anymore.
+
+   4) Disallow conflicting command line options, thus making command line
+      switches position independent and remove the deprecated --arch-all-only
+      option in the process.
+
+   5) The aspcud resolver criteria is not hardcoded anymore but can be chosen
+      with --aspcud-criteria. The default criteria is -removed,-changed,-new.
+      To minimize the number of packages from experimental, use:
+      -count(solution,APT-Release:=/a=experimental/),-removed,-changed,-new
+
+   6) Apt doesn't download translations anymore.
+
+   7) Dummy archive is now signed with SHA-512
+
+   8) Cron script etc/sbuild-update-all allows one to periodically update all
+      sbuild chroots.
+
+   9) Add another --*-failed-commands external command:
+      --chroot-update-failed-commands
+
+  10) Documentation of configuration options in sbuild.conf(5) and in
+      /etc/sbuild/sbuild.conf now reference related command line options from
+      sbuild(1).
+
+  11) Documentation of command line options in sbuild(1) now references the
+      respective configuration options from sbuild.conf(5).
+
+  12) Remove configuration options which can be set on the command line from
+      the __INTERNAL group, thus exposing them in sbuild.conf as well and
+      referencing them in sbuild(1).
+
+* Major changes in 0.68.0:
+
+  1) Dummy binary packages are now used for native building *and* cross
+     building (apt-get build-dep was used for the latter so far). For an
+     extensive rationale for this choice, read the commit message of commit
+     e227c8f3.
+
+  2) Deprecate --arch-all-only option which was introduced two releases ago in
+     favour of --arch-all --no-arch-any. The option will be completely removed
+     in the next release to remove redundancy and for overall clarity.
+
+* Major changes in 0.67.0:
+
+  1) add --clean-source and --no-clean-source to allow building a package from
+     an unpacked directory without calling debian/rules clean
+
+  2) allow changing the user running dpkg-buildpackage inside the chroot
+
+  3) sbuild-createchroot: use union-type=overlay for directory chroot
+
+  4) Quit processing when external commands fail
+
+  5) Add the --no-arch-any and --arch-any options which give a better control
+     over building or not building architecture specific packages than
+     --arch-all-only
+
+  6) Set [trusted=yes] for internal dummy repository to make key generation
+     optional
+
+* Major changes in 0.66.0:
+
+  1) add option --arch-all-only to build arch:all packages
+
+  2) environment variable SBUILD_CONFIG allows to specify a custom
+     configuration file
+
+  3) add option --build-path to set a deterministic build path
+
+  4) fix crossbuild dependency resolution
+
+  5) add option --extra-repository-key for extra apt keys
+
+  6) add option --build-dep-resolver=aspcud for aspcud based resolver
+
+  6) allow complex commands as sbuild hooks
+
+  7) add now external command %SBUILD_SHELL produces an interactive shell
+
+  8) add options --build-deps-failed-commands, --build-failed-commands and
+     --anything-failed-commands
+
+* Major changes in 0.65.2:
+
+  None.
+
+* Major changes in 0.65.1:
+
+  None.
+
+* Major changes in 0.65.0:
+
+  1) Add support for build profiles. The specified profile is used
+      in the build if -P or --profiles is passed or the
+      DEB_BUILD_PROFILES environment variable is set.
+
+  2) An extra build-time repository and/or individual packages can be
+      made available during the build. See the --extra-repository and
+      --extra-package options.
+
+  3) Add more substitution variables for use in External commands: 
+      host architecture (%a), chroot directory (%r), build directory inside 
+      chroot (%b), and package build directory inside chroot (%p). See man 
+      sbuild for details and alternate long names.
+
+* Major changes in 0.64.3:
+
+  1) Add support for multiarch builds. Explicit build-deps on
+      foreign-arch packages enable that arch for the build.
+
+  2) Command hook changes: chroot-setup-commands run as root. 2 new
+      user -command hooks run immediately before/after inner build
+      (--starting-build-commands/--finished-build-commands).
+
+* Major changes in 0.64.2:
+
+  1) Allow to Define custom debootstrap variant.
+
+  2) Allow to define custom suffixes in chroot names.
+
+* Major changes in 0.64.1:
+
+  1) Bugfixes to work with Perl 5.18; use File::Temp and File::Spec
+     explicitly.
+
+  2) Drop autoflush workaround added for Perl 5.10.
+
+* Major changes in 0.64.0:
+
+  1) The number of times buildd will try to build before sleeping is
+     now configurable with MAX_SBUILD_FAILS.
+
+  2) Lintian is now run inside the chroot rather than the host system.
+
+  3) binNMUs now set binary-only=yes in the changelog.
+
+  4) Cross-building improvements.
+
+* Major changes in 0.63.2:
+
+  1) New options --no-run-lintian and --no-run-piuparts.  If lintian
+     or piuparts are configured to run automatically following a
+     successful build, there options disable this behaviour for the
+     build.
+
+  2) New option --purge-build.  This behaves identically to the old
+     --purge option.  --purge now purges everything (build directory,
+     build dependencies and schroot session) and is equivalent to
+     using --purge-build, --purge-deps and --purge-session together.
+
+  3) If building from unpacked sources in the current working
+     directory, logs will be created in '..' rather than '.'.
+
+* Major changes in 0.63.1:
+
+  None.
+
+* Major changes in 0.63.0:
+
+  1) Support for cross-compiling has been added.  This includes the
+     addition of $host and $build configuration variables, with
+     corresponding --host and --build command-line options.  This
+     includes the addition of a new 'xapt' dependency resolver.
+
+  2) The deprecated 'internal' dependency resolver has been removed,
+     along with the configuration variables $apt_policy,
+     $check_depends_algorithm and $resolve_virtual, and the
+     command-line option --check-depends-algorithm.  The 'apt'
+     resolver is the default replacement for 'internal'.
+
+  3) Support for watches has been removed.  The configuration
+     variables $check_watches, $ignore_watches_no_build_deps and
+     $watches (and obsolete variables @ignore_watches_no_build_deps
+     and %watches) have also been removed.
+
+  3) sbuild-stats and support for build time and space statistics
+     recording has been removed.  These statistics are recorded in
+     both the build log and are available as build metadata
+     internally.  The statistics recorded in the database were not
+     particularly informative; storing the statistics in a proper
+     relational database is recommended.  The configuration variables
+     $avg_time_db and $avg_space_db have been removed.
+
+* Major changes in 0.62.6:
+
+  1) The use of alternatives in Build-Depends and Build-Depends-Indep
+     may be turned on or off by the configuration variable
+     $resolve_alternatives.  It may also be enabled or disabled at
+     build time using the --resolve-alternatives and
+     --no-resolve-alternatives options, respectively.
+
+  2) The new Build-Depends-Arch and Build-Conflicts-Arch fields in
+     debian/control are now supported.  These may be manually set
+     with --add-depends-arch and --add-conflicts-arch,
+     respectively.
+
+  3) schroot namespaces are now fully supported, meaning that
+     current 1.5.x schroot versions now work with sbuild.
+
+* Major changes in 0.62.5:
+
+  None.
+
+* Major changes in 0.62.4:
+
+  1) The distribution in the build summary is coloured yellow if it
+     does not match the distribution in the changelog.  This is to
+     indicate that there may be a potential problem, such as
+     potentially uploading a package intended for experimental to
+     unstable by building for unstable by accident.  Additionally,
+     lintian test results are also coloured to highlight success and
+     failure.  Log colouring may now be disabled using $log_colour.
+
+  2) sbuild only permits building one source package at once.
+     Previously sbuild would allow building of more than one package
+     in a single invocation.  Making this change means that the exit
+     status will always be the status of the build rather than the
+     last build, and it also means the logging is simplified and may
+     be started earlier.
+
+  3) Added new directory /var/lib/sbuild/build to hold build trees for
+     sbuild when building.  This will be bind mounted on /build inside
+     the chroot following an update to the schroot sbuild and buildd
+     fstab configuration for schroot.  This saves significant amounts
+     of space when using LVM snapshot chroots, and it also makes it
+     easier to preserve build trees for failing builds when using
+     snapshots.
+
+  4) Extra environment variables to be set when running
+     dpkg-buildpackage may now be set using $build_environment; these
+     will supplement the existing environment (e.g. PATH,
+     LD_LIBRARY_PATH).  These variables will not be subject to
+     filtering with $environment_filter.
+
+* Major changes in 0.62.3:
+
+  1) The apt and internal resolvers will resolve some alternatives
+     even when resolving alternative dependencies is disabled.  For
+     relations involving the same package, the alternative will be
+     permitted when the package names are the same for each
+     alternative.  For example,
+        foo (<< x) | foo (>= y) | bar
+     will be reduced to
+        foo (<< x) | foo (>= y)
+     while
+        foo | bar
+     will be reduced to
+        foo
+
+  2) The sbuild-schroot wrapper has been removed.  This will be moved
+     into the schroot package in its next release.
+
+  3) The schroot "buildd" configuration profile has been moved to the
+     schroot package itself.  This is due to being generated and being
+     architecture-dependent, and sbuild being an arch-all package (the
+     configuration would only be valid for the architecture sbuild was
+     built on).
+
+  4) A new option, "-j", has been added to allow parallel builds.
+
+* Major changes in 0.62.2:
+
+  1) New options --no-apt-clean, --no-apt-update, --no-apt-upgrade and
+     --no-apt-distupgrade have been added to allow these actions to be
+     disabled even when set as the default in the configuration.
+
+  2) --keep-session is replaced by
+     --purge-session=(always|successful|never).  This will allow the
+     session to be purged for all, successful and no builds,
+     respectively.
+
+  3) $purge_session uses the same purge modes as $purge_build_deps and
+     $purge_build_directory, rather than a boolean value.
+
+  4) Log filtering may be disabled using $log_filter = 0 in the
+     configuration.  The replacement text is now also surrounded with
+     "«" and "»" so that strings such as CHROOT and BUILDDIR can't be
+     confused with any actual appearance of the same string in the
+     build log.
+
+  5) Log colouring may be disabled using $log_colour = 0 in the
+     configuration.
+
+* Major changes in 0.62.1:
+
+  1) Fixed security issue in the sbuild-schroot wrapper program which
+     did not enforce sbuild group membership in order to allow users
+     to access the chroots as user sbuild.
+
+* Major changes in 0.62.0:
+
+  1) 'apt' is now the default build dependency resolver.  Users should
+     not see any significant changes compared with the old 'internal'
+     resolver.  Please note that you may need to generate a GPG key
+     for the local archive created for dependency package
+     installation, if one does not already exist; see sbuild-update
+     (--keygen) for further details.
+
+  2) The 'internal' build dependency resolver is deprecated.  It is
+     not recommended for future use, and will be removed once it is no
+     longer used by the buildd infrastructure.  Please use the 'apt'
+     resolver as a drop-in replacement.
+
+  3) The 'aptitude' build dependency resolver will, unlike 'apt' and
+     'internal', consider alternative dependencies by default, rather
+     than only using the first alternative.  This is intended to both
+     preserve backward compatibility, and make the 'aptitude' resolver
+     the preferred choice for more complex situations, such as
+     building for experimental.
+
+  4) sbuild.conf and buildd.conf are now automatically generated from
+     the help text and defaults in the source code.  This means that
+     the examples will always be syntactically correct, the help text
+     will always be current, and the defaults will always match the
+     defaults in the source code.
+
+  5) All of the allowed values in sbuild.conf and buildd.conf are now
+     documented in the new sbuild.conf(5) and buildd.conf(5) manual
+     pages, respectively.  Like sbuild.conf, this is entirely
+     generated from the source code, so will always match the defaults
+     for the same sbuild version.
+
+  6) Non-scalar (or reference) types are deprecated in sbuild.conf.
+     This is because it is not possible to tell the difference between
+     an empty and an undefined value.  Values using array or hash
+     types should use the equivalent array reference or hash
+     reference, which have been supported for some time.  The old
+     style array and hash values will remain supported for now, but
+     will be removed in a future release.
+
+  7) sbuild now performs an apt dist-upgrade at the start of each
+     build by default, rather than an upgrade.  This is to reduce the
+     amount of manual administration required to keep chroots up to
+     date, and is not much more risky than upgrade in this context.
+
+  8) A new option, --keep-session, has been added.  This prevents the
+     automatic removal of session-managed snapshot chroots.
+     Previously, snapshots would not be deleted if purging of the
+     build directory or build dependencies was disabled, but this was
+     not always desirable, hence it is now configurable separately.
+
+  9) Internally, building and other actions in the chroot are
+     performed by the 'sbuild' system user, where previously the user
+     invoking sbuild would be used instead.  The aim of this change is
+     to separate privileges to increase security and reduce the chance
+     of accidental or deliberate tampering of the build environment.
+     While the latter is not addressed by these changes, this will be
+     taken care of during future architectural changes.
+
+ 10) In order to handle errors more robustly, the build code now has
+     initial support for exception handling.  Normal operation will
+     not be affected, but fatal errors may be logged in a different
+     order than seen previously.  Fatal errors will now be seen at the
+     end of the build log, which should make it easier to spot
+     problems.
+
+ 11) sbuild now always cleans up fully when receiving a termination
+     signal such as SIGINT or SIGTERM.  Note that you may need to wait
+     while the cleanup actions are performed, or the current task is
+     completed prior to initiating cleanup.  When running
+     interactively, hitting Ctrl-C will sent SIGINT to the entire
+     process group; doing this while apt-get or aptitude are running
+     will potentially leave dpkg in an inconsistent state, so aborting
+     at this point is not recommended.  Sending a SIGTERM to the
+     sbuild process will always work cleanly.
+
+ 12) Long paths such as the chroot location and the build directory
+     inside the chroot are now filtered in the build log and replaced
+     with small, constant, abbreviations.  This makes the build logs
+     comparable between builds with tools such as diff(1).
+
+ 13) Logging messages have been improved, and important messages are
+     now coloured when running interactively (does not affect log
+     files).  Errors, warnings and informational messages are coloured
+     red, yellow and green, respectively.  Build status is coloured
+     green for success and red for all failure conditions.
+
+ 14) The sbuild package build directory created inside the chroot now
+     has a reduced name length.  It's now /build/packagename-XXXXXX
+     where XXXXXX are random characters.  This helps reduce the chance
+     of hitting path length restrictions on some architectures,
+     particularly when using sockets.
+
+ 15) Build log mails are now compressed and mailed in MIME format by
+     default, together with a copy of the .changes file.  The old
+     behaviour (plain mailing of uncompressed logs) may be restored by
+     setting $mime_build_log_mails=0 in the configuration, and
+     compression may also be disabled in the MIME mails by setting
+     $compress_build_log_mails=0.  Note that it is no longer possible
+     to send compressed log mails unless MIME mailing is enabled.
+
+ 16) The wanna-build database has been removed entirely.  This part of
+     the sbuild package was not used, and was not maintained for some
+     time.  Users wishing to use wanna-build should investigate the
+     version in the wanna-build.git repository used by the Debian
+     autobuilding infrastructure.  This version is actively maintained
+     and in continual use.
+
+
+* Major changes in 0.61.0:
+
+  1) The apt and aptitude build dependency resolvers now use only the
+     first alternative in alternative dependencies.  The other
+     alternatives are stripped out entirely.  This makes the apt and
+     aptitude resolvers behave exactly like the internal resolver.
+     Note that this is configurable with the $resolve_alternatives
+     option, so alternative resolving may be re-enabled with this
+     option if desired.  This is useful for e.g. backports, but not
+     for unstable where the strict consistency and reproducibility
+     offered by only using the first alternative is required.
+
+* Major changes in 0.60.9:
+
+  1) The architecture specified with --arch (defaulting to the host
+     system architecture) must match the chroot architecture.  This
+     was previously allowed to be superseded by the chroot
+     architecture.  This change is to avoid any abiguity regarding the
+     host/build architecture for the package being built.
+
+* Major changes in 0.60.8:
+
+  None.
+
+* Major changes in 0.60.7:
+
+  None.
+
+* Major changes in 0.60.6:
+
+  1) sbuild now sanitises the environment when running external
+     commands such as dpkg-buildpackage.  The allowed environment
+     variables may be specified with $environment_filter in the
+     configuration.  Currently, various DEB* and *FLAGS* environment
+     variables are allowed, similar to debuild's behaviour.
+
+  2) sbuild now has a testsuite to do basic regression testing.  By
+     default, only Perl syntax is checked.  If configured with
+     --enable-chroot-checks, it will run the various sbuild-* helpers
+     and sbuild itself to build a small variety of different
+     packages.  These are tested in an "unstable" chroot, which must
+     be present as a prerequisite for running the tests.
+
+  3) The apt and aptitude build dependency resolvers now use a
+     temporary local apt archive for installation of the dependency
+     packages.  apt-get would previously try to remove the dependency
+     package under certain conditions (apt-get -f install would force
+     removal), whereas using a real archive to install from prevents
+     this.
+
+  4) sbuild-update has a new option, --keygen.  This generated a GPG
+     key for signing local apt archives.  The key will be generated
+     automatically on first use, but if entropy on the build system is
+     scarce, sbuild-update can generate it by hand at a more
+     convenient time, or on another system.
+
+  5) sbuild no longer generates the files REDO and SBUILD-REDO-DUMPED
+     upon receiving a termination signal.  These were no longer used
+     in buildd mode, and were only useful in a buildd context.
+
+* Major changes in 0.60.5:
+
+  1) A new resolver, 'apt', has been added.  Like the aptitude
+     resolver, this installs a dependency package to install build
+     dependencies and remove build conflicts, but uses apt-get rather
+     than aptitude.  This resolver is currently experimental and may
+     not yet perform correctly under all circumstances.  Use at your
+     own risk.
+
+  2) It is now possible to run piuparts on the build packages with the
+     new --run-piuparts option.
+
+* Major changes in 0.60.4:
+
+  1) The default dependency resolver has been reverted back to
+     'internal' for the present.  'aptitude' will become the default
+     again once it has had further testing.  Feedback regarding the
+     'aptitude' resolver would be much appreciated.
+
+* Major changes in 0.60.3:
+
+  1) The aptitude resolver is now the default resolver.  Users wishing
+     to continue to use the old internal resolver should set
+     $build_dep_resolver='internal' in their configuration.  The
+     aptitude resolver is far superior to the internal resolver,
+     because it can correctly resolve complex alternative and virtual
+     packages in build dependencies where the internal resolver would
+     fail.
+
+  2) The aptitude resolver is now entirely separate from the internal
+     resolver, and greatly simplified.  All Build-Depends and
+     -Conflicts are now passed directly to aptitude (with
+     architecture-specific dependencies filtered out).  As before, a
+     dummy dependency package is used to install and remove build
+     dependencies and build-conflicts.
+
+  3) The sbuild-clean program has been moved into sbuild-update, as
+     for the other sbuild- helper programs.  The sbuild-* helper
+     programs now take the sbuild chroot lock used by sbuild to
+     prevent concurrent builds in the same chroot, making it safe to
+     run the maintenance commands while builds are running (they will
+     wait until the build has finished before making any changes).
+     The sbuild-* helper programs now operate on source chroots, where
+     available (for lvm-snapshot and btrfs-snapshot type chroots).
+
+  4) The sbuild-createchroot program can now create tarballs from the
+     created chroot, with gzip, bzip2, lzma and xz compression.  Use
+     the new --make-sbuild-tarball option for this purpose.
+
+  5) sbuild may now be used on an unpacked source directory, in a
+     similar manner to debuild.  The directory will be packaged using
+     'dpkg-source -b' prior to building.  If a source package or
+     directory is not specified, sbuild will use the current working
+     directory like debuild.
+
+  6) Lintian may now be run after a package build with the
+     --run-lintian option.
+
+  7) External commands may now be run before and after a build and
+     during chroot setup and cleanup.  These may be used to do
+     additional setup and checking during a build, for example to run
+     piuparts.
+
+* Major changes in 0.60.2:
+
+  1) Virtual packages may now be used in Build-Depends using the
+     internal resolver.  This is very simple, and picks the first
+     package providing the dependency in alphabetical order.  The
+     aptitude resolver is rather more sophisticated, and should be
+     used if this is insufficiently clever.
+
+  2) Build-Conflicts are correctly removed and reinstalled, and sbuild
+     can now remove packages which depend upon other packages, due to
+     using "apt-get remove" in place of "dpkg --remove".
+
+  3) Package build-dependency installation in now preceeded by
+     installation of "core" dependencies (currently build-essential)
+     and "essential" dependencies (essential packages listed in
+     build-essential), to ensure a working build environment.  These
+     should, of course, already be installed; this change is an
+     additional consistency check to ensure the build environment is
+     sane.
+
+  4) schroot sessions may be preserved on failure (failure to build or
+     failure to install build dependencies), to allow easier
+     troubleshooting.
+
+* Major changes in 0.60.1:
+
+  1) Improvements in building of dpkg-source v3 source formats.
+
+  2) sbuild includes a new option --no-source to disable building
+     of source packages.  This is the reciprocal of the existing
+     --source option.
+
+* Major changes in 0.60.0:
+
+  1) sbuild no longer defaults the distribution to "unstable", and
+     requires setting by hand with --distribution unless configured in
+     .sbuildrc.  This is to prevent accidental uploads to the wrong
+     distribution.
+
+  2) sbuild now lists all packages (including versions) installed in
+     the build chroot in the package build log.  This may aid
+     identifying problems with builds using buggy or outdated package
+     versions.
+
+  3) With a recent versions of man-db (>= 2.5.6-4), man-db will be
+     configured not to rebuild its database during package
+     installation and removal in the build chroot.
+
+  4) sbuild has added new options to allow APT cleaning, upgrading and
+     dist-upgrading of the build chroot, in addition to the existing
+     updating option.
+
+  5) buildd has been synched with the buildd code in use on the Debian
+     buildd infrastructure, and is now in use on most, if not all,
+     running buildds.  It has undergone extensive changes since the
+     previous release, and is now suitable for production use.  Note
+     that the packaged version of wanna-build is not yet ready for use
+     with buildd.
+
+  6) buildd no longer bind mounts /home into the chroot.
+
+  7) buildd now handles all wanna-build interaction.  All sbuild
+     wanna-build usage has been removed, including the
+     --auto-give-back and --database options.
+
+* Major changes in 0.59.0:
+
+  1) The wanna-build options --no-propagation and
+     --no-down-propagation have been removed.  These options no longer
+     have any effect, and were only present for backward-compatibility
+     with older versions of buildd.  buildd no longer uses these
+     options, making it safe to remove them.
+
+  2) The wanna-build configuration options used by buildd in
+     buildd.conf have been renamed for better compatibility with future
+     planned sbuild changes.  buildd.conf will require updating with the
+     new option names:
+
+     ┌───────────────────────┬─────────────────────────────────────┐
+     │ old                   │ new                                 │
+     ├───────────────────────┼─────────────────────────────────────┤
+     │ $wanna_build_dbbase   │ $wanna_build_db_name                │
+     │ $wanna_build_user     │ $wanna_build_db_user                │
+     │ $ssh_user             │ $wanna_build_ssh_user               │
+     │ $ssh_host             │ $wanna_build_ssh_host               │
+     │ $ssh_socket           │ $wanna_build_ssh_socket             │
+     │ @ssh_options          │ $wanna_build_ssh_options (arrayref) │
+     └───────────────────────┴─────────────────────────────────────┘
+
+  3) sbuild will set the "attempted" and "given-back" states for
+     certain failures.  If wanna-build updates are configured with
+     --database and --auto-give-back by buildd, it will set the
+     "built" state on build completion, and "attempted" if the build
+     failed.  As before, "given-back" will be set for most other
+     failure conditions.
+
+* Major changes in 0.58.6:
+
+  None.
+
+* Major changes in 0.58.5:
+
+  None.
+
+* Major changes in 0.58.4:
+
+  None.
+
+* Major changes in 0.58.3:
+
+  1) The broken options --add-depends and --force-depends have been
+     replaced by --add-depends, --add-conflicts, --add-depends-indep
+     and --add-conflicts-indep.  These options each take a single
+     dependency, using the same dependency syntax one would use in
+     debian/control.
+
+  2) The wanna-build configuration has been moved back to
+     /etc/buildd/wanna-build.conf.  However, the option names have
+     been renamed and your configuration will require updating.
+
+  3) When reading configuration files, stricter checking is performed.
+     If you see a "Global symbol "$x" requires explicit package
+     name" error, then the option $x is not valid and should be
+     removed from the configuration file indicated.
+
+  4) The maintainer name no longer defaults to DEBEMAIL as in most
+     cases the maintainer in the .dsc should be used.
+
+* Major changes in 0.58.2:
+
+  None.
+
+* Major changes in 0.58.1:
+
+  None.
+
+* Major changes in 0.58.0:
+
+  1) The configuration option @no_auto_upgrade, which was no longer
+     used, has been removed.  To prevent packages being upgraded
+     automatically, please use sbuild-hold.  See sbuild-hold(1).
+
+  2) The configuration option $chroot_mode has been restored, allowing
+     chroot access by both schroot (which remains the default) and
+     sudo.
+
+  3) A new configuration option $chroot_split has been added.  This
+     allows both schroot and sudo chroot access to be modified to run
+     apt/dpkg on the host system.  Note that schroot needs sudo to run
+     commands as root on the host system.
+
+  4) Deprecated commands from /usr/lib/sbuild have been removed.
+     Please use the sbuild-* replacements found in /usr/bin.
+
+  5) The maintainer name defaults to DEBEMAIL if set in the
+     environment, so no longer needs setting explicitly in .sbuildrc.
+
+  6) Unless configured as a buildd ($sbuild_mode), when using sudo
+     chroot access, chroots are searched for in /etc/sbuild/chroots.
+     This directory should contain symlinks to the chroots, with the
+     distribution name being the name of the symlink.  Buildd mode
+     will continue to use the old method of current-$distribution
+     symlinks in the current directory.
+
+  7) The log format used for build logs has been updated to use a more
+     readable format, and is now encoded in UTF-8 rather than
+     US-ASCII.  Code which parses the log file may need to be updated
+     to handle the new format.  Further log format changes made in the
+     future.
+
+  8) All commands now have a corresponding manual page.
+
+  9) The wanna-build configuration has moved from
+     /etc/wanna-build/wanna-build.conf into /etc/sbuild/sbuild.conf as
+     part of ongoing refactoring work.  It is expected that this will
+     be split into a separate file in the future once this work is
+     completed.
+
+  10) wanna-build can now correctly dump and restore its databases
+      using the --export and --import options.  Note that
+      wanna-build-catmldbm and related commands can not correctly dump
+      the current database format, can not be used to restore the dump
+      and will be removed in the future.
+
+  11) The wanna-build commands do-merge-packages and do-merge-quinn
+      have been renamed to wanna-build-merge-packages and
+      wanna-build-merge-quinn.
+
+  12) wanna-build changes from the official Debian wanna-build
+      installation have been merged.
+
+  13) Initial support for a wanna-build PostgreSQL backend backend has
+      been added, but is not currently functional.  The database
+      schema is also included, but not yet finalised.
+
+* Major changes in 0.57.5:
+
+  1) sbuild-createchroot now supports most of the options found in
+     debootstrap.  It no longer adds main and contrib to
+     /etc/apt/sources.list in the chroot (the components are now
+     specified with --components instead of being hard-coded).
+
+  2) All sbuild commands now support --help and --version options.
+
+  3) sbuild-abort and sbuild have been updated to work with the
+     current dpkg-buildpackage and handle build termination
+     gracefully.
+
+* Major changes in 0.57.4:
+
+  None.
+
+* Major changes in 0.57.3:
+
+  None.
+
+* Major changes in 0.57.2:
+
+  1) The new dpkg source format is now supported.
+
+  2) The chroot to build in may be specified independently of the
+     distribution.
+
+  3) Purging of files in the chroot has been made more reliable, by
+     putting all of the build files in a single temporary directory
+     which is purged after the build completes.
+
+  4) $mailto no longer needs setting in .sbuildrc if not running as a
+     buildd.
+
+  5) An option to always update the APT package list has been added
+     ($apt_update in sbuild.conf).
+
+  6) wanna-build, the database used to track which packages need
+     rebuilding, has been added as a separate package.
+
+* Major changes in 0.57.1:
+
+  1) While not used in the Debian packaging, the buildd and
+     wanna-build sources have been merged from the separate buildd.git
+     repository.  They will be built as packages in a future release.
+
+  2) Helper scripts in the Debian package have been moved from
+     /usr/lib/sbuild back to /usr/share/sbuild, where they were
+     located prior to 0.57.0.
+
+  3) schroot "directory" type chroots are now purged correctly
+     following a package build.
+
+* Major changes in 0.57.0:
+
+  1) All programs have been moved from /usr/share/sbuild to /usr/bin
+     (with the exception of dobuildlog), with an sbuild- prefix.  In
+     some cases, the names have been changed.  The older programs are
+     still available under /usr/lib/sbuild.
+
+  2) All programs (with the exception of dobuildlog) now have manual
+     pages.
+
+  3) sbuild now runs apt-get with APT::Install-Recommends set to
+     false.
+
+  4) sbuild can be optionally configured to use an alternative
+     algorithm to compute build dependencies, to allow installation of
+     alternative build dependencies.
+
+  5) sbuild-createchroot (formerly buildd.chroot) now creates a fully
+     working chroot, with no manual setup required other than adding
+     the schroot configuration.

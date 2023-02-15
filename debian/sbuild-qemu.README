@@ -1,0 +1,10 @@
+README for sbuild-qemu
+======================
+
+Acceleration
+------------
+
+By adding the build user to the 'kvm' group, qemu-sbuild can operate with
+near-native performance on systems where KVM is supported.
+
+    $ sudo gpasswd -a <build-user> kvm

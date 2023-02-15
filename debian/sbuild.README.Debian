@@ -1,0 +1,55 @@
+sbuild for Debian
+-----------------
+
+Initial Setup
+=============
+
+The full procedure for setting up a chroot and setting up users is
+documented in sbuild-setup(7).  Existing users may need to review
+their setup, due to the removal of sudo support. (User setup, part 4).
+New users should use sbuild-createchroot(8) to set up a chroot, and
+sbuild-adduser(8) to add users.
+
+
+Chroots
+=======
+
+If you don't have an existing chroot, sbuild-createchroot(8) describes
+how to set one up.
+
+
+Helper scripts
+==============
+
+See sbuild-abort(1), sbuild-apt(1), sbuild-checkpackages(1),
+sbuild-hold(1), sbuild-stats(1), sbuild-update(1), and
+sbuild-upgrade(1).  These scripts were previously found in
+/usr/share/sbuild, which now contains symbolic links to the new
+scripts in /usr/bin.  The symbolic links will be removed following the
+release of Lenny.
+
+
+Extras
+======
+
+sbuild-stats
+------------
+sbuild will keep databases of the time and space that builds
+require if a couple files exist:
+
+  touch /var/lib/sbuild/avg-build-{times,space}
+  chmod 664 /var/lib/sbuild/avg-build-{times,space}
+  chgrp sbuild /var/lib/sbuild/avg-build-{times,space}
+
+These have limited usefulness outside buildd context.  See
+the sbuild-stats(1) man page for more info.
+
+
+
+An schroot chroot with the same name (or alias) as the distribution
+must be available.  For example, to build in an unstable chroot, the
+chroot must be named "sbuild-unstable" or "unstable" (in order of
+preference).
+
+
+ -- Roger Leigh <rleigh@debian.org>, Sat, 16 Aug 2008 16:05:55 +0100

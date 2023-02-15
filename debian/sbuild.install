@@ -1,0 +1,21 @@
+# sbuild*, but not sbuild-debian-developer-setup
+debian/tmp/etc/sbuild                          etc
+debian/tmp/usr/bin/sbuild                      usr/bin
+debian/tmp/usr/bin/sbuild-abort                usr/bin
+debian/tmp/usr/bin/sbuild-apt                  usr/bin
+debian/tmp/usr/bin/sbuild-checkpackages        usr/bin
+debian/tmp/usr/bin/sbuild-clean                usr/bin
+debian/tmp/usr/bin/sbuild-createchroot         usr/bin
+debian/tmp/usr/bin/sbuild-distupgrade          usr/bin
+debian/tmp/usr/bin/sbuild-hold                 usr/bin
+debian/tmp/usr/bin/sbuild-shell                usr/bin
+debian/tmp/usr/bin/sbuild-unhold               usr/bin
+debian/tmp/usr/bin/sbuild-update               usr/bin
+debian/tmp/usr/bin/sbuild-upgrade              usr/bin
+debian/tmp/usr/lib/apt/solvers/sbuild-cross-resolver usr/lib/apt/solvers
+debian/tmp/usr/sbin/sbuild-adduser             usr/sbin
+debian/tmp/usr/sbin/sbuild-destroychroot       usr/sbin
+debian/tmp/usr/share/doc/sbuild                usr/share/doc
+debian/tmp/usr/share/sbuild                    usr/share
+debian/tmp/var/lib/sbuild                      var/lib
+debian/tmp/var/lib/sbuild/apt-keys             var/lib/sbuild

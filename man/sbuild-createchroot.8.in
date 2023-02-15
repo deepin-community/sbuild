@@ -1,0 +1,366 @@
+.\" Copyright © 2005-2008  Roger Leigh <rleigh@debian.org>
+.\"
+.\" This program is free software: you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation, either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful, but
+.\" WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+.\" General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program.  If not, see
+.\" <http://www.gnu.org/licenses/>.
+.so defs.man
+.TH SBUILD\-CREATECHROOT 8 "\*[RELEASE_DATE]" "Version \*[VERSION]" "Debian sbuild"
+.SH NAME
+sbuild\-createchroot \- create sbuild chroot
+.SH SYNOPSIS
+.B sbuild\-createchroot
+.RB [ \-h \[or] \-\-help " \[or] " \-V \[or] \-\-version ]
+.RB [ \-\-verbose ]
+.RB [ \-\-arch=\fIarch\fP ]
+.RB [ \-\-chroot-prefix=\fIprefix\fP ]
+.RB [ \-\-chroot-suffix=\fIsuffix\fP ]
+.RB [ \-\-chroot-mode=\fIschroot|sudo|unshare\fP ]
+.RB [ \-\-foreign ]
+.RB [ \-\-resolve-deps " \[or] " \-\-no-resolve-deps ]
+.RB [ \-\-merged-usr " \[or] " \-\-no-merged-usr " \[or] " \-\-auto-merged-usr ]
+.RB [ \-\-keep-debootstrap-dir ]
+.RB [ \-\-debootstrap=\fIdebootstrap\fP ]
+.RB [ "\-\-include=\fIpackage1[,package2,[packagen]]\fP" ]
+.RB [ "\-\-exclude=\fIpackage1[,package2,[packagen]]\fP" ]
+.RB [ "\-\-components=\fIcomponent1[,component2,[componentn]]\fP" ]
+.RB [ "\-\-keyring=\fIkeyring-file\fP" ]
+.RB [ "\-\-setup\-only" ]
+.RB [ "\-\-make\-sbuild\-tarball=\fIfile\fP" ]
+.RB [ "\-\-keep\-sbuild\-chroot\-dir" ]
+.RB [ "\-\-no\-deb\-src" ]
+.RB [ "\-\-alias=\fIalias\fP" ]
+.RB [ \-\-extra\-repository=\fIspec\fP ]
+.RB [ "\-\-command\-prefix=\fIprefix\fP" ]
+.B SUITE TARGET-DIRECTORY [DEBIAN-MIRROR-URI
+.RB [ SCRIPT ]]
+.PP
+.B buildd\-create\-chroot
+.B USER SUITE TARGET-DIRECTORY [DEBIAN-MIRROR-URI]
+.SH DESCRIPTION
+\fBsbuild\-createchroot\fR runs
+.BR debootstrap (1)
+to create a chroot suitable for building packages with sbuild.  Note that while
+debootstrap may be used directly, sbuild\-createchroot performs additional
+setup tasks such as adding additional packages and configuring various files in
+the chroot.  Invoking sbuild\-createchroot is functionally equivalent to
+running \f[CB]debootstrap\ \-\-variant=buildd
+\-\-include=fakeroot,build\-essential\fP, then editing
+\fI/etc/apt/sources.list\fP and \fI/etc/hosts\fP by hand.
+.PP
+The newly-created chroot is set up to work with
+.BR schroot (1)
+by creating a chroot definition file under \fI/etc/schroot/chroot.d\fP.  This
+should be edited to finish the chroot configuration after
+sbuild\-createchroot has completed.
+.PP
+\fBbuildd\-create\-chroot\fP, like \fBsbuild\-createchroot\fR, runs
+.BR debootstrap (1)
+to create a chroot for package building.  However, this creates a chroot
+specifically for
+.BR buildd (1)
+with an additional mandatory option to specify a user who will be granted sudo
+access inside the chroot.  This script mainly differs in its additional
+customisation of \fI/etc/apt/sources.list\fP to use incoming.debian.org and
+security-master.debian.org.  It also removes some packages from the
+newly-created chroot.  Unless you are setting up an official Debian build
+daemon, \fBsbuild\-createchroot\fP should be used instead.  The extra
+functionality will be merged into \fBsbuild\-createchroot\fP in the future.
+.SH OPTIONS
+.SS Actions
+.TP
+.BR \-h ", " \-\-help
+Display this manual.
+.TP
+.BR \-V ", " \-\-version
+Print version information.
+.SS General options
+.TP
+.BR \-v ", " \-\-verbose
+Print all messages.
+.SS Debootstrap options
+Note that
+.BR debootstrap (1)
+is the canonical reference for the meaning of the options; they are passed
+directly to debootstrap.
+.TP
+.BR \-\-arch=\fIarch\fP
+Set the target architecture.  This may be used if dpkg is not already
+installed.  See also \fI\-\-foreign\fP, below.
+.TP
+.BR \-\-chroot-suffix=\fIsuffix\fP
+Add a custom suffix to the chroot name. Defaults to '\-sbuild'.
+.TP
+.BR \-\-chroot\-prefix=\fIprefix\fP
+Add a custom prefix to the chroot name. Defaults to SUITE.  This is useful to
+create variants of a base suite like stretch-backports to which the backports
+archive can be manually added after the base chroot was created using
+sbuild-shell. This way, a normal stretch chroot and a stretch-backports chroot
+can exist side-by-side.  Besides this common use case, this functionality can
+also be used to create chroots with any other type of customization. It is a
+shortcut for creating a base chroot and then having to manually copy it and
+edit the configuration files.
+.TP
+.BR \-\-chroot-mode=\fIschroot|sudo|unshare\fP
+The sbuild chroot backend to generate the chroot for. The autopkgtest backend
+is not supported by this method because of the diversity of container types it
+supports. To generate a chroot for schroot and sudo, sbuild-createchroot must
+be executed with superuser privileges (for example by using sudo). Because of
+backwards compatibility, choosing schroot implies sudo (but not the other way
+round). Choosing unshare requires the \fI\-\-make\-sbuild\-tarball\fP option.
+Creating a chroot for the unshare backend can be done by a normal user (without
+sudo) but it requires Linux user namespaces to be enabled (via "sysctl -w
+kernel.unprivileged_userns_clone=1"). Chroot tarballs created for the unshare
+backend are also compatible with the schroot backend if a respective schroot
+config file is manually created by the user or by running sbuild-createchroot
+with the  \fI--setup-only\fP option. Defaults to 'schroot'.
+.TP
+.BR \-\-foreign
+Only perform the initial unpack phase of bootstrapping.  This is required if
+the target and host architectures do not match.  Note that debootstrap requires
+running by hand to complete installation; run the debootstrap
+\fI/debootstrap/debootstrap\fP installed in \fITARGET-DIRECTORY\fP to complete
+the installation.
+.TP
+.BR \-\-resolve-deps
+Automatically resolve missing dependencies.  This is the default.
+.TP
+.BR \-\-no-resolve-deps
+Do not automatically resolve missing dependencies.
+.TP
+.BR \-\-keep-debootstrap-dir
+Don't delete the \fI/debootstrap\fP directory in \fITARGET-DIRECTORY\fP after
+completing the installation.
+.TP
+.BR \-\-debootstrap=\fIdebootstrap\fP
+Define a custom debootstrap variant. Defaults to 'debootstrap'.
+.TP
+.BR "\-\-include=\fIpackage1[,package2,[packagen]]\fP"
+Comma separated list of packages which will be added to the list of packages to
+download and extract.
+.TP
+.BR "\-\-exclude=\fIpackage1[,package2,[packagen]]\fP"
+Comma separated list of packages which will be removed from the list of
+packages to download and extract. Note that this can remove essential packages,
+so use with extreme care.
+.TP
+.BR "\-\-components=\fIcomponent1[,component2,[componentn]]\fP"
+Comma separated list of archive components to use (e.g. \[oq]main\[cq],
+\[oq]contrib\[cq], \[oq]non-free\[cq]).  Defaults to \[oq]main\[cq].
+.TP
+.BR "\-\-keyring=\fIkeyring-file\fP"
+Download signatures for retrieved \fIRelease\fP files and check them against
+\fIkeyring-file\fP.  By default \fI/etc/apt/trusted.gpg\fP is used.  Set to an
+empty string to disable signature checking.
+.TP
+.BR \-\-merged-usr
+Create a chroot in which \fI/bin\fP, \fI/sbin\fP and \fI/lib*\fP are
+symbolic links to their counterparts in \fI/usr\fP.
+.TP
+.BR \-\-no-merged-usr
+Create a chroot in which \fI/bin\fP, \fI/sbin\fP and \fI/lib*\fP are
+ordinary directories distinct from their counterparts in \fI/usr\fP.
+This is the default.
+.TP
+.BR \-\-auto-merged-usr
+Do not specify whether \fI/bin\fP, \fI/sbin\fP and \fI/lib*\fP are
+symbolic links to their counterparts in \fI/usr\fP. In this case
+debootstrap will use its default behaviour (which is suite-specific).
+This might become the default in a future version of sbuild-createchroot.
+.TP
+.B SUITE
+The distribution to bootstrap (e.g. \[oq]stretch[cq], \[oq]buster\[cq],
+\[oq]bullseye\[cq], \[oq]sid\[cq]).  A complete list may be found in
+\fI/usr/share/debootstrap/scripts\fP.
+.TP
+.B TARGET-DIRECTORY
+The directory to create the chroot in.  The directory will be created if it
+does not already exist.
+.TP
+.B DEBIAN-MIRROR-URI
+An \f[CR]http://\fP, \f[CR]file:///\fP, or \f[CR]ssh:///\fP URI
+pointing to a suitable archive mirror. Defaults to http://deb.debian.org/debian.
+.TP
+.B SCRIPT
+debootstrap script to run.  Not typically required.
+.SS sbuild\-createchroot behaviour
+.TP
+.BR "\-\-setup\-only"
+Don't run debootstrap.  Only perform the setup tasks on an already existing
+chroot.  This is useful for converting an existing chroot for use with sbuild
+which has already been created using a tool such as debootstrap.
+Some configuration steps can only be carried out on a directory chroot and
+thus, this option is not useful with the unshare backend.
+.TP
+.BR \-\-make\-sbuild\-tarball=\fIfile\fP
+Create a bootstrapped file type chroot ready for use with sbuild and save it as
+\fIfile\fP. The compression format used for the tarball is dependent on the file
+extension used in \fIfile\fP. See the \fBTARBALL FILE\fP section for more
+details.
+.TP
+.BR \-\-keep\-sbuild\-chroot\-dir
+Don't delete the directory used for creating a file type chroot. This option
+does nothing if not creating a file type chroot.
+.TP
+.BR \-\-no\-deb\-src
+Don't add a deb-src line to the \fI/etc/apt/sources.list\fP file in the
+\fITARGET-DIRECTORY\fP after the debootstrap process. This is useful in
+situation when it is known that sbuild will never have to download the source
+package itself but is always given an already downloaded dsc. In that case,
+this option will help to save bandwidth and disk space because the source
+indices don't have to be downloaded and later continually updated.
+.TP
+.BR \-\-alias=\fIalias\fP
+Add an alternative name that the chroot will be known by. This option can be
+given multiple times to add more than one alias. Using an alias is useful for
+chroots of distributions that are known by more than one name. For example
+Debian unstable is also known as sid. Additionally, sbuild chooses the
+distribution by the latest changelog entry which could list \fIUNRELEASED\fP
+for packages that the maintainer is currently working on. For Debian it thus
+makes sense to add \fIUNRELEASED\fP as an alias for a Debian unstable chroot.
+This option is only allowed when choosing \fI--chroot-mode=schroot\fP.
+For similar functionality with \fI--chroot-mode=unshare\fP you can work with
+symlinks.
+See the EXAMPLES section for how to use this option in practice.
+.TP
+.BR \-\-extra\-repository=\fIspec\fP
+Add a repository to the list of apt sources. The repository specification is a
+line suitable for an apt
+.BR sources.list (5)
+file. For instance, you might use
+.nh
+.B \-\-extra\-repository="deb http://deb.debian.org/debian experimental main"
+.hy
+to allow packages in the experimental distribution to fulfill
+build-dependencies. Note that the build chroot must already trust the key of
+this repository. See the EXAMPLES section for how to combine this option with
+--chroot-prefix and --alias.
+.TP
+.BR \-\-command\-prefix=\fIprefix\fP
+Set the chroot \fIcommand-prefix\fP option as specified. A common use-case is
+to specify eatmydata, thereby preventing all commands executed in the chroot
+from syncing data to disk. This option is only allowed when choosing
+\fI--chroot-mode=schroot\fP. See
+.BR schroot.conf (5)
+for more details.
+.SH TARBALL FILE
+When creating an sbuild tarball \fIfile\fP, the compression format used to
+generate the tarball depends on the entension used in \fIfile\fP. Here is a
+listing of the extensions that will be detected and what format the tarball will
+be generated as.
+.TP
+.BR *.tar
+Generates an uncompressed tarball.
+.TP
+.BR *.tar.gz|*.tgz
+Generates a compressed tarball using gzip.
+.TP
+.BR *.tar.bz2|*.tbz
+Generates a compressed tarball using bzip2.
+.TP
+.BR *.tar.lz|*.tlz
+Generates a compressed tarball using lzip.
+.TP
+.BR *.tar.xz|*.txz
+Generates a compressed tarball using xz.
+.PP
+If no extension is specified, sbuild\-createchroot will rename \fIfile\fP to
+\fIfile.tar.gz\fP and generate \fIfile.tar.gz\fP as a compressed tarball using gzip.
+.SH EXAMPLES
+To create a bootstrapped file type sid (unstable) chroot ready for use with
+sbuild and schroot (the default backend), saved in
+\fI/srv/chroot/unstable-amd64.tar.gz\fP using the
+\fIdeb.debian.org\fP Debian http mirror redirector service and using a
+temporary directory as the target:
+.PP
+\f[CR]% \f[CB]sudo sbuild\-createchroot \fP\fP\\
+.br
+    \-\-make\-sbuild\-tarball=/srv/chroot/unstable-amd64.tar.gz \fP\fP\\
+.br
+    unstable `mktemp \-d` \fP\fP\\
+.br
+\f[CB]    http://deb.debian.org/debian\fP\[CR]
+.PP
+To create a plain type sid (unstable) schroot chroot in
+\fI/srv/chroot/unstable\fP using the \fIdeb.debian.org\fP Debian http
+mirror redirector service and with aliases for \fIunstable\fP and
+\fIUNRELEASED\fP:
+.PP
+\f[CR]% \f[CB]sudo sbuild\-createchroot unstable /srv/chroot/unstable-amd64 \fP\fP\\
+.br
+    \-\-alias=sid \-\-alias=UNRELEASED \fP\fP\\
+.br
+\f[CB]    http://deb.debian.org/debian\fP\[CR]
+.PP
+To create a schroot chroot to build for stretch backports:
+.PP
+\f[CR]% \f[CB]sudo sbuild\-createchroot \fP\fP\\
+.br
+    \-\-extra\-repository="deb http://deb.debian.org/debian stretch-backports main" \fP\fP\\
+.br
+    \-\-chroot-prefix=stretch-backports \fP\fP\\
+.br
+    stretch /srv/chroot/stretch-backports-amd64 \fP\fP\\
+.br
+\f[CB]    http://deb.debian.org/debian\fP\[CR]
+.PP
+To create a schroot chroot to build for experimental using a custom chroot prefix:
+.PP
+\f[CR]% \f[CB]sudo sbuild\-createchroot \fP\fP\\
+.br
+    \-\-extra\-repository="deb http://deb.debian.org/debian experimental main" \fP\fP\\
+.br
+    \-\-chroot-prefix=experimental \fP\fP\\
+.br
+    unstable /srv/chroot/unstable-experimental-amd64 \fP\fP\\
+.br
+\f[CB]    http://deb.debian.org/debian\fP\[CR]
+.PP
+Creating a chroot for the unshare backend does not require superuser privileges
+(no sudo). The path for the tarball is the default path expected by sbuild for
+the unshare backend:
+.PP
+\f[CR]% \f[CB]sbuild-createchroot --chroot-mode=unshare \\
+.br
+    --make-sbuild-tarball ~/.cache/sbuild/unstable-amd64.tar.gz \\
+.br
+    unstable `mktemp -d` http://deb.debian.org/debian/ \\
+.PP
+.SH HISTORY
+sbuild\-createchroot was previously known as \fBbuildd.chroot\fP.
+buildd.chroot performed exactly the same tasks, but additionally created a
+number of directories in the chroot for use by sbuild.  This is now done by
+.BR schroot (1).
+.SH AUTHORS
+.nf
+Roger Leigh.
+Francesco P. Lovergine.
+Andres Mejia.
+.fi
+.SH COPYRIGHT
+.nf
+Copyright \[co] 2004 Francesco P. Lovergine <frankie@debian.org>.
+Copyright \[co] 2007\-2008 Roger Leigh <rleigh@debian.org>.
+Copyright \[co] 2010 Andres Mejia <mcitadel@gmail.com>.
+.fi
+.SH "SEE ALSO"
+.BR debootstrap (8),
+.BR schroot (1),
+.BR sbuild (1),
+.BR sbuild\-setup (7).
+.\"#
+.\"# The following sets edit modes for GNU EMACS
+.\"# Local Variables:
+.\"# mode:nroff
+.\"# fill-column:79
+.\"# End:
+

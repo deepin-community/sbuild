@@ -1,0 +1,82 @@
+#!/usr/bin/perl -w
+#
+# Copyright © 2006-2008 Roger Leigh <rleigh@debian.org>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see
+# <http://www.gnu.org/licenses/>.
+#
+#######################################################################
+
+use strict;
+use warnings;
+
+package main;
+
+use Getopt::Long;
+use Sbuild qw(help_text version_text usage_error);
+use Sbuild::Conf qw();
+use Sbuild::OptionsBase;
+
+my $conf = Sbuild::Conf::new();
+exit 1 if !defined($conf);
+my $options = Sbuild::OptionsBase->new($conf, "sbuild-adduser", "8");
+exit 1 if !defined($options);
+
+usage_error("sbuild-adduser", "Incorrect number of options") if (@ARGV < 1);
+
+my $status = 0;
+
+foreach (@ARGV) {
+    my $user = getpwnam($_);
+
+    if (defined $user) {
+	$status += system(qw(/usr/sbin/adduser --), $_, 'sbuild');
+    } else {
+	print STDERR "W: User \"$_\" does not exist\n";
+	$status++;
+    }
+}
+
+if ($status == 0) {
+    print STDOUT <<EOF;
+
+# Setup tasks for sudo users:
+
+# BUILD
+# HOME directory in chroot, user:sbuild, 0770 perms, from
+# passwd/group copying to chroot, filtered
+# Maybe source 50sbuild, or move into common location.
+
+Next, copy the example sbuildrc file to the home directory of each user and
+set the variables for your system:
+
+EOF
+
+    foreach (@ARGV) {
+	my $home = (getpwnam($_))[7];
+	print STDERR "  cp /usr/share/doc/sbuild/examples/example.sbuildrc $home/.sbuildrc\n";
+    }
+    print STDOUT <<EOF;
+
+Now try a build:
+
+  cd /path/to/source
+  sbuild-update -ud <distribution>
+  (or "sbuild-apt <distribution> apt-get -f install"
+       first if the chroot is broken)
+  sbuild -d <distribution> <package>_<version>
+EOF
+}
+
+exit ($status ? 1:0);

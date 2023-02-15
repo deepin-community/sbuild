@@ -1,0 +1,69 @@
+#!/usr/bin/perl -w
+#
+# Copyright © 2006-2008 Roger Leigh <rleigh@debian.org>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see
+# <http://www.gnu.org/licenses/>.
+#
+#######################################################################
+
+use strict;
+use warnings;
+
+use Getopt::Long;
+use Sbuild qw(help_text version_text usage_error check_group_membership);
+use Sbuild::Utility qw(setup cleanup);
+use Sbuild::Conf qw();
+use Sbuild::OptionsBase;
+use Sbuild::AptResolver;
+use Sbuild::ChrootRoot;
+
+my $conf = Sbuild::Conf::new();
+exit 1 if !defined($conf);
+my $options = Sbuild::OptionsBase->new($conf, "sbuild-apt", "1");
+exit 1 if !defined($options);
+check_group_membership();
+
+usage_error("sbuild-apt", "Incorrect number of options") if (@ARGV < 2);
+
+my $chroot = shift @ARGV;
+my $command = shift @ARGV;
+
+if ($command eq "apt-get") {
+    $command = $conf->get('APT_GET');
+} elsif ($command eq "apt-cache") {
+    $command = $conf->get('APT_CACHE');
+} else {
+    usage_error("sbuild-apt",
+		"Bad command $command.  Allowed commands: apt-get or apt-cache\n");
+}
+
+my $session = setup('source', $chroot, $conf) or die "Chroot setup failed";
+my $host = Sbuild::ChrootRoot->new($conf);
+$host->begin_session() or die "Chroot setup (host) failed";
+
+my $resolver = Sbuild::AptResolver->new($conf, $session, $host);
+$resolver->setup();
+
+$resolver->run_apt_command(
+    { COMMAND => [$command, '-oAPT::Get::Assume-Yes=true', @ARGV],
+      ENV => {'DEBIAN_FRONTEND' => 'noninteractive'},
+      USER => 'root',
+      PRIORITY => 1,
+      DIR => '/' });
+my $status = $? >> 8;
+
+cleanup($conf);
+
+exit $status;

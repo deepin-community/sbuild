@@ -1,0 +1,181 @@
+#!/usr/bin/perl
+#
+# Destroy a chroot created by sbuild-createchroot
+#
+# Copyright © 2016 Johannes Schauer Marin Rodrigues <josch@debian.org>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see
+# <http://www.gnu.org/licenses/>.
+#
+#######################################################################
+
+use strict;
+use warnings;
+
+package Conf;
+
+sub setup {
+    my $conf = shift;
+
+    my %destroychroot_keys = (
+	'CHROOT_SUFFIX'				=> {
+	    DEFAULT => '-sbuild'
+	},
+    );
+
+    $conf->set_allowed_keys(\%destroychroot_keys);
+}
+
+
+package Options;
+
+use Sbuild::OptionsBase;
+use Sbuild::Conf qw();
+
+BEGIN {
+    use Exporter ();
+    our (@ISA, @EXPORT);
+
+    @ISA = qw(Exporter Sbuild::OptionsBase);
+
+    @EXPORT = qw();
+}
+
+sub set_options {
+    my $self = shift;
+
+    $self->add_options(
+	"chroot-suffix=s" => sub {
+	    $self->set_conf('CHROOT_SUFFIX', $_[1]);
+	},
+	"arch=s" => sub {
+	    $self->set_conf('BUILD_ARCH', $_[1]);
+	},
+    );
+}
+
+package main;
+
+use POSIX;
+use Getopt::Long qw(:config no_ignore_case auto_abbrev gnu_getopt);
+use Sbuild qw(usage_error);
+use Sbuild::Utility;
+use Sbuild::ChrootInfoSchroot;
+
+my $conf = Sbuild::Conf::new();
+Conf::setup($conf);
+exit 1 if !defined($conf);
+my $options = Options->new($conf, "sbuild-destroychroot", "8");
+exit 1 if !defined($options);
+
+usage_error("sbuild-destroychroot",
+	    "Incorrect number of options") if (scalar @ARGV != 1);
+
+my $chroot = Sbuild::Utility::get_dist($ARGV[0]);
+
+my $chroot_info = Sbuild::ChrootInfoSchroot->new($conf);
+my $session = $chroot_info->create("source",
+    $chroot,
+    undef, # TODO: Add --chroot option
+    $conf->get('BUILD_ARCH'));
+
+if (!defined $session) {
+    die "Error creating chroot info\n";
+}
+
+my $chroot_id = $session->get('Chroot ID');
+
+$chroot_id =~ s/^source://;
+
+opendir my $dir, "/etc/schroot/chroot.d" or die "Cannot open /etc/schroot/chroot.d: $!";
+my @files = readdir $dir;
+closedir $dir;
+
+my $config_path;
+foreach my $file (@files) {
+    my $ininame = "/etc/schroot/chroot.d/$file";
+    -f $ininame || next;
+    open F, $ininame or die "cannot open $ininame\n";
+    my $firstline = <F>;
+    chomp $firstline;
+    close F;
+    $firstline eq "[$chroot_id]" || next;
+    $config_path = $ininame;
+    last;
+}
+
+if (! defined $config_path) {
+    die "Cannot find configuration file for $chroot_id in /etc/schroot/chroot.d\n";
+}
+
+my $chroot_type;
+my $chroot_path;
+open F, $config_path or die "cannot open $config_path\n";
+while (<F>) {
+    if (/^type=(.*)/) {
+	$chroot_type = $1;
+    }
+    if (/^directory=(.*)/) {
+	$chroot_path = $1;
+    }
+    if (/^file=(.*)/) {
+	$chroot_path = $1;
+    }
+}
+close F;
+
+if (! defined $chroot_type) {
+    die "type key missing from config\n";
+}
+
+if (! defined $chroot_path) {
+    die "directory or file key missing from config\n";
+}
+
+if ($chroot_type ne "file" && $chroot_type ne "directory") {
+    die "unknown chroot type: $chroot_type\n";
+}
+
+print "Before deleting the chroot, make sure that it is not in use anymore.\n";
+print "Specifically, make sure that no open schroot session is using it\n";
+print "anymore by running:\n";
+print "\n";
+print "    schroot --all-sessions --list\n";
+print "\n";
+if ($chroot_type eq "directory") {
+    print "Make sure that no other process is using the chroot directory anymore, \n";
+    print "for example by running:\n";
+    print "\n";
+    print "    lsof $chroot_path\n";
+    print "\n";
+    print "Delete the chroot, for example by running:\n";
+    print "\n";
+    print "    rm --recursive --one-file-system $chroot_path\n";
+    print "\n";
+    if (-e "$Sbuild::Sysconfig::paths{'SBUILD_SYSCONF_DIR'}/chroot/$chroot") {
+        print "Delete the chroot link, for example by running:\n";
+        print "\n";
+        print "    rm $Sbuild::Sysconfig::paths{'SBUILD_SYSCONF_DIR'}/chroot/$chroot\n";
+        print "\n";
+    }
+} else {
+    print "Delete the tarball, for example by running:\n";
+    print "\n";
+    print "    rm $chroot_path\n";
+    print "\n";
+}
+print "Finally, delete the schroot configuration file, for example by running:\n";
+print "\n";
+print "    rm $config_path\n";
+print "\n";

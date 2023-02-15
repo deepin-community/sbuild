@@ -1,0 +1,68 @@
+.\" Copyright © 2020-2022   Christian Kastner <ckk@debian.org>
+.\"
+.\" This program is free software: you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation, either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful, but
+.\" WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+.\" General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program.  If not, see
+.\" <http://www.gnu.org/licenses/>.
+.so defs.man
+.TH SBUILD\-QEMU\-UPDATE "1" "\*[RELEASE_DATE]" "Version \*[VERSION]" "Debian sbuild"
+.SH NAME
+sbuild\-qemu\-update \- sbuild\-update analog for QEMU images
+.SH SYNOPSIS
+.B sbuild\-qemu\-update
+.RB [ \-h ]
+.RB [ \-\-snapshot ]
+.RB [ \-\-arch=ARCH ]
+.RB [ \-\-noexec ]
+.RB IMAGE
+.SH DESCRIPTION
+\fBsbuild\-qemu\-update\fR boots a QEMU VM using \fBIMAGE\fR and then runs
+\fBapt-get\fR in it, performing \fBupdate\fR, \fBdist-upgrade\fR, \fBclean\fR
+and \fBautoremove\fR. It can optionally create a snapshot before updating.
+.PP
+The architecture is auto-guessed by stripping any file suffix and then
+splitting the image name on dashes ``\-'', and finally by looking for a Debian
+architecture name. \fIsid-amd64.img\fR, \fIamd64-temporary.image\fR or even
+just \fIamd64\fR would all be assumed to be amd64 images, but not
+\fIamd64.rebuild-tests.img\fR. If this guesses wrong, use the
+\fB\-\-arch\fR option.
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Show this help message and exit.
+.TP
+\fB\-\-snapshot\fR
+Create a snapshot of the image before changing it. Useful for
+reproducibility purposes.
+.TP
+\fB\-\-arch\fR=ARCH
+Architecture to use (instead of attempting to auto\-guess).
+.TP
+\fB\-\-noexec\fR
+Don't actually do anything. Just print the command string that
+would be executed, and then exit.
+.SH EXAMPLES
+\fB$ sbuild\-qemu\-update unstable\-autopkgtest\-amd64.img\fR
+.PP
+This will update the image \fBunstable\-autopkgtest\-amd64.img\fR in
+the current directory. If no such file exists there, then 
+\fB$IMAGEDIR/unstable\-autopkgtest\-amd64.img\fR is tried.
+.SH ENVIRONMENT
+If \fB$IMAGEDIR\fR is unset, then \fI~/.cache/sbuild\fR is used.
+.SH COPYRIGHT
+.nf
+Copyright \[co] 2020-2022 Christian Kastner <ckk@debian.org>
+.fi
+.SH "SEE ALSO"
+.BR sbuild (1),
+.BR sbuild\-qemu (1),
+.BR sbuild\-qemu\-create (1).

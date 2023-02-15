@@ -1,0 +1,294 @@
+#!/bin/sh
+#
+# This script tests whether sbuild can work with a very minimal chroot (only
+# build-essential and apt), whether unshare mode works and whether signing
+# works.
+#
+# After bugs #977674 and #981021 are fixed, also test --source-only-changes
+
+set -exu
+
+if [ -z ${AUTOPKGTEST_TMP+x} ]; then
+	echo "AUTOPKGTEST_TMP is unset" >&2;
+	exit 1
+fi
+
+release=$(./debian/tests/get_default_release.py)
+if [ -z "$release" ]; then
+	echo "cannot get default release" >&2
+	exit 1
+fi
+nativearch=$(dpkg --print-architecture)
+
+mkdir -p "${AUTOPKGTEST_TMP}/gpghome"
+chmod 700 "${AUTOPKGTEST_TMP}/gpghome"
+export GNUPGHOME="${AUTOPKGTEST_TMP}/gpghome"
+
+verify_orig() {
+	echo "verifying test-pkg_1.0.tar.xz" >&2
+cat << END | base64 -d | xz -cd > "${AUTOPKGTEST_TMP}/expected"
+/Td6WFoAAATm1rRGAgAhARYAAAB0L+Wj4Cf/BBZdADoZSs4dfiUjFYSOxzYxnd+/m6AlVEVOGf2j
+nT6NK0F9XZ7LLydbY3I//WjMOM2RFpGUqZ8R8Q8lLmydB5SLN5ZQSPW3OJjHlzxVQmv2v3KUyPxo
+V5uvr2rp1j0gfmjB4O+m6SMxUWGmCOp3mrA13iUy99dt9OK9tRQagXItob106li/2LWmOsXR3/5M
+8m/JLF/6KIaYolPsvzut8mTFmik8s22eXjugZufC7CQwXJ7KVb8/LPYgLzHo8tKwkrieBonYFwD+
+R17Q1wsK/wbdQCw78oh4JrairZPz0NY1WsY/6GXQZOeo0Wl3dgG0PmrQtgPH133asZz5XgrtfDwU
+KqaSBmKWIGrht7IqByDr5Bf+XyzpU9vwiE30hIVmvzCQDnNIrcaO5wZJQgujJreb4k1BKKmZJ4dT
+B46ae4yTd8zLLGH7YwFWk145SHCQJOBakSuVGjej3zElgoNsTwYTAK5J3wQX/BEszByCX+5AKUP3
+v4ZGs1oyM65MyvWjQNqYmMYK2juki3pvUV+d+XhR7S3wrmLuq5P2PHAU6chrOs+n9HewOOE//L6O
+gq5jJFLEtMRzAXUSpKERHuwdzt0MfiKSWDfeqRUy5Pfoh+pNrpYdA/jsiH37EhzSR3evlu92fwVP
+gTO+5GV7wgpDvI24RMwTK5oXtcJHShfeBe61HUHF/BIDx1hbuV2SjMoYVT8Q3A09bdpEjI7tqyfM
+evjoP8WJ3fGJfj02LBCQF2Rzp7rOSWjjFfpTaepgIBfuU9BBJ6VecWgsidQ/kJSyL2+ZQ9EFTUET
+YU4/yQ7G+GDJFNij3h0vSuhc2zblAmUvfWNpzZUWORDZhJCIGQnczbbEhzuCILGsnq/8Rw48mMun
+jKxq2HbQrl50uPSnYu94sgaSq9ev3ZXA/ORE9wxzK74nBnurW8KGcUbZyLv0JdBF99d8QdCD50u/
+8JuSVlMB7RBQkH6azuMlObRnPmi1dnUKUwAK3HSSSlxyELIGRgj4dm6BHhtFdTsKDziaNUeE5Cna
+lj7rmf50f/N9LR6HX/+8vtEk7J+R4uLoSlAYi1UUHICfsGeItmOWneGZZ1mEsmhVIRw0YMg1qrgo
+Ngl1nOQuSoqplYrbmxdCw4oduvYB3OgXfcLOcUAc+1WDN5Dmqh6gwxKX8HOm0I38EwPVc9qD0hxR
+Y38ZubJeYl1QScQZndB7mlN5FBaMZTDJfuPbnwykozxXl76gPtZLO2CFcTnL2kvT/40ydjxwXGpA
+hGY9jQZg/RJY+A49vQTPzt87LF8IOdmecD4cNYHyLIOZ8rTlNVWMZ+M7JSu8UhWWGG9jrQ0IVIi9
+HHF+p/1uF4uIAuk/Y8D2ZKB+C3sTI/A47u58/zG6hpHuZbkUJ2qVEIqSBVZhSEuJoaAAAAAAwt/l
+WjS+6mMAAbIIgFAAAOm1wiWxxGf7AgAAAAAEWVo=
+END
+	xz -cd < "${AUTOPKGTEST_TMP}/test-pkg_1.0.tar.xz" > "${AUTOPKGTEST_TMP}/test-pkg_1.0.tar"
+	diffoscope "${AUTOPKGTEST_TMP}/expected" "${AUTOPKGTEST_TMP}/test-pkg_1.0.tar"
+	rm "${AUTOPKGTEST_TMP}/expected" "${AUTOPKGTEST_TMP}/test-pkg_1.0.tar"
+}
+
+verify_deb() {
+	echo "verifying test-pkg_1.0_all.deb" >&2
+	data_tar=$(ar t "${AUTOPKGTEST_TMP}/test-pkg_1.0_all.deb" | grep "^data\.tar\.")
+	case "$data_tar" in
+		data.tar.xz)
+cat << END | base64 -d > "${AUTOPKGTEST_TMP}/expected"
+ITxhcmNoPgpkZWJpYW4tYmluYXJ5ICAgMTQ2NzMxMDUxMiAgMCAgICAgMCAgICAgMTAwNjQ0ICA0
+ICAgICAgICAgYAoyLjAKY29udHJvbC50YXIueHogIDE0NjczMTA1MTIgIDAgICAgIDAgICAgIDEw
+MDY0NCAgNDYwICAgICAgIGAK/Td6WFoAAATm1rRGBMCLA4BQIQEWAAAAAAAAABDCPtjgJ/8Bg10A
+Fwu8HH0BlcAdSj55FcLMJqNUbvT+gy5sC9KUdfhWlMfx+HFB6yCe/fISQhBljyagwzHK2z0fjzyl
+9Q5RM24IJQO/ldGzSmZVQWpU6KVdaPbRDHZuPdcqnL6anvCMgysm5qSPjjXVOwMVwj6jVZ5T2sCV
+Fd/tSdNnW1XFUQn9644MqVzknw4SL9DaLW7i3+zDmOmKLa1uyfXLuKVwGKiN/XsSDaT3B5SeuLIF
+zwuAJSCguYhU4uMPUxWJnyNUaQwmnOO3Xd+TOkvIqqSrdnOHGqbp12kRpSDYAwHfpmldwagZ/ASu
+HwJhd7Lk9pL1pNzWZazJ9RoCkHx449h6+exGzkVLLw7R+Exmp1O27wZC9/RuDyQE0JOY4Y1jGp1A
+fH5U9xynjVoRrP5/hETw+GrGZoDShN8D/Z7rG5ICtTEqnspW6LWJLCDwndpz6OplHPZTDKckJYp7
+U6sXoF5ISdBIUEAc7XBEN61AQTJnfZ6L8d4L87WDLz5bFzwsk3o7cl5PzAXsAAAwfo4j+rTojAAB
+pwOAUAAA0BcJAbHEZ/sCAAAAAARZWmRhdGEudGFyLnh6ICAgICAxNDY3MzEwNTEyICAwICAgICAw
+ICAgICAxMDA2NDQgIDE2OCAgICAgICBgCv03elhaAAAE5ta0RgTAZ4BQIQEWAAAAAAAAAAA01v2+
+4Cf/AF9dABcLvBx9AZXAHUo+eRXCzCajVG70/oMubAvSlHX4VpTH8fhxQesgnv3yEkIQZY8moMMx
+yts9NQ8iYiRRZoI1x3LfpWOmroELBNZOWKNu6b83Vt4bhMs3qreRNcwuusQAAADYvYvhx4Mp4gAB
+gwGAUAAAkAP057HEZ/sCAAAAAARZWg==
+END
+			;;
+		data.tar.zst)
+cat << END | base64 -d > "${AUTOPKGTEST_TMP}/expected"
+ITxhcmNoPgpkZWJpYW4tYmluYXJ5ICAgMTQ2NzMxMDUxMiAgMCAgICAgMCAgICAgMTAwNjQ0ICA0
+ICAgICAgICAgYAoyLjAKY29udHJvbC50YXIuenN0IDE0NjczMTA1MTIgIDAgICAgIDAgICAgIDEw
+MDY0NCAgMzUzICAgICAgIGAKKLUv/QBoxQoARhM8I0CJOAcb48sCWwjai6bSHX+FHGgAleqQ7Qv9
+Vh+TxyhuursDNAA0ADEAHbUP6ZSPlgvla0kklqVxGoXCecsNtyGS1bu8fs6O1Wq+FOZ5HEdxmCbx
+MMtSVtM8ykIkAYyDpB2hAROYeBOYLlIpidRAwCPk0nNVFA+xNnR5wN5LrrppO0djAqYkyyG4LrIm
+sOlBHQLbZ9L1kY3nHe0UDhA1LsUV9Qm6ibfxfHQOhLM7blEL2EtqDzG043W8YFPFYMwhbXABiyWN
+vUaoEXKY7axSKl87WS9oX1+U1cvIX1bd8grZ+LitI+qeRt+G7r1THe0BKSCAZsaKFwOHAnO/Y4GM
+gAIBDCtw5x2uGDPaChGsyIVKxs5Sh1w5mIL1OjNKY+M7NlYpw8Jc1gtIDkHYPtptOJOCbkDqDGiw
+1Kjs3OJ4QJM8TXcwWGN/AMn35Y6FJAhTAeaTcwMKZGF0YS50YXIuenN0ICAgIDE0NjczMTA1MTIg
+IDAgICAgIDAgICAgIDEwMDY0NCAgNzcgICAgICAgIGAKKLUv/QBoJQIAlAIuLwAwNzU1ADAAMTI3
+MzUyNjA2Njc3MjAAIDUAdXN0YXIgIAByb290AAogIDH1zwYcBgzI/sCTr+VhgQQwBTCfhBsK
+END
+			;;
+		*)
+			echo "Unrecognized deb data archive format" >&2
+			return 1
+			;;
+	esac
+	diffoscope "${AUTOPKGTEST_TMP}/expected" "${AUTOPKGTEST_TMP}/test-pkg_1.0_all.deb"
+	rm "${AUTOPKGTEST_TMP}/expected"
+}
+
+verify_dsc() {
+	# we shouldn't have to manually pass the keyring because the path is an
+	# implementation detail of gnupg (it used to be named pubring.gpg in
+	# the past) but dscverify ignores GNUPGHOME, see Debian bug #981008
+	echo "verifying test-pkg_1.0.dsc" >&2
+	dscverify --keyring="${AUTOPKGTEST_TMP}/gpghome/pubring.kbx" \
+		"${AUTOPKGTEST_TMP}/test-pkg_1.0.dsc"
+}
+
+verify_bin_changes() {
+	echo "verifying test-pkg_1.0_${nativearch}.changes" >&2
+	dscverify --keyring="${AUTOPKGTEST_TMP}/gpghome/pubring.kbx" \
+		"${AUTOPKGTEST_TMP}/test-pkg_1.0_${nativearch}.changes"
+}
+
+verify_src_changes() {
+	echo "verifying test-pkg_1.0_source.changes" >&2
+	dscverify --keyring="${AUTOPKGTEST_TMP}/gpghome/pubring.kbx" \
+		"${AUTOPKGTEST_TMP}/test-pkg_1.0_source.changes"
+}
+
+verify() {
+	for thing in "$@"; do
+		"verify_$thing"
+	done
+	# remove verified files, so that we make sure not to accidentally
+	# verify anything from an earlier build
+	rm "${AUTOPKGTEST_TMP}/test-pkg_1.0_all.deb" \
+		"${AUTOPKGTEST_TMP}/test-pkg_1.0.tar.xz" \
+		"${AUTOPKGTEST_TMP}/test-pkg_1.0.dsc"
+	rm -f "${AUTOPKGTEST_TMP}/test-pkg_1.0_${nativearch}.changes" \
+		"${AUTOPKGTEST_TMP}/test-pkg_1.0_source.changes" \
+		"${AUTOPKGTEST_TMP}/test-pkg_1.0_${nativearch}.buildinfo" \
+		"${AUTOPKGTEST_TMP}/test-pkg_1.0_source.buildinfo"
+}
+
+
+# FIXME: generate a key without expiry date
+cat << END | gpg --batch --allow-secret-key-import --import -
+-----BEGIN PGP PRIVATE KEY BLOCK-----
+
+xVgEYA6+IBYJKwYBBAHaRw8BAQdAM1MKmD3Qm9XwkCv40xOUt1KTLL3nQ2NYfl6B
+n+LOdLMAAQCkkntzWSe/Xsij3RSijtv+SJclZ+8O4p8MzZV66OgabBFOwsARBB8W
+CgCDBYJgDr4gBYkFn6YAAwsJBwkQ8I/4RUH1oMBHFAAAAAAAHgAgc2FsdEBub3Rh
+dGlvbnMuc2VxdW9pYS1wZ3Aub3Jnol5Qc4phlxfxrTOrw9UQlS20xKwlATRTr8Jb
+7ZBPjyoDFQoIApsBAh4BFiEEYTotuR/zjHkQhq+U8I/4RUH1oMAAAAejAP9TNbf+
+KGB7pwj7igR7xB9fag1mW4rS66m6urmHUaxv8wEApQtzmbw2gZDcdR/8k85XfzOE
+iTwx3rJ6dek4INyeSQLNL3NidWlsZCBmYWtlIHVwbG9hZGVyIDxmYWtlLXVwbG9h
+ZGVyQGRlYmlhbi5vcmc+wsAUBBMWCgCGBYJgDr4gBYkFn6YAAwsJBwkQ8I/4RUH1
+oMBHFAAAAAAAHgAgc2FsdEBub3RhdGlvbnMuc2VxdW9pYS1wZ3Aub3JnF63kQ2as
+sxKVvMSZGTzDgQlwrZMmRnyNf8L57pvR2AUDFQoIApkBApsBAh4BFiEEYTotuR/z
+jHkQhq+U8I/4RUH1oMAAAC9hAQD0DitVEsSsa88L7e53iRtxNUS4ps8K6o5Tp1aX
+8NzjMQEAqD53s2ICMBhQ8J7ub3jMeuthvyImBrdN65/4+gVWxwXHWARgDr4gFgkr
+BgEEAdpHDwEBB0BNjjq4aQ/7iTf/mRfi3Bi2V8hGf5BiDd7D0QkQlNptEwABAIvV
+ziS+mxfuZXfBoT7tjeaiVS0cfnUhiz757pFsp8JREUjCwMgEGBYKAToFgmAOviAF
+iQWfpgAJEPCP+EVB9aDARxQAAAAAAB4AIHNhbHRAbm90YXRpb25zLnNlcXVvaWEt
+cGdwLm9yZ8rIdP9aihzTjSrWOpTSuGXz3YmXKV46r4FHEm3IGXTuApsCAh4BvqAE
+GRYKAG8FgmAOviAJEKQXmx3WngHdRxQAAAAAAB4AIHNhbHRAbm90YXRpb25zLnNl
+cXVvaWEtcGdwLm9yZ98fe0i9BRZ7Vha10pZ933EtISKJja+B0Mi+3h+CNHwvFiEE
+/l9vBfi0bJJ8ahzwpBebHdaeAd0AAB+eAP9fO95YdZmmbD0PQ4IExYSbw77eQwM8
++bRlCb3NnhIlnwD9H1cPlpZlyESBTgYbJ+HiEtIYAfb+j/UYrMLFUEusqAgWIQRh
+Oi25H/OMeRCGr5Twj/hFQfWgwAAA70kBAIMo8zmQnm3dikMTIN1TMq1jL9Scb2eu
+3NTkHwfszJs8AP44F9+fndFRJdHgLABrbz8q2JnBCtJTOjp+I5YcKzhbA8ddBGAO
+viASCisGAQQBl1UBBQEBB0BkyOEsAvMt8QIFlQ2wdC9X5QT/PdTyHgrAT6RZ8mzW
+IAMBCAkAAP9r1GpEGNkv+/S2FNjYRT3YJW04OiTJD+ubMfNHqL9ieBEBwsAJBBgW
+CgB7BYJgDr4gBYkFn6YACRDwj/hFQfWgwEcUAAAAAAAeACBzYWx0QG5vdGF0aW9u
+cy5zZXF1b2lhLXBncC5vcmfFtzHBSr/u6zZM60iohrfYWWunv8HzyxJV7f/9GROX
+fQKbDAIeARYhBGE6Lbkf84x5EIavlPCP+EVB9aDAAAA42AEA2usL+cPAS5/sSTlP
+WPFaWuVIttbR1gVdi/47Ukm2zt4BANsA9OS0U1RVOOylMeZM8O7cI9y+IFCDua9G
+VZd06jMN
+=v7YN
+-----END PGP PRIVATE KEY BLOCK-----
+END
+
+# Ensure umask is consistent with the blobs above; Debian is already 022 but
+# Ubuntu defaults to 002
+umask 022
+mkdir -p "${AUTOPKGTEST_TMP}/test-pkg-1.0/debian/source"
+
+cat << END > "${AUTOPKGTEST_TMP}/test-pkg-1.0/debian/control"
+Source: test-pkg
+Section: debug
+Priority: optional
+Maintainer: sbuild maintainers <sbuild@packages.debian.org>
+Uploaders: sbuild fake uploader <fake-uploader@debian.org>
+Standards-Version: 4.5.1
+
+Package: test-pkg
+Architecture: all
+Description: test package
+ This is a test package for debugging purposes, with a fake description
+ to cheat linters into believing this contains some actual valuable text
+ that the reader can make some sense of.
+END
+
+cat << END > "${AUTOPKGTEST_TMP}/test-pkg-1.0/debian/changelog"
+test-pkg (1.0) unstable; urgency=low
+
+  * Entry. Closes: #12345
+
+ -- sbuild fake uploader <fake-uploader@debian.org>  Thu, 30 Jun 2016 20:15:12 +0200
+END
+
+cat << END > "${AUTOPKGTEST_TMP}/test-pkg-1.0/debian/copyright"
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+
+Files: *
+Copyright:
+ Copyright © 2021 sbuild maintainers <sbuild@packages.debian.org>
+License: GPL-2+
+ This program is free software; you can redistribute it and/or modify it under
+ the terms of the GNU General Public License as published by the Free Software
+ Foundation; either version 2 of the License, or (at your option) any later
+ version.
+ .
+ On Debian systems, the full text of the GNU General Public License version 2
+ can be found in the file /usr/share/common-licenses/GPL-2.
+END
+
+cat << END > "${AUTOPKGTEST_TMP}/test-pkg-1.0/debian/rules"
+#!/usr/bin/make -f
+
+clean:
+	rm -rf debian/files debian/tmp
+
+build-indep:
+build-arch:
+build: build-indep build-arch
+
+binary-indep: build-indep
+	rm -rf debian/tmp
+	mkdir -p debian/tmp/DEBIAN
+	dpkg-gencontrol
+	dpkg-deb --build debian/tmp ..
+
+binary-arch: build-arch
+
+binary: binary-indep binary-arch
+
+.PHONY: clean build-indep build-arch build binary-indexp binary-arch binary
+END
+chmod +x "${AUTOPKGTEST_TMP}/test-pkg-1.0/debian/rules"
+
+cat << END > "${AUTOPKGTEST_TMP}/test-pkg-1.0/debian/source/format"
+3.0 (native)
+END
+
+mmdebstrap --mode=unshare --variant=apt --skip=cleanup/apt/lists "$release" "${AUTOPKGTEST_TMP}/chroot.tar"
+
+env --chdir="${AUTOPKGTEST_TMP}/test-pkg-1.0/" dpkg-buildpackage --build=full
+env --chdir="${AUTOPKGTEST_TMP}/test-pkg-1.0/" dpkg-buildpackage --target=clean
+verify orig deb dsc bin_changes
+
+run_sbuild() {
+	workingdir=$1; shift
+	env --chdir="${AUTOPKGTEST_TMP}/$workingdir/" sbuild \
+		--no-source-only-changes --nolog \
+		--chroot="${AUTOPKGTEST_TMP}/chroot.tar" --chroot-mode=unshare \
+		--keyid="sbuild fake uploader <fake-uploader@debian.org>" \
+		--no-run-lintian --no-run-autopkgtest \
+		--no-apt-upgrade --no-apt-distupgrade --no-apt-update \
+		"$@"
+}
+
+# Test running sbuild from the unpacked source
+run_sbuild test-pkg-1.0 --source
+verify orig deb dsc bin_changes
+
+run_sbuild test-pkg-1.0
+verify orig deb bin_changes
+
+# Test running sbuild on the dsc
+env --chdir="${AUTOPKGTEST_TMP}/test-pkg-1.0/" dpkg-source --build .
+run_sbuild '' --source -d "$release" test-pkg_1.0.dsc
+verify orig deb dsc bin_changes
+
+env --chdir="${AUTOPKGTEST_TMP}/test-pkg-1.0/" dpkg-source --build .
+run_sbuild ''  -d "$release" test-pkg_1.0.dsc
+verify orig deb bin_changes
+
+
+gpgconf --kill all || :
+rm -r -- "${AUTOPKGTEST_TMP}/gpghome/"
+rm "${AUTOPKGTEST_TMP}/test-pkg-1.0/debian/changelog" \
+ "${AUTOPKGTEST_TMP}/test-pkg-1.0/debian/control" \
+ "${AUTOPKGTEST_TMP}/test-pkg-1.0/debian/source/format" \
+ "${AUTOPKGTEST_TMP}/test-pkg-1.0/debian/rules" \
+ "${AUTOPKGTEST_TMP}/test-pkg-1.0/debian/copyright"
+rmdir "${AUTOPKGTEST_TMP}/test-pkg-1.0/debian/source" \
+	"${AUTOPKGTEST_TMP}/test-pkg-1.0/debian" \
+	"${AUTOPKGTEST_TMP}/test-pkg-1.0"
+rm "${AUTOPKGTEST_TMP}/chroot.tar"

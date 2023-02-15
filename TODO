@@ -1,0 +1,121 @@
+Check packages in the alternatives and stalled_pkg_timeout lists in
+the configuration file and Conf.pm.  Make sure they are current and
+valid.
+
+sbuild-createchroot should import most of buildd-make-chroot.
+(note: only needed for buildd use--accounts and passwords needed for access)
+
+Chroot.pm: Move chroot naming out of begin_session.
+
+Are 'Build Start Time' and 'Pkg Start Time' different?
+
+sbuild-setup references ~/build, even though not required.
+
+sbuild-setup should document all files copied by schroot setup scripts.
+
+bin/*: Add --help and --version
+
+Add a --verbose option to all commands
+
+All programs must use Getopt::Long for options parsing
+
+sbuild-stats option formatting and option processing perform more than
+one action at once?  Only set mode once?  actions have multiple args?
+
+sbuild-stats only has a single database.  There's no distinguishing
+between different distributions or architectures.  Fix with wannab.
+
+buildd-clean-upload hard-codes $HOME/upload.  Configure location.
+
+All perl programs and modules should
+- use strict
+- use warnings
+- use function prototypes
+
+buildd hard-codes config file locations.  Used in check_reread_config.
+
+buildd hard-codes main::HOME and PATH.  Set in ::Conf.
+
+buildd-watcher should use strftime in place of own functions
+
+sbuild utilities should allow specification of chroot architecture
+
+Document and add examples for %mailto.
+
+sbuild-adduser should do schroot/sudo-specific setup depending on
+$chroot_mode.  Now done in basesetup().  But, it may be useful to
+do additional setup here such as user/group database updates for
+sudo chroots and schroot when using plain chroot type (no
+automated setup).
+
+Use 'dcmd cp' to copy build files
+
+Copyright details of new files.
+
+Validate programs and paths only if required
+- programs which only work inside the chroot
+- programs which only work outside the chroot (if required by config)
+- programs which may or may not be required inside and/or outside
+
+Where did the 0.57.7 debian/changelog go to?
+
+buildd-mail: Why do we use lockfiles rather than real fcntl locks?
+
+Move locking functions out of Sbuild::Build.  Use proper locking in
+place of lockfiles.
+
+Sbuild::Base: Add append method to simplify set(get() . ) idiom.
+
+buildd auto-restart isn't useful due to loss of @INC and failure to
+detect changes in modules.  Create init script instead.
+
+buildd-mail: %header (to|from|subject|message-id|date) are mandatory.
+Check for these and bail out if not present.
+
+Buildd::Conf: Add Sbuild::Chroot heirarchy-specific configuration
+   keys.
+- split into separate initialisation function,
+- split wanna-build config into separate function also.
+- may be useful to have different config files here or else
+  we get parsing errors if variables aren't defined in the
+  parsing sandbox.
+
+buildd: shutdown_* should check if we are a daemon before removing
+the pidfile, as for END.
+
+END blocks should be inside object destructors.
+
+buildd-vlog: Rather than tailing the output of sbuild logs, once
+buildd uses Sbuild::Build directly, the daemon will be able to
+do its own output (if desired).
+
+buildd-mail: Moves built packages directly into the chroot
+   /var/cache/apt/archives.  It should use Sbuild::Chroot.
+   This should also update the source chroot.
+
+buildd: SIGHUP should reread config, not SIGUSR1.  Swap?
+
+buildd mails: Statistics start from 01-01-1970 when first started up.
+
+Buildd::*: Don't set Host until after object construction, since
+   the Log Stream isn't yet initialised.  If log stream opening
+   is moved into Buildd::Base, this can be done automatically.
+
+bin/*, lib/*: Kill use of main:: globals
+
+Kill main::HOME hardcoding
+
+Kill PATH hardcoding
+
+Kill LOG/PLOG
+
+Kill all globals
+
+lib/Buildd: Move logger vfunc into Sbuild::Log as the default logger?
+
+Generalise chroot setup logic in Build.pm and Chroot.pm
+Put all APT and debconf configuration into sbuild.conf.
+
+Documentation improvements:
+
+- setup of cloned chroots (source-*)
