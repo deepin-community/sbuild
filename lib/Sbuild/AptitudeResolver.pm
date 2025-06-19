@@ -30,158 +30,173 @@ use Sbuild::Base;
 use Sbuild::ResolverBase;
 
 BEGIN {
-    use Exporter ();
-    our (@ISA, @EXPORT);
+	use Exporter ();
+	our (@ISA, @EXPORT);
 
-    @ISA = qw(Exporter Sbuild::ResolverBase);
+	@ISA = qw(Exporter Sbuild::ResolverBase);
 
-    @EXPORT = qw();
+	@EXPORT = qw();
 }
 
 sub new {
-    my $class = shift;
-    my $conf = shift;
-    my $session = shift;
-    my $host = shift;
+	my $class   = shift;
+	my $conf    = shift;
+	my $session = shift;
+	my $host    = shift;
 
-    my $self = $class->SUPER::new($conf, $session, $host);
-    bless($self, $class);
+	my $self = $class->SUPER::new($conf, $session, $host);
+	bless($self, $class);
 
-    return $self;
+	return $self;
 }
 
 sub install_deps {
-    my $self = shift;
-    my $name = shift;
-    my @pkgs = @_;
+	my $self = shift;
+	my $name = shift;
+	my @pkgs = @_;
 
+	my $status                     = 0;
+	my $session                    = $self->get('Session');
+	my $dummy_pkg_name             = $self->get_sbuild_dummy_pkg_name($name);
+	my $dummy_pkg_name_for_install = $dummy_pkg_name;
+	# Debian without multiarch (squeeze and older) does not support
+	# architecture qualifiers for dependencies, so we only add them if the
+	# chroot supports multiarch
+	if ($self->get('Multiarch Support')) {
+		$dummy_pkg_name_for_install .= ':' . $self->get('Host Arch');
+	}
 
-    my $status = 0;
-    my $session = $self->get('Session');
-    my $dummy_pkg_name = $self->get_sbuild_dummy_pkg_name($name);
-    my $dummy_pkg_name_for_install = $dummy_pkg_name;
-    # Debian without multiarch (squeeze and older) does not support
-    # architecture qualifiers for dependencies, so we only add them if the
-    # chroot supports multiarch
-    if ($self->get('Multiarch Support')) {
-	$dummy_pkg_name_for_install .= ':' . $self->get('Host Arch');
-    }
+	# Call functions to setup an archive to install dummy package.
+	$self->log_subsubsection("Setup apt archive");
 
-    # Call functions to setup an archive to install dummy package.
-    $self->log_subsubsection("Setup apt archive");
+	if (!$self->setup_apt_archive($dummy_pkg_name, @pkgs)) {
+		$self->log_error("Setting up apt archive failed\n");
+		return 0;
+	}
 
-    if (!$self->setup_apt_archive($dummy_pkg_name, @pkgs)) {
-	$self->log_error("Setting up apt archive failed\n");
-	return 0;
-    }
+	if (!$self->update_archive()) {
+		$self->log_error("Updating apt archive failed\n");
+		return 0;
+	}
 
-    if (!$self->update_archive()) {
-	$self->log_error("Updating apt archive failed\n");
-	return 0;
-    }
+	$self->log_subsection(
+		"Install $name build dependencies (aptitude-based resolver)");
 
-    $self->log_subsection("Install $name build dependencies (aptitude-based resolver)");
+	#install aptitude first:
+	my (@aptitude_installed_packages, @aptitude_removed_packages);
+	if (
+		!$self->run_apt(
+			'-y', \@aptitude_installed_packages,
+			\@aptitude_removed_packages, 'install', 'aptitude'
+		)
+	) {
+		$self->log_warning('Could not install aptitude!');
+		goto cleanup;
+	}
+	$self->set_installed(@aptitude_installed_packages);
+	$self->set_removed(@aptitude_removed_packages);
 
-    #install aptitude first:
-    my (@aptitude_installed_packages, @aptitude_removed_packages);
-    if (!$self->run_apt('-y', \@aptitude_installed_packages, \@aptitude_removed_packages, 'install', 'aptitude')) {
-	$self->log_warning('Could not install aptitude!');
-	goto cleanup;
-    }
-    $self->set_installed(@aptitude_installed_packages);
-    $self->set_removed(@aptitude_removed_packages);
+	my $ignore_trust_violations
+	  = $self->get_conf('APT_ALLOW_UNAUTHENTICATED') ? 'true' : 'false';
 
+	my @aptitude_install_command = (
+		$self->get_conf('APTITUDE'),
+		-y => '--without-recommends',
+		-o => 'Dpkg::Options::=--force-confold',
+		-o =>
+"Aptitude::CmdLine::Ignore-Trust-Violations=$ignore_trust_violations",
+		-o => 'Aptitude::ProblemResolver::StepScore=100',
+		-o =>
+"Aptitude::ProblemResolver::SolutionCost=safety, priority, non-default-versions",
+		-o =>
+"Aptitude::ProblemResolver::Hints::KeepDummy=reject $dummy_pkg_name :UNINST",
+		-o => 'Aptitude::ProblemResolver::Keep-All-Level=55000',
+		-o => 'Aptitude::ProblemResolver::Remove-Essential-Level=maximum',
+		'install',
+		$dummy_pkg_name_for_install
+	);
 
-    my $ignore_trust_violations =
-	$self->get_conf('APT_ALLOW_UNAUTHENTICATED') ? 'true' : 'false';
+	$self->log(join(" ", @aptitude_install_command), "\n");
 
-    my @aptitude_install_command = (
-	$self->get_conf('APTITUDE'),
-	'-y',
-	'--without-recommends',
-	'-o', 'Dpkg::Options::=--force-confold',
-	'-o', "Aptitude::CmdLine::Ignore-Trust-Violations=$ignore_trust_violations",
-	'-o', 'Aptitude::ProblemResolver::StepScore=100',
-	'-o', "Aptitude::ProblemResolver::SolutionCost=safety, priority, non-default-versions",
-	'-o', "Aptitude::ProblemResolver::Hints::KeepDummy=reject $dummy_pkg_name :UNINST",
-	'-o', 'Aptitude::ProblemResolver::Keep-All-Level=55000',
-	'-o', 'Aptitude::ProblemResolver::Remove-Essential-Level=maximum',
-	'install',
-	$dummy_pkg_name_for_install
-    );
+	my $pipe = $self->pipe_aptitude_command({
+		COMMAND  => \@aptitude_install_command,
+		ENV      => { 'DEBIAN_FRONTEND' => 'noninteractive' },
+		PIPE     => 'in',
+		USER     => 'root',
+		PRIORITY => 0,
+		DIR      => '/'
+	});
 
-    $self->log(join(" ", @aptitude_install_command), "\n");
+	if (!$pipe) {
+		$self->log_warning('Cannot open pipe from aptitude: ' . $! . "\n");
+		goto package_cleanup;
+	}
 
-    my $pipe = $self->pipe_aptitude_command(
-	    { COMMAND => \@aptitude_install_command,
-	      ENV => {'DEBIAN_FRONTEND' => 'noninteractive'},
-	      PIPE => 'in',
-	      USER => 'root',
-	      PRIORITY => 0,
-	      DIR => '/' });
+	my $aptitude_output = "";
+	while (<$pipe>) {
+		$aptitude_output .= $_;
+		$self->log($_);
+	}
+	close($pipe);
+	my $aptitude_exit_code = $?;
 
-    if (!$pipe) {
-	$self->log_warning('Cannot open pipe from aptitude: ' . $! . "\n");
-	goto package_cleanup;
-    }
+	if ($aptitude_output =~ /^E:/m) {
+		$self->log('Satisfying build-deps with aptitude failed.' . "\n");
+		goto package_cleanup;
+	}
 
-    my $aptitude_output = "";
-    while(<$pipe>) {
-	$aptitude_output .= $_;
-	$self->log($_);
-    }
-    close($pipe);
-    my $aptitude_exit_code = $?;
+	my ($installed_pkgs, $removed_pkgs) = ("", "");
+	while ($aptitude_output
+		=~ /The following NEW packages will be installed:\n((^[  ].*\n)*)/gmi)
+	{
+		($installed_pkgs = $1) =~ s/^[    ]*((.|\n)*)\s*$/$1/m;
+		$installed_pkgs        =~ s/\*//g;
+		$installed_pkgs        =~ s/\{.\}//g;
+	}
+	while ($aptitude_output
+		=~ /The following packages will be REMOVED:\n((^[    ].*\n)*)/gmi) {
+		($removed_pkgs = $1) =~ s/^[   ]*((.|\n)*)\s*$/$1/m;
+		$removed_pkgs =~ s/\*//g;
+		$removed_pkgs =~ s/\{.\}//g;    #remove {u}, {a} in output...
+	}
 
-    if ($aptitude_output =~ /^E:/m) {
-	$self->log('Satisfying build-deps with aptitude failed.' . "\n");
-	goto package_cleanup;
-    }
+	my @installed_packages = split(/\s+/, $installed_pkgs);
 
-    my ($installed_pkgs, $removed_pkgs) = ("", "");
-    while ($aptitude_output =~ /The following NEW packages will be installed:\n((^[  ].*\n)*)/gmi) {
-	($installed_pkgs = $1) =~ s/^[    ]*((.|\n)*)\s*$/$1/m;
-	$installed_pkgs =~ s/\*//g;
-	$installed_pkgs =~ s/\{.\}//g;
-    }
-    while ($aptitude_output =~ /The following packages will be REMOVED:\n((^[    ].*\n)*)/gmi) {
-	($removed_pkgs = $1) =~ s/^[   ]*((.|\n)*)\s*$/$1/m;
-	$removed_pkgs =~ s/\*//g;
-	$removed_pkgs =~ s/\{.\}//g; #remove {u}, {a} in output...
-    }
+	$self->set_installed(keys %{ $self->get('Changes')->{'installed'} },
+		@installed_packages);
+	$self->set_removed(keys %{ $self->get('Changes')->{'removed'} },
+		split(/\s+/, $removed_pkgs));
 
-    my @installed_packages = split( /\s+/, $installed_pkgs);
+	if ($aptitude_exit_code != 0) {
+		goto package_cleanup;
+	}
 
-    $self->set_installed(keys %{$self->get('Changes')->{'installed'}}, @installed_packages);
-    $self->set_removed(keys %{$self->get('Changes')->{'removed'}}, split( /\s+/, $removed_pkgs));
+	#Seems it all went fine.
 
-    if ($aptitude_exit_code != 0) {
-	goto package_cleanup;
-    }
-
-    #Seems it all went fine.
-
-    $status = 1;
+	$status = 1;
 
   package_cleanup:
-    if ($status == 0) {
-	if (defined ($session->get('Session Purged')) &&
-	    $session->get('Session Purged') == 1) {
-	    $self->log("Not removing installed packages: cloned chroot in use\n");
-	} else {
-	    $self->uninstall_deps();
+	if ($status == 0) {
+		if (defined($session->get('Session Purged'))
+			&& $session->get('Session Purged') == 1) {
+			$self->log(
+				"Not removing installed packages: cloned chroot in use\n");
+		} else {
+			$self->uninstall_deps();
+		}
 	}
-    }
 
   cleanup:
-    return $status;
+	return $status;
 }
 
 sub purge_extra_packages {
-    my $self = shift;
-    my $name = shift;
+	my $self = shift;
+	my $name = shift;
 
-    $self->log_error('Aptitude resolver doesn\'t implement purging of extra packages yet.\n');
+	$self->log_error(
+		'Aptitude resolver doesn\'t implement purging of extra packages yet.\n'
+	);
 }
 
 1;

@@ -38,7 +38,7 @@ AC_CONFIG_SRCDIR([bin/sbuild-createchroot])
 dnl Place auxilliary scripts here.
 AC_CONFIG_AUX_DIR([scripts])
 dnl Put macro definitions here.
-AC_CONFIG_HEADER([config.h])
+AC_CONFIG_HEADERS([config.h])
 
 AC_COPYRIGHT(
 [

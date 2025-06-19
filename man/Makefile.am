@@ -55,22 +55,24 @@ buildd.conf.man: $(abs_top_srcdir)/tools/sbuild-dumpconfig $(abs_top_srcdir)/lib
 	  $< buildd man > $@
 
 sbuild.conf.5: sbuild.conf.5.in defs.man sbuild.conf.man
-	soelim $< > $@
+	soelim -r $< > $@
+# \$ (used in the example for $environment_filter) needs to be escaped as \e$
+	sed -i 's/\\\$$/\\e$$/g' $@
 
 buildd.conf.5: buildd.conf.5.in defs.man buildd.conf.man
-	soelim $< > $@
+	soelim -r $< > $@
 
 %.1: %.1.in defs.man
-	soelim $< > $@
+	soelim -r $< > $@
 
 %.5: %.5.in defs.man
-	soelim $< > $@
+	soelim -r $< > $@
 
 %.7: %.7.in defs.man
-	soelim $< > $@
+	soelim -r $< > $@
 
 %.8: %.8.in defs.man
-	soelim $< > $@
+	soelim -r $< > $@
 
 CLEANFILES = 				\
 	sbuild.conf.man			\
@@ -78,15 +80,13 @@ CLEANFILES = 				\
 
 EXTRA_DIST =				\
 	defs.man.in			\
-	$(addsuffix .in, $(man_MANS))	\
-	sbuild-debuild.1.in
+	$(addsuffix .in, $(man_MANS))
 
 install-data-hook:
 	ln -sf sbuild-hold.1 $(DESTDIR)$(man1dir)/sbuild-unhold.1
 	ln -sf sbuild-update.1 $(DESTDIR)$(man1dir)/sbuild-upgrade.1
 	ln -sf sbuild-update.1 $(DESTDIR)$(man1dir)/sbuild-distupgrade.1
 	ln -sf sbuild-update.1 $(DESTDIR)$(man1dir)/sbuild-clean.1
-	ln -sf buildd-mail.1 $(DESTDIR)$(man1dir)/buildd-mail-wrapper.1
 	ln -sf sbuild-abort.1 $(DESTDIR)$(man1dir)/buildd-abort.1
 	ln -sf sbuild-update.1 $(DESTDIR)$(man1dir)/buildd-update-chroots.1
 	ln -sf sbuild-createchroot.8 $(DESTDIR)$(man8dir)/buildd-make-chroot.8
@@ -96,7 +96,6 @@ uninstall-hook:
 	$(RM) $(DESTDIR)$(man1dir)/sbuild-upgrade.1
 	$(RM) $(DESTDIR)$(man1dir)/sbuild-distupgrade.1
 	$(RM) $(DESTDIR)$(man1dir)/sbuild-clean.1
-	$(RM) $(DESTDIR)$(man1dir)/buildd-mail-wrapper.1
 	$(RM) $(DESTDIR)$(man1dir)/buildd-abort.1
 	$(RM) $(DESTDIR)$(man1dir)/buildd-update-chroots.1
 	$(RM) $(DESTDIR)$(man8dir)/buildd-make-chroot.8

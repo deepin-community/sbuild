@@ -26,6 +26,7 @@ sbuild\-qemu\-boot \- Boot a VM using a QEMU image
 .RB [ \-\-arch=ARCH ]
 .RB [ \-\-ram\-size=MiB ]
 .RB [ \-\-cpus=CPUs ]
+.RB [ \-\-ssh\-port=PORT ]
 .RB [ \-\-noexec ]
 .RB IMAGE
 .SH DESCRIPTION
@@ -35,9 +36,9 @@ experimentation.
 .PP
 The architecture is auto-guessed by stripping any file suffix and then
 splitting the image name on dashes ``\-'', and finally by looking for a Debian
-architecture name. \fIsid-amd64.img\fR, \fIamd64-temporary.image\fR or even
+architecture name. \fIsid\-amd64.img\fR, \fIamd64\-temporary.image\fR or even
 just \fIamd64\fR would all be assumed to be amd64 images, but not
-\fIamd64.rebuild-tests.img\fR. If this guesses wrong, use the
+\fIamd64.rebuild\-tests.img\fR. If this guesses wrong, use the
 \fB\-\-arch\fR option.
 .PP
 Note that you might need to invoke stty(1) within the VM to match your
@@ -47,7 +48,7 @@ host terminal's settings.
 \fB\-h\fR, \fB\-\-help\fR
 Show this help message and exit.
 .TP
-\fB\-\-read-write\fR
+\fB\-\-read\-write\fR
 Write changes back to the image, instead of using the image in read\-only mode.
 .TP
 \fB\-\-snapshot\fR
@@ -68,6 +69,14 @@ VM memory size in MB. Default: 2048
 \fB\-\-cpus\fR=CPUs
 VM CPU count. Default: 2
 .TP
+\fB\-\-ssh\-port\fR=PORT
+Forward local port PORT to port 22 within the guest. Package
+\fBopenssh\-server\fR must be installed within the guest for this to be useful.
+.TP
+\fB\-\-boot\fR=auto,bios,efi,ieee1275,none
+How to boot the image. Default is BIOS on amd64 and i386, EFI on arm64 and
+armhf, and IEEE1275 on ppc64el.
+.TP
 \fB\-\-noexec\fR
 Don't actually do anything. Just print the command string that
 would be executed, and then exit.
@@ -81,7 +90,7 @@ the current directory. If no such file exists there, then
 If \fB$IMAGEDIR\fR is unset, then \fI~/.cache/sbuild\fR is used.
 .SH COPYRIGHT
 .nf
-Copyright \[co] 2020-2022 Christian Kastner <ckk@debian.org>
+Copyright \[co] 2020\-2022 Christian Kastner <ckk@debian.org>
 .fi
 .SH "SEE ALSO"
 .BR sbuild (1),

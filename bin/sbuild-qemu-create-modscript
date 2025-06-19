@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # SPDX-License-Identifier: GPL-2.0-or-later
 #
 # Copyright © 2020      Christian Kastner <ckk@debian.org>
@@ -19,62 +19,107 @@
 #
 #######################################################################
 
-
 set -e
 umask 0022
 
-
 VMROOT="$1"
-if [ -z "$VMROOT" ]
-then
+if [ -z "$VMROOT" ]; then
 	echo "$0 expects the mounted root of the VM as first argument." >&2
 	exit 1
-elif ! mountpoint -q "$VMROOT"
-then
+elif ! mountpoint -q "$VMROOT"; then
 	echo "$VMROOT is not a mountpoint." >&2
 	exit 1
 fi
 
-
 echo "### Customizing base image ###"
 
-if [ -n "$SQC_SKEL" ]
-then
+if [ -n "$SQC_SKEL" ]; then
 	echo "Copying contents of $SQC_SKEL"
-	if [ ! -d "$SQC_SKEL" ]
-	then
+	if [ ! -d "$SQC_SKEL" ]; then
 		echo "$SQC_SKEL is not a directory." >&2
 		exit 1
 	fi
-	cp -pr $SQC_SKEL/. $VMROOT/root
+	cp -pr "$SQC_SKEL/." "$VMROOT/root"
 fi
 
-if [ -n "$SQC_INSTALL_PACKAGES" ]
-then
+if [ -n "$SQC_AUTH_KEYS" ]; then
+	echo "Copying $SQC_AUTH_KEYS to /root/.ssh/"
+	if [ ! -f "$SQC_AUTH_KEYS" ]; then
+		echo "$SQC_AUTH_KEYS is not a regular file." >&2
+		exit 1
+	fi
+
+	TARGET_KEYS="$VMROOT/root/.ssh/authorized_keys"
+	if [ ! -d "$VMROOT/root/.ssh" ]; then
+		mkdir --mode=0700 "$VMROOT/root/.ssh"
+	fi
+	cp "$SQC_AUTH_KEYS" "$VMROOT/root/.ssh/authorized_keys"
+	chroot "$VMROOT" chmod 0600 /root/.ssh/authorized_keys
+	chroot "$VMROOT" chown root:root /root/.ssh/authorized_keys
+	chroot "$VMROOT" apt-get install --quiet --assume-yes openssh-server
+fi
+
+if [ -n "$SQC_INSTALL_PACKAGES" ]; then
 	echo "Installing additional packages"
-	chroot $VMROOT apt-get install --quiet --assume-yes $SQC_INSTALL_PACKAGES
+	chroot "$VMROOT" apt-get install --quiet --assume-yes $SQC_INSTALL_PACKAGES
 fi
 
-if [ -n "$SQC_EXTRA_DEBS" ]
-then
+if [ -n "$SQC_EXTRA_DEBS" ]; then
 	echo "Installing extra .debs"
-	VMTMP=`mktemp -d -p $VMROOT`
-	cp -t $VMTMP $SQC_EXTRA_DEBS
-	chroot $VMROOT dpkg --recursive -i `basename $VMTMP`
-	chroot $VMROOT apt-get update
-	rm -rf $VMTMP
+	VMTMP=$(mktemp -d -p "$VMROOT")
+	cp -t "$VMTMP" $SQC_EXTRA_DEBS
+	chroot "$VMROOT" dpkg --recursive -i $(basename "$VMTMP")
+	chroot "$VMROOT" apt-get update
+	rm -rf "$VMTMP"
 fi
 
 # Mount point for a shared folder, if the VM is launched with one
 echo "Adding 9p to initramfs"
-echo -e "9p\n9pnet\n9pnet_virtio" >> $VMROOT/etc/initramfs-tools/modules
-chroot $VMROOT update-initramfs -u
+printf "9p\n9pnet\n9pnet_virtio" >> "$VMROOT/etc/initramfs-tools/modules"
+chroot "$VMROOT" update-initramfs -u
 echo "Adding shared folder to fstab"
-mkdir -m 755 $VMROOT/shared
-echo "sbuild-qemu /shared 9p trans=virtio,version=9p2000.L,auto,nofail 0 0" >> $VMROOT/etc/fstab
+mkdir -m 755 "$VMROOT/shared"
+echo "sbuild-qemu /shared 9p trans=virtio,version=9p2000.L,auto,nofail 0 0" >> "$VMROOT/etc/fstab"
 
 echo "Updating GRUB menu"
-echo "GRUB_TIMEOUT=1" >> $VMROOT/etc/default/grub
-chroot $VMROOT update-grub
+echo "GRUB_TIMEOUT=1" >> "$VMROOT/etc/default/grub"
+chroot "$VMROOT" update-grub
+
+# Enable automatically setting terminal rows/columns if the host passes us the
+# params using -fw_cfg
+echo "Creating script in /etc/profile.d/ to set terminal geometry to host"
+cat > "$VMROOT/etc/profile.d/sbuild-qemu-terminal-settings.sh" << "EOF"
+#!/bin/sh
+# Set VM tty rows/columns to host rows/columns
+#
+# This only works if the guest kernel was compiled with CONFIG_FW_CFG_FSYS, and
+# the host rows/columns were passed on through QEMU using -fw_cfg. Regular
+# users will also need permission to read this file (see the udev rule).
+
+ROWSFILE="/sys/firmware/qemu_fw_cfg/by_name/opt/sbuild-qemu/tty-rows/raw"
+COLSFILE="/sys/firmware/qemu_fw_cfg/by_name/opt/sbuild-qemu/tty-cols/raw"
+
+DEB_HOST_ARCH="`dpkg-architecture -qDEB_HOST_ARCH`"
+if [ "$DEB_HOST_ARCH" = "armhf" ] || [ "$DEB_HOST_ARCH" = "arm64" ]
+then
+	TTY=/dev/ttyAMA0
+else
+	TTY=/dev/ttyS0
+fi
+
+if [ -f "$ROWSFILE" ]
+then
+    stty -F "$TTY" rows `cat "$ROWSFILE"`
+fi
+
+if [ -f "$COLSFILE" ]
+then
+    stty -F "$TTY" cols `cat "$COLSFILE"`
+fi
+EOF
+
+# Makes the image significantly smaller
+chroot "$VMROOT" apt-get --option Dir::Etc::SourceList=/dev/null --option Dir::Etc::SourceParts=/dev/null update
+chroot "$VMROOT" apt-get clean
 
 echo "### Customization of base image complete. ###"

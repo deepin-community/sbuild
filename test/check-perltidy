@@ -1,0 +1,179 @@
+#!/bin/bash
+# Copyright (C) 2025, Richard Lewis <richard.lewis.debian@googlemail.com>
+
+# check-perltidy: Run perltidy on all perl files in sbuild
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+
+set -ue
+
+usage() {
+	cat <<- EOF
+		check-perltidy [OPTIONS] [FILE_OR_DIR...]
+		Options:
+		  -w, --write           Update FILE_OF_DIR
+		  -x, --exclude FILE    Do not check FILENAME (can be a directory)
+	EOF
+	exit 1
+}
+
+# especially '--write' means we should be careful to run only from the
+# top of the sbuild repos. However, the build process will run us from
+# 'test/'
+if [ -f "./lib/Sbuild.pm" ]; then
+	: # we are already in the top dir (eg: run by hand with --write)
+elif [ -f "../lib/Sbuild.pm" ]; then
+	# we are in test (eg: run from 'make test')
+	if ! cd ..; then
+		echo "Failed to do 'cd ..' from $(pwd)" >&2
+		exit 1
+	fi
+fi
+if [ ! -f "./lib/Sbuild.pm" ]; then
+	# this should now work
+	echo "No file ./lib/Sbuild.pm - run $0 top of sbuild repos, not from $(pwd))" >&2
+	exit 1
+fi
+
+# nb: .perltidyrc sets the options to use
+PERLTIDY=(perltidy --profile=.perltidyrc)
+
+# use '$0 --write' to fix all issues at once
+UPDATE=no
+
+if ! OPTIONS=$(getopt --name check-perltidy --options "hwx:" --longoptions "help,write,exclude:" -- "$@"); then
+	echo "Error parsing options"
+	usage
+fi
+
+eval set -- "$OPTIONS"
+
+# changed to 'fail' if we found issues (unless using --write)
+STATUS=pass
+
+## scripts not to check
+# EXCLUDE_NAME is for excluding filenames from the search for '#!/usr/bin/perl',
+# EXCLUDE_PATH is for excluding paths from the search for .pm extensions
+EXCLUDE_NAME=(! -name '*.tdy' ! -name '*.ERR' ! -name '*~')
+EXCLUDE_PATH=()
+
+while :; do
+	case "$1" in
+		--)
+			shift
+			break
+			;;
+		-h | --help) usage ;;
+		-w | --write)
+			UPDATE=yes
+			STATUS=update
+			;;
+		-x | --exclude)
+			shift
+			echo "Excluding: ${1##*/}"
+			EXCLUDE_NAME+=(! -name "${1##*/}")
+			EXCLUDE_PATH+=("$1")
+			;;
+	esac
+	shift
+done
+
+shopt -s nullglob
+shopt -s globstar
+
+PERL_FILES=()
+for file in "${@-.}"; do
+	if [ -d "$file" ]; then
+		## Find perl scripts in dir
+		# the awk prints FILENAME if the first line is a perl shebang,
+		# and then exits.
+		mapfile -t PERL_FILES_IN_DIR < <(
+			find "${file}" -name .git -prune -false -o "(" -type f "${EXCLUDE_NAME[@]}" -print0 ")" \
+				| xargs -0 -I@ \
+					awk '/^#![[:space:]]*\/(usr\/)?bin\/perl/{print FILENAME}{exit}' @
+		)
+		PERL_FILES+=("${PERL_FILES_IN_DIR[@]}")
+		PERL_FILES+=("$file"/**/*.p{m,l}) # extension .pm or .pl
+	else
+		PERL_FILES+=("$file")
+	fi
+done
+
+if [ -z "${PERL_FILES-}" ]; then
+	echo "check-perltidy: No perl files to check"
+	exit 1
+fi
+
+if [ -t 1 ]; then
+	COLOUR=always
+else
+	COLOUR=never
+fi
+
+TAB="»   "
+compare_files() {
+	if ! output=$(diff --color=$COLOUR -u "$@" 2>&1); then
+		echo "${output//$'\t'/$TAB}"
+		return 1
+	fi
+}
+
+echo "Checking ${#PERL_FILES[@]} perl files for consistent style with: ${PERLTIDY[*]}"
+for file in "${PERL_FILES[@]}"; do
+	case "$file" in
+		*.tdy | *.ERR | *~) continue ;;
+		*)
+			for exc in "${EXCLUDE_PATH[@]}"; do
+				if [ "$(realpath "$exc")" = "$(realpath "$file")" ]; then
+					echo "SKIP: $file"
+					continue 2
+				fi
+			done
+			;;
+	esac
+	tidied=$file.tdy # can be created even if an error occurs
+	if ! "${PERLTIDY[@]}" "$file"; then
+		STATUS=FAILED
+		echo "==== [ Inconsistencies in $file (may be incomplete) ==== ]"
+		compare_files "$file" "$tidied"
+		echo "==== [ End of inconsistencies in $file ==== ]"
+		echo "FAIL: $file: could not run ${PERLTIDY[*]}"
+		cat "$file.ERR"
+		rm "$file.ERR"
+		rm "$tidied" || :
+	elif output=$(compare_files "$file" "$tidied"); then
+		echo "OK: $file"
+		rm "$tidied"
+	elif [ "$UPDATE" = "yes" ]; then
+		mv -v "$tidied" "$file"
+		echo "UPDATED: $file"
+	else
+		echo
+		echo "FAIL: $file: to fix use: $0 --write $file"
+		echo "==== [ Inconsistencies in $file ==== ]"
+		echo "$output"
+		echo "==== [ End of inconsistencies in $file ==== ]"
+		rm "$tidied"
+		STATUS=failed
+	fi
+done
+
+if [ "$STATUS" = "pass" ]; then
+	echo "Checking perl files for consistent formatting: all OK"
+	exit 0
+elif [ "$UPDATE" = "yes" ]; then
+	echo "Finished updating perl files"
+	exit 0
+else
+	echo "FAIL: Some perl files have inconsistent formatting" >&2
+	echo "(Run '$0 --write' to fix everything at once)" >&2
+	exit 1
+fi

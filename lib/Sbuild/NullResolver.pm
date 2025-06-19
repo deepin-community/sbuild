@@ -27,43 +27,43 @@ use Sbuild::Base;
 use Sbuild::ResolverBase;
 
 BEGIN {
-    use Exporter ();
-    our (@ISA, @EXPORT);
+	use Exporter ();
+	our (@ISA, @EXPORT);
 
-    @ISA = qw(Exporter Sbuild::ResolverBase);
+	@ISA = qw(Exporter Sbuild::ResolverBase);
 
-    @EXPORT = qw();
+	@EXPORT = qw();
 }
 
 sub new {
-    my $class = shift;
-    my $conf = shift;
-    my $session = shift;
-    my $host = shift;
+	my $class   = shift;
+	my $conf    = shift;
+	my $session = shift;
+	my $host    = shift;
 
-    my $self = $class->SUPER::new($conf, $session, $host);
-    bless($self, $class);
+	my $self = $class->SUPER::new($conf, $session, $host);
+	bless($self, $class);
 
-    return $self;
+	return $self;
 }
 
 sub install_deps {
-    my $self = shift;
-    my $name = shift;
-    my @pkgs = @_;
+	my $self = shift;
+	my $name = shift;
+	my @pkgs = @_;
 
-    $self->log("Null resolver: not installing $name dependencies\n");
+	$self->log("Null resolver: not installing $name dependencies\n");
 
-    return 1;
+	return 1;
 }
 
 sub purge_extra_packages {
-    my $self = shift;
-    my $name = shift;
+	my $self = shift;
+	my $name = shift;
 
-    $self->log("Null resolver: not removing $name dependencies\n");
+	$self->log("Null resolver: not removing $name dependencies\n");
 
-    return 1;
+	return 1;
 }
 
 1;

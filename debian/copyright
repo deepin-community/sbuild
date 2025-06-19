@@ -19,19 +19,41 @@ Comment:
  Roger Leigh - schroot support and general maintenance
 
 Files: *
-Copyright: © 1998-2000 Roman Hodek <roman@hodek.net>
-           © 1998-1999 James Troup <troup@debian.org>
-           © 2003-2006 Ryan Murray <rmurray@debian.org>
-           © 2001-2003 Rick Younie <younie@debian.org>
-           © 2003-2004 Francesco Paolo Lovergine <frankie@debian.org>
-           © 2005      Michael Banck <mbanck@debian.org>
-           © 2005-2008 Roger Leigh <rleigh@debian.org>
-           © 2015-2022 Johannes Schauer Marin Rodrigues <josch@debian.org>
-           © 2020      Christian Kastner <ckk@debian.org>
+Copyright:
+           2005-2013, Roger Leigh <rleigh@debian.org>
+           2015-2024, Johannes Schauer Marin Rodrigues <josch@debian.org>
+           2015-2024, Jochen Sprickerhof <jspricke@debian.org>
+           2020-2024, Christian Kastner <ckk@debian.org>
+           2014-2024, Aurelien Jarno <aurelien@aurel32.net>
+           2024, Alexis Murzeau <amubtdx@gmail.com>
+           2008-2009, Adeodato Simó <adeodato@debian.org>
+           2009-2010, Andres Mejia <mcitadel@gmail.com>
+           2003-2004, Francesco Paolo Lovergine <frankie@debian.org>
+           1989-1991, Free Software Foundation, Inc
+           1998, James Troup <james@nocrew.org>
+           1998-1999, James Troup <troup@debian.org>
+           2008-2009, Marc 'HE' Brockschmidt <he@debian.org>
+           2005, Michael Banck <mbanck@debian.org>
+           2017-2018, Michael Stapelberg <stapelberg@debian.org>
+           2002, Rick Younie <rick@def.debian.net>
+           2001-2003, Rick Younie <younie@debian.org>
+           1998-2000, Roman Hodek <Roman.Hodek@informatik.uni-erlangen.de>
+           1998-2000, Roman Hodek <roman@hodek.net>
+           2003-2006, Ryan Murray <rmurray@debian.org>
+           2008-2021, Simon McVittie <smcv@debian.org>
+           2009, Thibaut VARÈNE <varenet@debian.org>
+           2008, Timothy G Abbott <tabbott@mit.edu>
+           2018, Philipp Kern <pkern@debian.org>
+           2010-2013, Andreas Barth <aba@not.so.argh.org>
+           2011-2014, Wookey <wookey@wookware.org>
+           2010-2015, Ansgar Burchardt <ansgar@debian.org>
+           2014-2023, Benjamin Drung <benjamin.drung@profitbricks.com>
+           2012-2019, Colin Watson <cjwatson@ubuntu.com>
 License: GPL-2+
 
 Files: Makefile.am
        bin/Makefile.am
+       configs/Makefile.am
        configure.ac
        db/Makefile.am
        etc/Makefile.am
@@ -39,26 +61,30 @@ Files: Makefile.am
        lib/Makefile.am
        lib/Sbuild/Makefile.am
        man/Makefile.am
-       scripts/global.mk
+       scripts/*
        test/Makefile.am
        tools/Makefile.am
-Copyright: © 2004-2009  Roger Leigh <rleigh@debian.org>
-           © 2016-2022  Johannes Schauer Marin Rodrigues <josch@debian.org>
+Copyright: 2016-2022, Johannes Schauer Marin Rodrigues <josch@debian.org>
+           2004-2009, Roger Leigh <rleigh@debian.org>
 License: GPL-3+
 
-Files: debian/*
-Copyright: © 2001-2003 Rick Younie <younie@debian.org>
-           © 2003-2004 Francesco Paolo Lovergine <frankie@debian.org>
-           © 2005 Michael Banck <mbanck@debian.org>
-           © 2005-2008 Roger Leigh <rleigh@debian.org>
-           © 2015-2022  Johannes Schauer Marin Rodrigues <josch@debian.org>
+Files: bin/sbuild-usernsexec
+       bin/sbuild-cross-resolver
+Copyright: 2024, Johannes Schauer Marin Rodrigues <josch@debian.org>
+License: Expat
+
+Files: test/check-shfmt
+Copyright: (C) 2025, Richard Lewis <richard.lewis.debian@googlemail.com>
 License: GPL-2+
 
-Files: debian/buildd.init
-Copyright: © 2006-2009  Roger Leigh <rleigh@debian.org>
-           © 2007       Federico Di Gregorio <fog@debian.org
-           © 2015-2022  Johannes Schauer Marin Rodrigues <josch@debian.org>
-License: GPL-3+
+Files: debian/*
+Copyright: 2003-2004, Francesco Paolo Lovergine <frankie@debian.org>
+           2015-2024, Johannes Schauer Marin Rodrigues <josch@debian.org>
+           2005, Michael Banck <mbanck@debian.org>
+           2001-2003, Rick Younie <younie@debian.org>
+           2005-2008, Roger Leigh <rleigh@debian.org>
+           2021, sbuild maintainers <sbuild@packages.debian.org>
+License: GPL-2+
 
 License: GPL-2+
  This program is free software; you can redistribute it
@@ -74,9 +100,8 @@ License: GPL-2+
  details.
  .
  You should have received a copy of the GNU General Public
- License along with this package; if not, write to the Free
- Software Foundation, Inc., 51 Franklin St, Fifth Floor,
- Boston, MA  02110-1301 USA
+ License along with this package; If not, see
+ <https://www.gnu.org/licenses/>.
  .
  On Debian systems, the full text of the GNU General Public
  License version 2 can be found in the file
@@ -96,10 +121,29 @@ License: GPL-3+
  details.
  .
  You should have received a copy of the GNU General Public
- License along with this package; if not, write to the Free
- Software Foundation, Inc., 51 Franklin St, Fifth Floor,
- Boston, MA  02110-1301 USA
+ License along with this package; If not, see
+ <https://www.gnu.org/licenses/>.
  .
  On Debian systems, the full text of the GNU General Public
  License version 3 can be found in the file
  `/usr/share/common-licenses/GPL-3'.
+
+License: Expat
+ Permission is hereby granted, free of charge, to any person obtaining
+ a copy of this software and associated documentation files (the
+ "Software"), to deal in the Software without restriction, including
+ without limitation the rights to use, copy, modify, merge, publish,
+ distribute, sublicense, and/or sell copies of the Software, and to
+ permit persons to whom the Software is furnished to do so, subject to
+ the following conditions:
+ .
+ The above copyright notice and this permission notice shall be included
+ in all copies or substantial portions of the Software.
+ .
+ The software is provided "as is", without warranty of any kind, express or
+ implied, including but not limited to the warranties of merchantability,
+ fitness for a particular purpose and noninfringement. In no event shall the
+ authors or copyright holders be liable for any claim, damages or other
+ liability, whether in an action of contract, tort or otherwise, arising
+ from, out of or in connection with the software or the use or other dealings
+ in the software.

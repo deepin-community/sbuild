@@ -25,12 +25,19 @@ sbuild\-debian\-developer\-setup \- set up sbuild so that packages for Debian un
 .RB [ \-\-arch=\fIarch\fP ]
 .SH DESCRIPTION
 
+Deprecated: Note that this uses the schroot backend which is no
+longer used on the Debian buildds. Please switch to the unshare
+backend. It does not need any prior setup nor regular cron jobs.
+Don't run newgrp sbuild for the unshare backend as it will break
+the unshare calls.
+
 \fBsbuild-debian-developer-setup\fR is a convenience script to set up an sbuild
 environment for Debian Developers.
 
-When run, it adds the current user to the sbuild group, creates an schroot for
-building packages for Debian unstable, and creates a cronjob which updates said
-schroot daily.
+When run, it adds the current user to the sbuild group, creates a schroot for
+building packages for Debian unstable in
+\fI/srv/chroot/unstable-$arch-sbuild\fP, and creates a cronjob which updates
+said schroot daily.
 
 The script assumes you are on an un-metered internet connection (daily schroot
 updates might be costly otherwise).

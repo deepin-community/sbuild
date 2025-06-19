@@ -1,15 +1,31 @@
 Tests: build-procenv
-Depends: apt (>= 1.1~exp2), apt-utils, debootstrap, distro-info, lsb-release, @
+Depends: apt, apt-utils, debootstrap, distro-info, lsb-release, sudo, wget, @
 Restrictions: needs-root skippable
 
-Tests: unshare-qemuwrapper
-Architecture: amd64
-Depends: grep-dctrl,
-         libguestfs-tools,
-         linux-image-cloud-amd64 | linux-image-kvm,
-         mmdebstrap,
-         openssh-client,
+Tests: unshare
+Depends: build-essential,
+         devscripts,
+         diffoscope,
+         fakeroot,
+         gnupg,
+         mmdebstrap (>= 1.5.4-2),
          python3-apt,
-         qemu-system-x86,
-         sleepenh
-Restrictions: allow-stderr needs-root
+         sbuild,
+         sqop,
+         uidmap
+Restrictions: allow-stderr skippable
+
+# trigger the 'unshare' test on those packages which are likely to break
+# cross-compilation but only on amd64 as per:
+# https://lists.debian.org/msgid-search/173156754864.3649146.10791472176546387428@localhost
+Features: test-name=hint-testsuite-triggers
+Test-Command: false
+Architecture: amd64
+Depends: binutils,
+         gcc-for-host,
+         libc6-dev,
+         libcrypt-dev,
+         libgcc-s1,
+         linux-libc-dev,
+         make
+Restrictions: hint-testsuite-triggers

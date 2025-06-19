@@ -33,10 +33,7 @@ EXTRA_DIST =				\
 	bootstrap			\
 	lisp				\
 	scripts/git-tag-release		\
-	ChangeLog-buildd		\
 	HACKING				\
-	Makefile-buildd			\
-	NEWS-buildd			\
 	README.buildd-admin		\
 	README.chroot-building
 

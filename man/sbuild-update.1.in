@@ -24,7 +24,7 @@ sbuild\-update \- update, upgrade, and clean an sbuild chroot with apt-get
 .RB [ \-u \[or] \-\-update ] " " [ \-g \[or] \-\-upgrade ] " "
 .RB [ \-d \[or] \-\-dist\-upgrade ] " " [ \-c \[or] \-\-clean ] " "
 .RB [ \-a \[or] \-\-autoclean ] " " [ \-r \[or] \-\-autoremove ]
-.RB [ \-\-chroot-mode=\fIschroot|sudo|unshare\fP ]
+.RB [ \-\-chroot-mode=\fIschroot|sudo\fP ]
 .RB CHROOT1 " [" CHROOT2 " [" CHROOT\f[BI]n\fP... ]]
 .br
 .RB "(DEPRECATED) " sbuild\-upgrade
@@ -82,14 +82,14 @@ Perform an \f[CB]apt\-get autoclean\fP.
 Perform an \f[CB]apt\-get autoremove\fP.
 .SS Chroot selection
 .TP
-.BR \-\-chroot-mode=\fIschroot|sudo|unshare\fP
+.BR \-\-chroot-mode=\fIschroot|sudo\fP
 The sbuild chroot backend of the chroot to update.  The autopkgtest backend is
 not supported by this method because autopkgtest backends are always ephemeral
 and changes never persist.  To update a chroot for schroot and sudo,
 sbuild-update must be executed with superuser privileges (for example by using
-sudo).  Creating a chroot for the unshare backend can be done by a normal user
-(without sudo) but it requires Linux user namespaces to be enabled (via "sysctl
--w kernel.unprivileged_userns_clone=1").  Defaults to 'schroot'.
+sudo).  If you are using the unshare mode, sbuild\-update is without function -
+instead, recreate the tarball from scratch or let sbuild manage them for you.
+Defaults to 'schroot'.
 .TP
 .B CHROOT
 The chroot to use.  Note that \[oq]o\[cq], \[oq]s\[cq],
@@ -109,10 +109,10 @@ To clean the \fIunstable\fP chroot:
 .PP
 \f[CR]% \f[CB]sbuild\-update \-\-clean unstable\fP\fP
 .PP
-To perform an update, dist-upgrade, clean, autoclean, and autoremove for
-the \fIunstable\fP chroot:
+To perform an update, dist-upgrade, autoclean, and autoremove for the
+\fIunstable\fP chroot:
 .PP
-\f[CR]% \f[CB]sbuild\-update \-udcar unstable\fP\fP
+\f[CR]% \f[CB]sbuild\-update \-udar unstable\fP\fP
 .SH AUTHORS
 .nf
 Roger Leigh.

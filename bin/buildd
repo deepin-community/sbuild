@@ -41,53 +41,54 @@ exit 1 if !defined($daemon);
 
 # Global signal handling
 foreach (qw(QUIT ILL TRAP ABRT BUS FPE USR2 SEGV PIPE XCPU XFSZ)) {
-    $SIG{$_} = \&shutdown_fast;
+	$SIG{$_} = \&shutdown_fast;
 }
-$SIG{'HUP'} = \&reopen_log;
+$SIG{'HUP'}  = \&reopen_log;
 $SIG{'USR1'} = \&reread_config;
-$SIG{'INT'} = \&shutdown;
+$SIG{'INT'}  = \&shutdown;
 $SIG{'TERM'} = \&shutdown;
 
 exit $daemon->run();
 
 sub shutdown_fast ($) {
-    my $signame = shift;
-    $daemon->log("buildd ($$) killed by SIG$signame\n")
-	if defined($daemon);
-    unlink( $conf->get('PIDFILE') );
-    exit 1;
+	my $signame = shift;
+	$daemon->log("buildd ($$) killed by SIG$signame\n")
+	  if defined($daemon);
+	unlink($conf->get('PIDFILE'));
+	exit 1;
 }
 
 sub shutdown ($) {
-    my $signame = shift;
+	my $signame = shift;
 
-    if ($daemon) {
-	$daemon->shutdown($signame);
-    }
-    exit 1;
+	if ($daemon) {
+		$daemon->shutdown($signame);
+	}
+	exit 1;
 }
 
 sub reread_config ($) {
-    my $signame = shift;
+	my $signame = shift;
 
-    $daemon->log("buildd ($$) received SIG$signame -- rereading configuration\n")
-	if defined($daemon);
+	$daemon->log(
+		"buildd ($$) received SIG$signame -- rereading configuration\n")
+	  if defined($daemon);
 
-    $Buildd::Conf::reread_config = 1;
+	$Buildd::Conf::reread_config = 1;
 }
 
 sub reopen_log ($) {
-    my $signame = shift;
+	my $signame = shift;
 
-    $daemon->log("buildd ($$) received SIG$signame -- reopening logfile\n")
-	if defined($daemon);
+	$daemon->log("buildd ($$) received SIG$signame -- reopening logfile\n")
+	  if defined($daemon);
 
-    $daemon->reopen_log();
+	$daemon->reopen_log();
 }
 
 END {
-    unlink( $conf->get('PIDFILE') )
-	if (defined($conf) &&
-	    defined($daemon) &&
-	    $daemon->get('Daemon'));
+	unlink($conf->get('PIDFILE'))
+	  if ( defined($conf)
+		&& defined($daemon)
+		&& $daemon->get('Daemon'));
 }

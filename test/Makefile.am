@@ -23,7 +23,11 @@ include $(top_srcdir)/scripts/global.mk
 
 TESTS =				\
 	perl-syntax		\
-	$(chroot_checks)
+	sbuild-options-parsing.t	\
+	$(chroot_checks)	\
+	check-shfmt		\
+	check-perltidy
+
 
 if SBUILD_CHROOT_CHECKS
 chroot_checks = 		\
@@ -46,4 +50,6 @@ EXTRA_DIST =			\
 	sbuild-hold.in		\
 	sbuild-checkpackages.in	\
 	sbuild.in		\
-	wanna-build
+	wanna-build		\
+	check-shfmt		\
+	check-perltidy

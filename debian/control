@@ -7,9 +7,11 @@ Uploaders: Johannes Schauer Marin Rodrigues <josch@debian.org>,
            Francesco Paolo Lovergine <frankie@debian.org>,
            Wookey <wookey@debian.org>,
            Michael Stapelberg <stapelberg@debian.org>,
-           Christian Kastner <ckk@debian.org>
+           Christian Kastner <ckk@debian.org>,
+           Jochen Sprickerhof <jspricke@debian.org>,
 Build-Depends: debhelper-compat (= 13)
-Build-Depends-Indep: dh-python,
+Build-Depends-Indep: apt <!nocheck>,
+                     dh-python,
                      dh-sequence-python3,
                      groff-base,
                      libdpkg-perl (>= 1.21.14),
@@ -17,8 +19,10 @@ Build-Depends-Indep: dh-python,
                      libfilesys-df-perl,
                      libmime-lite-perl,
                      libyaml-tiny-perl,
-                     python3-all
-Standards-Version: 4.6.0
+                     perltidy <!nocheck>,
+                     python3-all,
+                     shfmt <!nocheck>
+Standards-Version: 4.7.2
 Rules-Requires-Root: no
 Vcs-Browser: https://salsa.debian.org/debian/sbuild
 Vcs-Git: https://salsa.debian.org/debian/sbuild.git
@@ -56,8 +60,8 @@ Depends: adduser,
          ${misc:Depends},
          ${perl:Depends},
          ${shlibs:Depends}
-Recommends: autopkgtest (>= 4.0.4), debootstrap, schroot (>= 1.6.0), uidmap
-Suggests: deborphan, e2fsprogs, kmod, wget
+Recommends: autopkgtest (>= 4.0.4), debootstrap, schroot (>= 1.6.0), uidmap, mmdebstrap (>= 1.4.0), iproute2
+Suggests: e2fsprogs, kmod, wget
 Description: Tool for building Debian binary packages from Debian sources
  The sbuild suite of programs (buildd and sbuild) are used to build
  binary packages from source packages.  sbuild does the actual package
@@ -76,6 +80,7 @@ Description: Tool for building Debian binary packages from Debian sources
 
 Package: sbuild-debian-developer-setup
 Architecture: all
+Section: oldlibs
 Depends: apt-cacher-ng | apt-cacher,
          cron | cron-daemon,
          sbuild (>= 0.77.0-5),
@@ -86,7 +91,11 @@ Depends: apt-cacher-ng | apt-cacher,
          ${shlibs:Depends}
 Replaces: sbuild (<< 0.77.0-5)
 Breaks: sbuild (<< 0.77.0-5)
-Description: Convenience script to set up an sbuild environment for Debian Developers
+Description: Deprecated: Convenience script to set up an sbuild environment for Debian Developers
+ Note that this uses the schroot backend which is no longer used on the Debian
+ buildds. Please switch to the unshare backend. It does not need any prior
+ setup nor regular cron jobs.
+ .
  Run "sudo sbuild-debian-developer-setup" to add the current user to the sbuild
  group, create an schroot for building packages for Debian unstable, and create
  a cronjob which updates said schroot daily.
@@ -103,9 +112,7 @@ Depends: adduser,
          dupload,
          libsbuild-perl,
          libyaml-tiny-perl,
-         lsb-base (>= 3.0-6),
-         sbuild (<< ${source:Version}.1~),
-         sbuild (>= ${source:Version}),
+         sbuild (= ${binary:Version}),
          schroot,
          ${misc:Depends},
          ${perl:Depends}

@@ -27,36 +27,33 @@ use Sbuild::Resolver qw(get_resolver);
 package Conf;
 
 sub setup {
-    my $conf = shift;
+	my $conf = shift;
 
-    my %update_keys = (
-	'COMPAT'				=> {
-	    DEFAULT => 1
-	},
-	'UPDATE'				=> {
-	    DEFAULT => 0
-	},
-	'UPGRADE'				=> {
-	    DEFAULT => 0
-	},
-	'DISTUPGRADE'				=> {
-	    DEFAULT => 0
-	},
-	'CLEAN'				=> {
-	    DEFAULT => 0
-	},
-	'AUTOCLEAN'			=> {
-	    DEFAULT => 0
-	},
-	'AUTOREMOVE'			=> {
-	    DEFAULT => 0
-	},
-	'CHROOT_MODE'				=> {
-	    DEFAULT => 'schroot'
-	},
-    );
+	my @update_keys = (
+		'COMPAT' => {
+			DEFAULT => 1
+		},
+		'UPDATE' => {
+			DEFAULT => 0
+		},
+		'UPGRADE' => {
+			DEFAULT => 0
+		},
+		'DISTUPGRADE' => {
+			DEFAULT => 0
+		},
+		'CLEAN' => {
+			DEFAULT => 0
+		},
+		'AUTOCLEAN' => {
+			DEFAULT => 0
+		},
+		'AUTOREMOVE' => {
+			DEFAULT => 0
+		},
+	);
 
-    $conf->set_allowed_keys(\%update_keys);
+	$conf->set_allowed_keys(@update_keys);
 }
 
 package Options;
@@ -65,56 +62,57 @@ use Sbuild::OptionsBase;
 use Sbuild::Conf qw();
 
 BEGIN {
-    use Exporter ();
-    our (@ISA, @EXPORT);
+	use Exporter ();
+	our (@ISA, @EXPORT);
 
-    @ISA = qw(Exporter Sbuild::OptionsBase);
+	@ISA = qw(Exporter Sbuild::OptionsBase);
 
-    @EXPORT = qw();
+	@EXPORT = qw();
 }
 
 sub set_options {
-    my $self = shift;
+	my $self = shift;
 
-    $self->add_options(
-	"chroot-mode=s" => sub {
-	    $self->set_conf('CHROOT_MODE', $_[1]);
-	},
-	"arch=s" => sub {
-	    $self->set_conf('ARCH', $_[1]);
-	    $self->set_conf('HOST_ARCH', $_[1]);
-	    $self->set_conf('BUILD_ARCH', $_[1]);
-	},
-	"update|u" => sub {
-	    $self->set_conf('UPDATE', 1);
-	    $self->set_conf('COMPAT', 0);
-	},
-	"upgrade|g" => sub {
-	    $self->set_conf('UPGRADE', 1);
-	    $self->set_conf('COMPAT', 0);
-	},
-	"dist-upgrade|d" => sub {
-	    $self->set_conf('DISTUPGRADE', 1);
-	    $self->set_conf('COMPAT', 0);
-	},
-	"clean|c" => sub {
-	    $self->set_conf('CLEAN', 1);
-	    $self->set_conf('COMPAT', 0);
-	},
-	"autoclean|a" => sub {
-	    $self->set_conf('AUTOCLEAN', 1);
-	    $self->set_conf('COMPAT', 0);
-	},
-	"autoremove|r" => sub {
-	    $self->set_conf('AUTOREMOVE', 1);
-	    $self->set_conf('COMPAT', 0);
-	});
+	$self->add_options(
+		"chroot-mode=s" => sub {
+			$self->set_conf('CHROOT_MODE', $_[1]);
+		},
+		"arch=s" => sub {
+			$self->set_conf('ARCH',       $_[1]);
+			$self->set_conf('HOST_ARCH',  $_[1]);
+			$self->set_conf('BUILD_ARCH', $_[1]);
+		},
+		"update|u" => sub {
+			$self->set_conf('UPDATE', 1);
+			$self->set_conf('COMPAT', 0);
+		},
+		"upgrade|g" => sub {
+			$self->set_conf('UPGRADE', 1);
+			$self->set_conf('COMPAT',  0);
+		},
+		"dist-upgrade|d" => sub {
+			$self->set_conf('DISTUPGRADE', 1);
+			$self->set_conf('COMPAT',      0);
+		},
+		"clean|c" => sub {
+			$self->set_conf('CLEAN',  1);
+			$self->set_conf('COMPAT', 0);
+		},
+		"autoclean|a" => sub {
+			$self->set_conf('AUTOCLEAN', 1);
+			$self->set_conf('COMPAT',    0);
+		},
+		"autoremove|r" => sub {
+			$self->set_conf('AUTOREMOVE', 1);
+			$self->set_conf('COMPAT',     0);
+		});
 }
 
 package main;
 
 use Getopt::Long;
-use Sbuild qw(help_text version_text usage_error check_group_membership);
+use Sbuild
+  qw(help_text version_text usage_error check_group_membership check_unshare);
 use Sbuild::Utility qw(setup cleanup);
 
 my $conf = Sbuild::Conf::new();
@@ -122,17 +120,18 @@ Conf::setup($conf);
 exit 1 if !defined($conf);
 my $options = Options->new($conf, "sbuild-update", "1");
 exit 1 if !defined($options);
+check_unshare($0, $conf);
 check_group_membership() if $conf->get('CHROOT_MODE') eq 'schroot';
 
 if ($conf->get('COMPAT')) {
-    my $msg = "$0 will perform apt-get command 'update' now, however this ";
-    $msg .= "may change at a later revision.\n";
-    print "$msg";
-    $conf->set('UPDATE', 1);
+	my $msg = "$0 will perform apt-get command 'update' now, however this ";
+	$msg .= "may change at a later revision.\n";
+	print "$msg";
+	$conf->set('UPDATE', 1);
 }
 
 if (@ARGV < 1) {
-    usage_error("sbuild-update", "No chroot was specified");
+	usage_error("sbuild-update", "No chroot was specified");
 }
 
 my $status = 0;
@@ -140,89 +139,90 @@ my $status = 0;
 my $host = Sbuild::ChrootRoot->new($conf);
 
 foreach (@ARGV) {
-    my $distribution = Sbuild::Utility::get_dist($_);
+	my $distribution = Sbuild::Utility::get_dist($_);
 
-    my $session = setup('source', $distribution, $conf) or die "Chroot setup failed";
-    if (!$host->begin_session()) {
-	die "Chroot setup failed";
-    }
-    my $resolver = get_resolver($conf, $session, $host);
-
-    if (!$session->lock_chroot('SBUILD_UPDATE', $$, $conf->get('USERNAME'))) {
-	goto cleanup_unlocked;
-    }
-
-    $resolver->setup();
-
-    if ($conf->get('UPDATE')) {
-	print "$distribution: Performing update.\n";
-	$status = $resolver->update($session, $conf);
-	$status >>= 8;
-	if ($status) {
-	    print STDERR "Exiting from update with status $status.\n";
-	    goto cleanup;
+	my $session = setup('source', $distribution, $conf)
+	  or die "Chroot setup failed";
+	if (!$host->begin_session()) {
+		die "Chroot setup failed";
 	}
-    }
+	my $resolver = get_resolver($conf, $session, $host);
 
-    if ($conf->get('UPGRADE')) {
-	print "$distribution: Performing upgrade.\n";
-	my $status = $resolver->upgrade($session, $conf);
-	$status >>= 8;
-	if ($status) {
-	    print STDERR "Exiting from upgrade with status $status.\n";
-	    goto cleanup;
+	if (!$session->lock_chroot('SBUILD_UPDATE', $$, $conf->get('USERNAME'))) {
+		goto cleanup_unlocked;
 	}
-    }
 
-    if ($conf->get('DISTUPGRADE')) {
-	print "$distribution: Performing dist-upgrade.\n";
-	my $status = $resolver->distupgrade($session, $conf);
-	$status >>= 8;
-	if ($status) {
-	    print STDERR "Exiting from distupgrade with status $status.\n";
-	    goto cleanup;
+	$resolver->setup();
+
+	if ($conf->get('UPDATE')) {
+		print "$distribution: Performing update.\n";
+		$status = $resolver->update($session, $conf);
+		$status >>= 8;
+		if ($status) {
+			print STDERR "Exiting from update with status $status.\n";
+			goto cleanup;
+		}
 	}
-    }
 
-    if ($conf->get('CLEAN')) {
-	print "$distribution: Performing clean.\n";
-	my $status = $resolver->clean($session, $conf);
-	$status >>= 8;
-	if ($status) {
-	    print STDERR "Exiting from update with status $status.\n";
-	    goto cleanup;
+	if ($conf->get('UPGRADE')) {
+		print "$distribution: Performing upgrade.\n";
+		my $status = $resolver->upgrade($session, $conf);
+		$status >>= 8;
+		if ($status) {
+			print STDERR "Exiting from upgrade with status $status.\n";
+			goto cleanup;
+		}
 	}
-    }
 
-    if ($conf->get('AUTOCLEAN')) {
-	print "$distribution: Performing autoclean.\n";
-	my $status = $resolver->autoclean($session, $conf);
-	$status >>= 8;
-	if ($status) {
-	    print STDERR "Exiting from autoclean with status $status.\n";
-	    goto cleanup;
+	if ($conf->get('DISTUPGRADE')) {
+		print "$distribution: Performing dist-upgrade.\n";
+		my $status = $resolver->distupgrade($session, $conf);
+		$status >>= 8;
+		if ($status) {
+			print STDERR "Exiting from distupgrade with status $status.\n";
+			goto cleanup;
+		}
 	}
-    }
 
-    if ($conf->get('AUTOREMOVE')) {
-	print "$distribution: Performing autoremove.\n";
-	my $status = $resolver->autoremove($session, $conf);
-	$status >>= 8;
-	if ($status) {
-	    print STDERR "Exiting from autoremove with status $status.\n";
-	    goto cleanup;
+	if ($conf->get('CLEAN')) {
+		print "$distribution: Performing clean.\n";
+		my $status = $resolver->clean($session, $conf);
+		$status >>= 8;
+		if ($status) {
+			print STDERR "Exiting from update with status $status.\n";
+			goto cleanup;
+		}
 	}
-    }
 
-cleanup:
-    $resolver->cleanup();
-    # Unlock chroot now it's cleaned up and ready for other users.
-    $session->unlock_chroot();
+	if ($conf->get('AUTOCLEAN')) {
+		print "$distribution: Performing autoclean.\n";
+		my $status = $resolver->autoclean($session, $conf);
+		$status >>= 8;
+		if ($status) {
+			print STDERR "Exiting from autoclean with status $status.\n";
+			goto cleanup;
+		}
+	}
 
-cleanup_unlocked:
-    cleanup($conf);
+	if ($conf->get('AUTOREMOVE')) {
+		print "$distribution: Performing autoremove.\n";
+		my $status = $resolver->autoremove($session, $conf);
+		$status >>= 8;
+		if ($status) {
+			print STDERR "Exiting from autoremove with status $status.\n";
+			goto cleanup;
+		}
+	}
 
-    last if $status;
+  cleanup:
+	$resolver->cleanup();
+	# Unlock chroot now it's cleaned up and ready for other users.
+	$session->unlock_chroot();
+
+  cleanup_unlocked:
+	cleanup($conf);
+
+	last if $status;
 }
 
 exit($status ? 1 : 0);

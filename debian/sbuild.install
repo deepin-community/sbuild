@@ -19,3 +19,4 @@ debian/tmp/usr/share/doc/sbuild                usr/share/doc
 debian/tmp/usr/share/sbuild                    usr/share
 debian/tmp/var/lib/sbuild                      var/lib
 debian/tmp/var/lib/sbuild/apt-keys             var/lib/sbuild
+debian/tmp/usr/libexec/sbuild-usernsexec       usr/libexec

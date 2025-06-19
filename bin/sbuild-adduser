@@ -24,7 +24,7 @@ use warnings;
 package main;
 
 use Getopt::Long;
-use Sbuild qw(help_text version_text usage_error);
+use Sbuild       qw(help_text version_text usage_error);
 use Sbuild::Conf qw();
 use Sbuild::OptionsBase;
 
@@ -35,39 +35,36 @@ exit 1 if !defined($options);
 
 usage_error("sbuild-adduser", "Incorrect number of options") if (@ARGV < 1);
 
+print "Note that this tool is only useful for the schroot backend.\n";
+print "Debian buildds have switched to the unshare backend in 2024.\n";
+
 my $status = 0;
 
 foreach (@ARGV) {
-    my $user = getpwnam($_);
+	my $user = getpwnam($_);
 
-    if (defined $user) {
-	$status += system(qw(/usr/sbin/adduser --), $_, 'sbuild');
-    } else {
-	print STDERR "W: User \"$_\" does not exist\n";
-	$status++;
-    }
+	if (defined $user) {
+		$status += system(qw(/usr/sbin/adduser --), $_, 'sbuild');
+	} else {
+		print STDERR "W: User \"$_\" does not exist\n";
+		$status++;
+	}
 }
 
 if ($status == 0) {
-    print STDOUT <<EOF;
+	print STDOUT <<EOF;
 
-# Setup tasks for sudo users:
-
-# BUILD
-# HOME directory in chroot, user:sbuild, 0770 perms, from
-# passwd/group copying to chroot, filtered
-# Maybe source 50sbuild, or move into common location.
-
-Next, copy the example sbuildrc file to the home directory of each user and
+Copy the example sbuildrc file to the home directory of each user and
 set the variables for your system:
 
 EOF
 
-    foreach (@ARGV) {
-	my $home = (getpwnam($_))[7];
-	print STDERR "  cp /usr/share/doc/sbuild/examples/example.sbuildrc $home/.sbuildrc\n";
-    }
-    print STDOUT <<EOF;
+	foreach (@ARGV) {
+		my $home = (getpwnam($_))[7];
+		print STDERR
+"  cp /usr/share/doc/sbuild/examples/example.sbuildrc $home/.sbuildrc\n";
+	}
+	print STDOUT <<EOF;
 
 Now try a build:
 
@@ -79,4 +76,4 @@ Now try a build:
 EOF
 }
 
-exit ($status ? 1:0);
+exit($status ? 1 : 0);

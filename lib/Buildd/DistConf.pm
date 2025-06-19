@@ -30,12 +30,12 @@ use Sbuild::Sysconfig;
 use Buildd::ClientConf qw();
 
 BEGIN {
-    use Exporter ();
-    our (@ISA, @EXPORT);
+	use Exporter ();
+	our (@ISA, @EXPORT);
 
-    @ISA = qw(Exporter);
+	@ISA = qw(Exporter);
 
-    @EXPORT = qw(new_hash setup read_hash);
+	@EXPORT = qw(new_hash setup read_hash);
 }
 
 sub new_hash (@);
@@ -43,117 +43,117 @@ sub setup ($);
 sub read_hash ($$);
 
 sub new_hash (@) {
-    my %opts = @_;
+	my %opts = @_;
 
-    my $queue_config = Sbuild::ConfBase->new(%opts);
+	my $queue_config = Sbuild::ConfBase->new(%opts);
 
-    Buildd::DistConf::setup($queue_config);
-    Buildd::DistConf::read_hash($queue_config, $opts{'HASH'});
+	Buildd::DistConf::setup($queue_config);
+	Buildd::DistConf::read_hash($queue_config, $opts{'HASH'});
 
-    return $queue_config;
+	return $queue_config;
 }
 
 sub setup ($) {
-    my $conf = shift;
-
-    my $validate_directory_in_home = sub {
 	my $conf = shift;
-	my $entry = shift;
-	my $key = $entry->{'NAME'};
-	my $directory = $conf->get($key);
-	my $home_directory = $conf->get('HOME');
 
-	die "$key directory is not defined"
-	    if !defined($directory) || !$directory;
+	my $validate_directory_in_home = sub {
+		my $conf           = shift;
+		my $entry          = shift;
+		my $key            = $entry->{'NAME'};
+		my $directory      = $conf->get($key);
+		my $home_directory = $conf->get('HOME');
 
-	die "$key directory '$home_directory/$directory' does not exist"
-	    if !-d $home_directory . "/" . $directory;
-    };
+		die "$key directory is not defined"
+		  if !defined($directory) || !$directory;
 
-    my $arch = $conf->get('ARCH');
+		die "$key directory '$home_directory/$directory' does not exist"
+		  if !-d $home_directory . "/" . $directory;
+	};
 
-    my %buildd_dist_keys = (
-	'DIST_NAME'				=> {
-	    DEFAULT => 'unstable'
-	},
-	'BUILT_ARCHITECTURE'			=> {
-	    DEFAULT => undef,
-	},
-	'SBUILD_CHROOT'                         => {
-	    DEFAULT => undef,
-	},
-	'WANNA_BUILD_SSH_HOST'			=> {
-	    DEFAULT => 'buildd.debian.org'
-	},
-	'WANNA_BUILD_SSH_USER'			=> {
-	    DEFAULT => 'buildd_' . $arch
-	},
-	'WANNA_BUILD_SSH_SOCKET'		=> {
-	    DEFAULT => undef
-	},
-	'WANNA_BUILD_SSH_OPTIONS'		=> {
-	    DEFAULT => []
-	},
-	'WANNA_BUILD_DB_NAME'			=> {
-	    DEFAULT => undef,
-	},
-	'WANNA_BUILD_DB_USER'			=> {
-	    DEFAULT => $Buildd::username
-	},
-	'WANNA_BUILD_API'			=> {
-	    DEFAULT => undef,
-	},
-	'WANNA_BUILD_MIN_AGE'			=> {
-	    DEFAULT => undef,
-	},
-	'DUPLOAD_LOCAL_QUEUE_DIR'		=> {
-	    CHECK => $validate_directory_in_home,
-	    DEFAULT => 'upload'
-	},
-	'NO_AUTO_BUILD'				=> {
-	    DEFAULT => []
-	},
-	'WEAK_NO_AUTO_BUILD'			=> {
-	    DEFAULT => []
-	},
-	'NO_BUILD_REGEX'			=> {
-	    DEFAULT => undef
-	},
-	'BUILD_REGEX'				=> {
-	    DEFAULT => undef
-	},
-	'LOGS_MAILED_TO'			=> {
-	    DEFAULT => undef
-	},
-	'LOGS_MAIL_ALSO'			=> {
-	    DEFAULT => undef
-	},
-	'BUILD_DEP_RESOLVER'			=> {
-	    DEFAULT => undef
-	},
-	'SIGN_WITH'				=> {
-	    DEFAULT => undef
-	},
-	'MAINTAINER_NAME'			=> {
-	    DEFAULT => undef
-	},
-	'MAILFROM'				=> {
-	    DEFAULT => undef
-	},
-        );
+	my $arch = $conf->get('ARCH');
 
-    $conf->set_allowed_keys(\%buildd_dist_keys);
+	my @buildd_dist_keys = (
+		'DIST_NAME' => {
+			DEFAULT => 'unstable'
+		},
+		'BUILT_ARCHITECTURE' => {
+			DEFAULT => undef,
+		},
+		'SBUILD_CHROOT' => {
+			DEFAULT => undef,
+		},
+		'WANNA_BUILD_SSH_HOST' => {
+			DEFAULT => 'buildd.debian.org'
+		},
+		'WANNA_BUILD_SSH_USER' => {
+			DEFAULT => 'buildd_' . $arch
+		},
+		'WANNA_BUILD_SSH_SOCKET' => {
+			DEFAULT => undef
+		},
+		'WANNA_BUILD_SSH_OPTIONS' => {
+			DEFAULT => []
+		},
+		'WANNA_BUILD_DB_NAME' => {
+			DEFAULT => undef,
+		},
+		'WANNA_BUILD_DB_USER' => {
+			DEFAULT => $Buildd::username
+		},
+		'WANNA_BUILD_API' => {
+			DEFAULT => undef,
+		},
+		'WANNA_BUILD_MIN_AGE' => {
+			DEFAULT => undef,
+		},
+		'DUPLOAD_LOCAL_QUEUE_DIR' => {
+			CHECK   => $validate_directory_in_home,
+			DEFAULT => 'upload'
+		},
+		'NO_AUTO_BUILD' => {
+			DEFAULT => []
+		},
+		'WEAK_NO_AUTO_BUILD' => {
+			DEFAULT => []
+		},
+		'NO_BUILD_REGEX' => {
+			DEFAULT => undef
+		},
+		'BUILD_REGEX' => {
+			DEFAULT => undef
+		},
+		'LOGS_MAILED_TO' => {
+			DEFAULT => undef
+		},
+		'LOGS_MAIL_ALSO' => {
+			DEFAULT => undef
+		},
+		'BUILD_DEP_RESOLVER' => {
+			DEFAULT => undef
+		},
+		'SIGN_WITH' => {
+			DEFAULT => undef
+		},
+		'MAINTAINER_NAME' => {
+			DEFAULT => undef
+		},
+		'MAILFROM' => {
+			DEFAULT => undef
+		},
+	);
 
-    Buildd::ClientConf::setup($conf);
+	$conf->set_allowed_keys(@buildd_dist_keys);
+
+	Buildd::ClientConf::setup($conf);
 }
 
 sub read_hash($$) {
-    my $conf = shift;
-    my $data = shift;
+	my $conf = shift;
+	my $data = shift;
 
-    for my $key (keys %$data) {
-	$conf->set($key, $data->{$key});
-    }
+	for my $key (keys %$data) {
+		$conf->set($key, $data->{$key});
+	}
 }
 
 1;

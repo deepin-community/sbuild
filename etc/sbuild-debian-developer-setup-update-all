@@ -23,7 +23,7 @@
 # it will refuse to run if there is an active chroot session (regardless of
 # whether it is related to the matched patterns or not). Care for this must be
 # taken when scheduling cron jobs, as crontabs are processed sequentially (with
-# regards to variable assignment), but jobs are executed in parallel. 
+# regards to variable assignment), but jobs are executed in parallel.
 #
 # Examples
 # ========
@@ -51,7 +51,6 @@
 #     PATTERN = bar-*
 #     15 0  * * * root /usr/share/doc/sbuild/examples/sbuild-debian-developer-setup-update-all
 
-
 # Output of sbuild-update invocations will be written to this file
 LOGFILE=${LOGFILE:-/var/log/sbuild-update-all.log}
 
@@ -61,11 +60,9 @@ UPDATEARGS=${UPDATEARGS:-"--update --dist-upgrade --autoclean --autoremove"}
 # chroot config names are identified by this pattern
 PATTERN=${PATTERN:-*-sbuild-*}
 
-
 # Open logfile for output, make sure we're the only instance active
-exec 8>>$LOGFILE
-if ! flock -x -n 8
-then
+exec 8>> $LOGFILE
+if ! flock -x -n 8; then
 	echo "$0: another instance is already running"
 	exit 1
 fi
@@ -73,30 +70,26 @@ fi
 exec 9>&1
 exec 1>&8
 
-if ! ls /etc/schroot/chroot.d/$PATTERN >/dev/null 2>&1
-then
+if ! ls /etc/schroot/chroot.d/$PATTERN > /dev/null 2>&1; then
 	echo "No chroots defined"
 	exit 0
 fi
 
-for fullname in /etc/schroot/chroot.d/$PATTERN
-do
-	confname=`basename $fullname | sed -e "s/-sbuild-.*//"`
-    
+for fullname in /etc/schroot/chroot.d/$PATTERN; do
+	confname=$(basename $fullname | sed -e "s/-sbuild-.*//")
+
 	# Check for *any* active session and skip if there is one.
 	# chroots can share common factors, for example an LVM volume, so it's
 	# better to be safe than sorry.
-	if  [ -n "`schroot -l --all-sessions`" ]
-	then
+	if [ -n "$(schroot -l --all-sessions)" ]; then
 		echo "Active schroot session, will not continue"
 		break
 	fi
 
-	echo "****** `date` ******"
+	echo "****** $(date) ******"
 	echo "Action: sbuild-update $UPDATEARGS $confname"
 
-	if ! sbuild-update $UPDATEARGS $confname
-	then
+	if ! sbuild-update $UPDATEARGS $confname; then
 		echo "ERROR: failed to update $confname"
 		continue
 	fi

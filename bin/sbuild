@@ -28,13 +28,13 @@ package main;
 use strict;
 use warnings;
 
-use Cwd qw(:DEFAULT abs_path);
+use Cwd            qw(:DEFAULT abs_path);
 use File::Basename qw(basename dirname);
 use File::Spec;
 use POSIX;
 use Data::Dumper;
 use Dpkg::Control;
-use Sbuild qw(isin check_group_membership $debug_level dsc_files debug);
+use Sbuild       qw(isin check_group_membership $debug_level dsc_files debug);
 use Sbuild::Conf qw();
 use Sbuild::Sysconfig qw(%programs);
 use Sbuild::Options;
@@ -54,11 +54,14 @@ my $conf = Sbuild::Conf::new();
 exit 1 if !defined($conf);
 my $options = Sbuild::Options->new($conf, "sbuild", "1");
 exit 1 if !defined($options);
-check_group_membership() if $conf->get('CHROOT_MODE') eq 'schroot';
+check_group_membership()
+  if $conf->get('CHROOT_MODE') eq 'schroot'
+  && $conf->get('SCHROOT') eq 'schroot';
 
-if (!$conf->get('MAINTAINER_NAME') &&
-    ($conf->get('BIN_NMU') || $conf->get('APPEND_TO_VERSION'))) {
-	die "A maintainer name, uploader name or key ID must be specified in .sbuildrc,\nor use -m, -e or -k, when performing a binNMU or appending a version suffix\n";
+if (!$conf->get('MAINTAINER_NAME')
+	&& ($conf->get('BIN_NMU') || $conf->get('APPEND_TO_VERSION'))) {
+	die
+"A maintainer name must be specified in .sbuildrc,\nor use --maintainer when performing a binNMU or appending a version suffix\n";
 }
 
 # default umask for Debian
@@ -71,325 +74,360 @@ my $job = undef;
 main();
 
 sub main () {
-    $SIG{'INT'} = \&main::shutdown;
-    $SIG{'TERM'} = \&main::shutdown;
-    $SIG{'ALRM'} = \&main::shutdown;
-    $SIG{'PIPE'} = \&main::shutdown;
+	$SIG{'INT'}  = \&main::shutdown;
+	$SIG{'TERM'} = \&main::shutdown;
+	$SIG{'ALRM'} = \&main::shutdown;
+	$SIG{'PIPE'} = \&main::shutdown;
 
-    # If no arguments are supplied, assume we want to process the current dir.
-    push @ARGV, '.' unless (@ARGV);
+	# If no arguments are supplied, assume we want to process the current dir.
+	push @ARGV, '.' unless (@ARGV);
 
-    die "Only one build is permitted\n"
-	if (@ARGV != 1);
+	die "Only one build is permitted\n"
+	  if (@ARGV != 1);
 
-    # Create and run job
-    my $status = eval {
-	my $jobname = $ARGV[0];
-	my $source_dir = 0;
+	# Create and run job
+	my $status = eval {
+		my $jobname    = $ARGV[0];
+		my $source_dir = 0;
 
-	if (-e $jobname) {
-	    # $jobname should be an absolute path, so that the %SBUILD_DSC
-	    # escape also is absolute. This is important for `dgit sbuild`.
-	    # See Debian bug #801436 for details. On the other hand, the
-	    # last component of the path must not have any possible symlinks
-	    # resolved so that a symlink ending in .dsc is not turned
-	    # into a path that does not end in .dsc. See Debian bug #1012856
-	    # for details. Thus, we call File::Spec->rel2abs instead of
-	    # Cwd::abs_path because the latter behaves like `realpath` and
-	    # resolves symlinks while the former does not.
-	    $jobname = File::Spec->rel2abs($jobname);
+		if (-e $jobname) {
+			# $jobname should be an absolute path, so that the %SBUILD_DSC
+			# escape also is absolute. This is important for `dgit sbuild`.
+			# See Debian bug #801436 for details. On the other hand, the
+			# last component of the path must not have any possible symlinks
+			# resolved so that a symlink ending in .dsc is not turned
+			# into a path that does not end in .dsc. See Debian bug #1012856
+			# for details. Thus, we call File::Spec->rel2abs instead of
+			# Cwd::abs_path because the latter behaves like `realpath` and
+			# resolves symlinks while the former does not.
+			$jobname = File::Spec->rel2abs($jobname);
+		}
+
+		if (-d $jobname) {
+			$jobname = create_source_package($jobname);
+			if ($jobname eq '.') {
+				chdir('..')
+				  or Sbuild::Exception::Build->throw(
+					error     => "Failed to change directory",
+					failstage => "change-build-dir"
+				  );
+				$conf->_set_default('BUILD_DIR', cwd());
+			}
+			$source_dir = 1;
+		} elsif (
+			($jobname =~ m/\.dsc$/) &&    # Use apt to download
+			check_url($jobname)
+		) {
+			# Valid URL
+			$jobname = download_source_package($jobname);
+		}
+
+		# Check after source package build (which might set dist)
+		my $dist = $conf->get('DISTRIBUTION');
+		if (!defined($dist) || !$dist) {
+			print STDERR "No distribution defined\n";
+			exit(1);
+		}
+
+		print "Selected distribution " . $conf->get('DISTRIBUTION') . "\n"
+		  if $conf->get('DEBUG');
+		print "Selected chroot " . $conf->get('CHROOT') . "\n"
+		  if $conf->get('DEBUG')
+		  and defined $conf->get('CHROOT');
+		print "Selected host architecture " . $conf->get('HOST_ARCH') . "\n"
+		  if $conf->get('DEBUG' && defined($conf->get('HOST_ARCH')));
+		print "Selected build architecture " . $conf->get('BUILD_ARCH') . "\n"
+		  if $conf->get('DEBUG' && defined($conf->get('BUILD_ARCH')));
+		print "Selected build profiles " . $conf->get('BUILD_PROFILES') . "\n"
+		  if $conf->get('DEBUG' && defined($conf->get('BUILD_PROFILES')));
+
+		$job = Sbuild::Build->new($jobname, $conf);
+		$job->set('Pkg Status Trigger', \&status_trigger);
+		write_jobs_file();    # Will now update on trigger.
+
+		# Run job.
+		$job->run();
+
+		dump_main_state() if $conf->get('DEBUG');
+	};
+
+	my $e;
+	if ($e = Exception::Class->caught('Sbuild::Exception::Build')) {
+		print STDERR "E: $e\n";
+		print STDERR "I: " . $e->info . "\n"
+		  if ($e->info);
+		if ($debug_level) {
+			#dump_main_state();
+			#print STDERR $e->trace->as_string, "\n";
+		}
+	} elsif (!defined($e)) {
+		print STDERR "E: $@\n" if $@;
 	}
 
-	if (-d $jobname) {
-	    $jobname = create_source_package($jobname);
-	    if ($jobname eq '.') {
-		chdir('..') or Sbuild::Exception::Build->throw(
-		    error => "Failed to change directory",
-		    failstage => "change-build-dir");
-		$conf->_set_default('BUILD_DIR', cwd());
-	    }
-	    $source_dir = 1;
-	} elsif (($jobname =~ m/\.dsc$/) && # Use apt to download
-		 check_url($jobname)) {
-	    # Valid URL
-	    $jobname = download_source_package($jobname);
+	unlink($conf->get('JOB_FILE'))
+	  if $conf->get('BATCH_MODE');
+
+	# Until buildd parses status info from sbuild output, skipped must
+	# be treated as a failure.
+	if (defined($job)) {
+		if (
+			$job->get_status() eq "successful"
+			|| (   $conf->get('SBUILD_MODE') ne "buildd"
+				&& $job->get_status() eq "skipped")
+		) {
+			exit 0;
+		} elsif ($job->get_status() eq "attempted") {
+			exit 2;
+		} elsif ($job->get_status() eq "given-back") {
+			#Probably needs a give back:
+			exit 3;
+		}
+		# Unknown status - probably needs a give back, but needs to be
+		# reported to the admin as failure:
+		exit 1;
 	}
-
-
-	# Check after source package build (which might set dist)
-	my $dist = $conf->get('DISTRIBUTION');
-	if (!defined($dist) || !$dist) {
-	    print STDERR "No distribution defined\n";
-	    exit(1);
-	}
-
-	print "Selected distribution " . $conf->get('DISTRIBUTION') . "\n"
-	    if $conf->get('DEBUG');
-	print "Selected chroot " . $conf->get('CHROOT') . "\n"
-	    if $conf->get('DEBUG') and defined $conf->get('CHROOT');
-	print "Selected host architecture " . $conf->get('HOST_ARCH') . "\n"
-	    if $conf->get('DEBUG' && defined($conf->get('HOST_ARCH')));
-	print "Selected build architecture " . $conf->get('BUILD_ARCH') . "\n"
-	    if $conf->get('DEBUG' && defined($conf->get('BUILD_ARCH')));
-	print "Selected build profiles " . $conf->get('BUILD_PROFILES') . "\n"
-	    if $conf->get('DEBUG' && defined($conf->get('BUILD_PROFILES')));
-
-	$job = Sbuild::Build->new($jobname, $conf);
-	$job->set('Pkg Status Trigger', \&status_trigger);
-	write_jobs_file(); # Will now update on trigger.
-
-	# Run job.
-	$job->run();
-
-	dump_main_state() if $conf->get('DEBUG');
-    };
-
-    my $e;
-    if ($e = Exception::Class->caught('Sbuild::Exception::Build')) {
-	print STDERR "E: $e\n";
-	print STDERR "I: " . $e->info . "\n"
-	    if ($e->info);
-	if ($debug_level) {
-	    #dump_main_state();
-	    #print STDERR $e->trace->as_string, "\n";
-	}
-    } elsif (!defined($e)) {
-	print STDERR "E: $@\n" if $@;
-    }
-
-    unlink($conf->get('JOB_FILE'))
-	if $conf->get('BATCH_MODE');
-
-    # Until buildd parses status info from sbuild output, skipped must
-    # be treated as a failure.
-    if (defined($job)) {
-	if ($job->get_status() eq "successful" ||
-	    ($conf->get('SBUILD_MODE') ne "buildd" &&
-	     $job->get_status() eq "skipped")) {
-	    exit 0;
-	} elsif ($job->get_status() eq "attempted") {
-	    exit 2;
-	} elsif ($job->get_status() eq "given-back") {
-	    #Probably needs a give back:
-	    exit 3;
-	}
-	# Unknown status - probably needs a give back, but needs to be
-	# reported to the admin as failure:
+	debug("Error main(): $@") if $@;
 	exit 1;
-    }
-    debug("Error main(): $@") if $@;
-    exit 1;
 }
 
 sub create_source_package ($) {
-    my $dsc = shift;
+	my $dsc = shift;
 
-    open(my $pipe, '-|', 'dpkg-parsechangelog',
-	 '-l' . $dsc . '/debian/changelog')
-	or Sbuild::Exception::Build->throw(
-	    error => "Could not parse $dsc/debian/changelog: $!",
-	    failstage => "pack-source");
+	open(my $pipe, '-|', 'dpkg-parsechangelog',
+		'-l' . $dsc . '/debian/changelog')
+	  or Sbuild::Exception::Build->throw(
+		error     => "Could not parse $dsc/debian/changelog: $!",
+		failstage => "pack-source"
+	  );
 
-    my $pclog = Dpkg::Control->new(type => CTRL_CHANGELOG);
-    if (!$pclog->parse($pipe, 'dpkg-parsechangelog')) {
-	Sbuild::Exception::Build->throw(
-	    error => "Could not parse $dsc/debian/changelog: $!",
-	    failstage => "pack-source");
-    }
-
-    $pipe->close or Sbuild::Exception::Build->throw(
-	error => "dpkg-parsechangelog failed (exit status $?)",
-	failstage => "pack-source");
-
-    my $package = $pclog->{'Source'};
-    my $version = $pclog->{'Version'};
-
-    if (!defined($package) || !defined($version)) {
-	Sbuild::Exception::Build->throw(
-	    error => "Missing Source or Version in $dsc/debian/changelog",
-	    failstage => "pack-source");
-    }
-
-    my $dist = $pclog->{'Distribution'};
-    my $pver = Dpkg::Version->new($version, check => 1);
-    unless (defined $pver) {
-	Sbuild::Exception::Build->throw(
-	    error => "Bad version $version in $dsc/debian/changelog",
-	    failstage => "pack-source");
-    }
-
-    my ($uversion, $dversion);
-    $uversion = $pver->version();
-    $dversion = "-" . $pver->revision();
-    $dversion = "" if $pver->{'no_revision'};
-
-    if (!defined($conf->get('DISTRIBUTION')) ||
-	!$conf->get('DISTRIBUTION')) {
-	$conf->set('DISTRIBUTION', $dist);
-    }
-
-    my $dir = getcwd();
-    my $origdir=$dir;
-    my $origdsc=$dsc;
-    # Note: need to support cases when invoked from a subdirectory
-    # of the build directory, i.e. $dsc/foo -> $dsc/.. in addition
-    # to $dsc -> $dsc/.. as below.
-    # We won't attempt to build the source package from the source
-    # directory so the source package files will go to the parent dir.
-    my $dscdir = abs_path("$dsc/..");
-    if (index($dir, $dsc, 0) == 0) {
-	$conf->_set_default('BUILD_DIR', $dscdir);
-    }
-
-    $dsc = "${dscdir}/${package}_${uversion}${dversion}.dsc";
-
-    $dir = $origdsc;
-
-    chdir($dir) or Sbuild::Exception::Build->throw(
-	error => "Failed to change directory",
-	failstage => "pack-source");
-    my @dpkg_source_before = ($conf->get('DPKG_SOURCE'), '--before-build');
-    push @dpkg_source_before, @{$conf->get('DPKG_SOURCE_OPTIONS')}
-	if ($conf->get('DPKG_SOURCE_OPTIONS'));
-    push @dpkg_source_before, '.';
-    system(@dpkg_source_before);
-    if ($?) {
-	Sbuild::Exception::Build->throw(
-	    error => "Failed to run dpkg-source --before-build " . getcwd(),
-	    failstage => "pack-source");
-    }
-    if ($conf->get('CLEAN_SOURCE')) {
-	system($conf->get('FAKEROOT'), 'debian/rules', 'clean');
-	if ($?) {
-	    Sbuild::Exception::Build->throw(
-		error => "Failed to clean source directory $dir ($dsc)",
-		failstage => "pack-source");
+	my $pclog = Dpkg::Control->new(type => CTRL_CHANGELOG);
+	if (!$pclog->parse($pipe, 'dpkg-parsechangelog')) {
+		Sbuild::Exception::Build->throw(
+			error     => "Could not parse $dsc/debian/changelog: $!",
+			failstage => "pack-source"
+		);
 	}
-    }
-    my @dpkg_source_command = ($conf->get('DPKG_SOURCE'), '-b');
-    push @dpkg_source_command, @{$conf->get('DPKG_SOURCE_OPTIONS')}
-    if ($conf->get('DPKG_SOURCE_OPTIONS'));
-    push @dpkg_source_command, '.';
-    system(@dpkg_source_command);
-    if ($?) {
-	Sbuild::Exception::Build->throw(
-	    error => "Failed to package source directory " . getcwd(),
-	    failstage => "pack-source");
-    }
-    my @dpkg_source_after = ($conf->get('DPKG_SOURCE'), '--after-build');
-    push @dpkg_source_after, @{$conf->get('DPKG_SOURCE_OPTIONS')}
-	if ($conf->get('DPKG_SOURCE_OPTIONS'));
-    push @dpkg_source_after, '.';
-    system(@dpkg_source_after);
-    if ($?) {
-	Sbuild::Exception::Build->throw(
-	    error => "Failed to run dpkg-source --after-build " . getcwd(),
-	    failstage => "pack-source");
-    }
-    chdir($origdir) or Sbuild::Exception::Build->throw(
-	error => "Failed to change directory",
-	failstage => "pack-source");
 
-    return $dsc;
+	$pipe->close
+	  or Sbuild::Exception::Build->throw(
+		error     => "dpkg-parsechangelog failed (exit status $?)",
+		failstage => "pack-source"
+	  );
+
+	my $package = $pclog->{'Source'};
+	my $version = $pclog->{'Version'};
+
+	if (!defined($package) || !defined($version)) {
+		Sbuild::Exception::Build->throw(
+			error     => "Missing Source or Version in $dsc/debian/changelog",
+			failstage => "pack-source"
+		);
+	}
+
+	my $dist = $pclog->{'Distribution'};
+	my $pver = Dpkg::Version->new($version, check => 1);
+	unless (defined $pver) {
+		Sbuild::Exception::Build->throw(
+			error     => "Bad version $version in $dsc/debian/changelog",
+			failstage => "pack-source"
+		);
+	}
+
+	my ($uversion, $dversion);
+	$uversion = $pver->version();
+	$dversion = "-" . $pver->revision();
+	$dversion = "" if $pver->{'no_revision'};
+
+	if (   !defined($conf->get('DISTRIBUTION'))
+		|| !$conf->get('DISTRIBUTION')) {
+		$conf->set('DISTRIBUTION', $dist);
+	}
+
+	my $dir     = getcwd();
+	my $origdir = $dir;
+	my $origdsc = $dsc;
+	# Note: need to support cases when invoked from a subdirectory
+	# of the build directory, i.e. $dsc/foo -> $dsc/.. in addition
+	# to $dsc -> $dsc/.. as below.
+	# We won't attempt to build the source package from the source
+	# directory so the source package files will go to the parent dir.
+	my $dscdir = abs_path("$dsc/..");
+	if (index($dir, $dsc, 0) == 0) {
+		$conf->_set_default('BUILD_DIR', $dscdir);
+	}
+
+	$dsc = "${dscdir}/${package}_${uversion}${dversion}.dsc";
+
+	$dir = $origdsc;
+
+	chdir($dir)
+	  or Sbuild::Exception::Build->throw(
+		error     => "Failed to change directory",
+		failstage => "pack-source"
+	  );
+	my @dpkg_source_before = ($conf->get('DPKG_SOURCE'), '--before-build');
+	push @dpkg_source_before, @{ $conf->get('DPKG_SOURCE_OPTIONS') }
+	  if ($conf->get('DPKG_SOURCE_OPTIONS'));
+	push @dpkg_source_before, '.';
+	if ($conf->get('DEBUG')) {
+		print STDERR ("D: running " . (join " ", @dpkg_source_before) . "\n");
+	}
+	system(@dpkg_source_before);
+
+	if ($?) {
+		Sbuild::Exception::Build->throw(
+			error => "Failed to run dpkg-source --before-build " . getcwd(),
+			failstage => "pack-source"
+		);
+	}
+	if ($conf->get('CLEAN_SOURCE')) {
+		system('dpkg-buildpackage', '--target', 'clean');
+		if ($?) {
+			Sbuild::Exception::Build->throw(
+				error =>
+"Failed to clean source directory $dir ($dsc)\nI: use sbuild --no-clean-source to skip the cleanup",
+				failstage => "pack-source"
+			);
+		}
+	}
+	my @dpkg_source_command = ($conf->get('DPKG_SOURCE'), '-b');
+	push @dpkg_source_command, @{ $conf->get('DPKG_SOURCE_OPTIONS') }
+	  if ($conf->get('DPKG_SOURCE_OPTIONS'));
+	push @dpkg_source_command, '.';
+	if ($conf->get('DEBUG')) {
+		print STDERR ("D: running " . (join " ", @dpkg_source_command) . "\n");
+	}
+	system(@dpkg_source_command);
+	if ($?) {
+		Sbuild::Exception::Build->throw(
+			error     => "Failed to package source directory " . getcwd(),
+			failstage => "pack-source"
+		);
+	}
+	my @dpkg_source_after = ($conf->get('DPKG_SOURCE'), '--after-build');
+	push @dpkg_source_after, @{ $conf->get('DPKG_SOURCE_OPTIONS') }
+	  if ($conf->get('DPKG_SOURCE_OPTIONS'));
+	push @dpkg_source_after, '.';
+	if ($conf->get('DEBUG')) {
+		print STDERR ("D: running " . (join " ", @dpkg_source_after) . "\n");
+	}
+	system(@dpkg_source_after);
+	if ($?) {
+		Sbuild::Exception::Build->throw(
+			error     => "Failed to run dpkg-source --after-build " . getcwd(),
+			failstage => "pack-source"
+		);
+	}
+	chdir($origdir)
+	  or Sbuild::Exception::Build->throw(
+		error     => "Failed to change directory",
+		failstage => "pack-source"
+	  );
+
+	return $dsc;
 }
 
 sub download_source_package ($) {
-    my $dsc = shift;
+	my $dsc = shift;
 
-    my $srcdir = dirname($dsc);
-    my $dscbase = basename($dsc);
+	my $srcdir  = dirname($dsc);
+	my $dscbase = basename($dsc);
 
-    my @fetched;
+	my @fetched;
 
-    # Work with a .dsc file.
-    # $file is the name of the downloaded dsc file written in a tempfile.
-    my $file;
-    $file = download($dsc, $dscbase) or
-	Sbuild::Exception::Build->throw(
-	    error => "Could not download $dsc",
-	    failstage => "download-source");
-    push(@fetched, $dscbase);
+	# Work with a .dsc file.
+	# $file is the name of the downloaded dsc file written in a tempfile.
+	my $file;
+	$file = download($dsc, $dscbase)
+	  or Sbuild::Exception::Build->throw(
+		error     => "Could not download $dsc",
+		failstage => "download-source"
+	  );
+	push(@fetched, $dscbase);
 
-    my @cwd_files = dsc_files($file);
+	my @cwd_files = dsc_files($file);
 
-    foreach (@cwd_files) {
-	my $subfile = download("$srcdir/$_", $_);
-	if (!$subfile) {
-	    # Remove downloaded sources
-	    foreach my $rm (@fetched) {
-		unlink($rm);
-	    }
-	    Sbuild::Exception::Build->throw(
-		error => "Could not download $srcdir/$_",
-		failstage => "download-source");
+	foreach (@cwd_files) {
+		my $subfile = download("$srcdir/$_", $_);
+		if (!$subfile) {
+			# Remove downloaded sources
+			foreach my $rm (@fetched) {
+				unlink($rm);
+			}
+			Sbuild::Exception::Build->throw(
+				error     => "Could not download $srcdir/$_",
+				failstage => "download-source"
+			);
+		}
+		push(@fetched, $_);
 	}
-	push(@fetched, $_);
-    }
 
-    return $file;
+	return $file;
 }
 
 # only called from main loop, but depends on job state.
 sub write_jobs_file () {
-    if ($conf->get('BATCH_MODE')) {
+	if ($conf->get('BATCH_MODE')) {
 
-	my $file = $conf->get('JOB_FILE');
-	local( *F );
+		my $file = $conf->get('JOB_FILE');
+		local (*F);
 
-	return if !open( F, ">$file" );
-	if (defined($job)) {
-	    print F $job->get('Package_OVersion') . ": " .
-		$job->get_status() . "\n";
+		return if !open(F, ">$file");
+		if (defined($job)) {
+			print F $job->get('Package_OVersion') . ": "
+			  . $job->get_status() . "\n";
+		}
+		close(F);
 	}
-	close( F );
-    }
 }
 
 sub status_trigger ($$) {
-    my $build = shift;
-    my $status = shift;
+	my $build  = shift;
+	my $status = shift;
 
-    write_jobs_file();
+	write_jobs_file();
 
-    # Rewrite status if we need to give back or mark attempted
-    # following failure.  Note that this must follow the above
-    # function calls because set_status will recursively trigger.
-    if ($status eq "failed" &&
-	isin($build->get('Pkg Fail Stage'),
-	     qw(fetch-src install-core install-essential install-deps
-		unpack check-unpacked-version check-space hack-binNMU
-		install-deps-env apt-get-clean apt-get-update
-		apt-get-upgrade apt-get-distupgrade))) {
-	$build->set_status('given-back');
-    } elsif ($status eq "failed" &&
-	     isin ($build->get('Pkg Fail Stage'),
-		   qw(build arch-check))) {
-	$build->set_status('attempted');
-    }
+	# Rewrite status if we need to give back or mark attempted
+	# following failure.  Note that this must follow the above
+	# function calls because set_status will recursively trigger.
+	if (
+		$status eq "failed"
+		&& isin(
+			$build->get('Pkg Fail Stage'),
+			qw(fetch-src install-core install-essential install-deps
+			  unpack check-unpacked-version check-space hack-binNMU
+			  install-deps-env apt-get-clean apt-get-update
+			  apt-get-upgrade apt-get-distupgrade)
+		)
+	) {
+		$build->set_status('given-back');
+	} elsif ($status eq "failed"
+		&& isin($build->get('Pkg Fail Stage'), qw(build arch-check))) {
+		$build->set_status('attempted');
+	}
 }
 
 sub shutdown ($) {
-    my $signame = shift;
+	my $signame = shift;
 
-    $SIG{'INT'} = 'IGNORE';
-    $SIG{'QUIT'} = 'IGNORE';
-    $SIG{'TERM'} = 'IGNORE';
-    $SIG{'ALRM'} = 'IGNORE';
-    $SIG{'PIPE'} = 'IGNORE';
+	$SIG{'INT'}  = 'IGNORE';
+	$SIG{'QUIT'} = 'IGNORE';
+	$SIG{'TERM'} = 'IGNORE';
+	$SIG{'ALRM'} = 'IGNORE';
+	$SIG{'PIPE'} = 'IGNORE';
 
-    if (defined($job)) {
-	$job->request_abort("Received $signame signal");
-    } else {
-	exit(1);
-    }
+	if (defined($job)) {
+		$job->request_abort("Received $signame signal");
+	} else {
+		exit(1);
+	}
 
-    $SIG{'INT'} = \&main::shutdown;
-    $SIG{'TERM'} = \&main::shutdown;
-    $SIG{'ALRM'} = \&main::shutdown;
-    $SIG{'PIPE'} = \&main::shutdown;
+	$SIG{'INT'}  = \&main::shutdown;
+	$SIG{'TERM'} = \&main::shutdown;
+	$SIG{'ALRM'} = \&main::shutdown;
+	$SIG{'PIPE'} = \&main::shutdown;
 }
 
 sub dump_main_state () {
-    print STDERR Data::Dumper->Dump([$job],
-				    [qw($job)] );
+	print STDERR Data::Dumper->Dump([$job], [qw($job)]);
 }

@@ -30,20 +30,20 @@ use Sbuild::OptionsBase;
 use Sbuild::Conf qw();
 
 BEGIN {
-    use Exporter ();
-    our (@ISA, @EXPORT);
+	use Exporter ();
+	our (@ISA, @EXPORT);
 
-    @ISA = qw(Exporter Sbuild::OptionsBase);
+	@ISA = qw(Exporter Sbuild::OptionsBase);
 
-    @EXPORT = qw();
+	@EXPORT = qw();
 }
 
 sub set_options {
-    my $self = shift;
+	my $self = shift;
 
-    $self->add_options(
-	"l|list" => sub { $mode = "list"; },
-	"s|set" => sub { $mode = "set"; });
+	$self->add_options(
+		"l|list" => sub { $mode = "list"; },
+		"s|set"  => sub { $mode = "set"; });
 }
 
 package main;
@@ -51,21 +51,23 @@ package main;
 use locale;
 use POSIX qw(locale_h);
 use Getopt::Long;
-use Sbuild qw(help_text version_text usage_error check_packages check_group_membership);
-use Sbuild::Conf qw();
+use Sbuild
+  qw(help_text version_text usage_error check_packages check_group_membership check_unshare);
+use Sbuild::Conf    qw();
 use Sbuild::Utility qw(setup cleanup shutdown);
 
 my $conf = Sbuild::Conf::new();
 exit 1 if !defined($conf);
 my $options = Options->new($conf, "sbuild-checkpackages", "1");
 exit 1 if !defined($options);
+check_unshare($0, $conf);
 check_group_membership();
 
 usage_error("sbuild-checkpackages", "--list or --set must be specified")
-    if (!defined($mode));
+  if (!defined($mode));
 
 usage_error("sbuild-checkpackages", "A chroot must be specified")
-    if (@ARGV != 1);
+  if (@ARGV != 1);
 
 my $chroot = $ARGV[0];
 

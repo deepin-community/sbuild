@@ -25,7 +25,7 @@ use strict;
 use warnings;
 
 use Getopt::Long;
-use Sbuild qw(help_text version_text usage_error check_group_membership);
+use Sbuild       qw(help_text version_text usage_error check_group_membership);
 use Sbuild::Conf qw();
 use Sbuild::OptionsBase;
 
@@ -36,34 +36,34 @@ exit 1 if !defined($options);
 check_group_membership();
 
 my $buildcount = 0;
-my $linecount = 0;
-my $header = "";
-my @detail = ();
+my $linecount  = 0;
+my $header     = "";
+my @detail     = ();
 
-open (PIPE, "/bin/ps xjww |") or die "Can't run /bin/ps: $!\n";
-while(<PIPE>) {
-    chomp;
-    if ($linecount == 0) {
-	$header = $_;
-    } elsif (m/\/usr\/bin\/perl \/usr\/bin\/dpkg-buildpackage/) {
-	push @detail, $_;
-	$buildcount++;
-    }
-    $linecount++;
+open(PIPE, "/bin/ps xjww |") or die "Can't run /bin/ps: $!\n";
+while (<PIPE>) {
+	chomp;
+	if ($linecount == 0) {
+		$header = $_;
+	} elsif (m/\/usr\/bin\/perl \/usr\/bin\/dpkg-buildpackage/) {
+		push @detail, $_;
+		$buildcount++;
+	}
+	$linecount++;
 }
-close (PIPE) or die "Can't close /bin/ps pipe: $!\n";
+close(PIPE) or die "Can't close /bin/ps pipe: $!\n";
 
 if ($buildcount == 0) {
-    print STDERR "E: No dpkg-buildpackage process found\n";
-    exit 1;
+	print STDERR "E: No dpkg-buildpackage process found\n";
+	exit 1;
 } elsif ($buildcount > 1) {
-    print STDERR "E: More than one dpkg-buildpackage process found:\n";
+	print STDERR "E: More than one dpkg-buildpackage process found:\n";
 
-    print "I: $header\n";
-    foreach (@detail) {
-	print "I: $_\n";
-    }
-    exit 1;
+	print "I: $header\n";
+	foreach (@detail) {
+		print "I: $_\n";
+	}
+	exit 1;
 }
 
 # Get PGID from saved ps output.

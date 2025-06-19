@@ -63,16 +63,19 @@ doc_DATA = 		\
 aptsolver_SCRIPTS = 		\
 	sbuild-cross-resolver
 
+libexec_SCRIPTS = 		\
+	sbuild-usernsexec
+
 EXTRA_DIST =			\
 	$(bin_SCRIPTS)		\
 	$(sbin_SCRIPTS) 	\
 	$(sbuilddata_SCRIPTS)	\
 	$(doc_DATA)		\
 	$(aptsolver_SCRIPTS)	\
+	$(libexec_SCRIPTS)	\
 	buildd-make-chroot	\
 	check-old-builds	\
 	finish-build		\
-	sbuild-debuild		\
 	setup_system		\
 	wb-ssh-wrapper
 
@@ -94,6 +97,5 @@ install-exec-hook:
 	$(MKDIR_P) "$(DESTDIR)$(localstatedir)/lib/sbuild/apt-keys"
 
 # Links for compatibility.
-	ln -sf "$(bindir)/buildd-mail" "$(DESTDIR)$(bindir)/buildd-mail-wrapper"
 	ln -sf "$(bindir)/sbuild-abort" "$(DESTDIR)$(bindir)/buildd-abort"
 

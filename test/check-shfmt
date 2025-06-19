@@ -1,0 +1,143 @@
+#!/bin/bash
+# Copyright (C) 2025, Richard Lewis <richard.lewis.debian@googlemail.com>
+
+# check-shfmt: Run shfmt on all shell scripts in sbuild
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+
+set -ue
+
+usage() {
+	cat <<- EOF
+		check-shfmt [OPTIONS] [FILE_OR_DIR...]
+		Options:
+		  -w, --write           Update FILE_OF_DIR
+		  -x, --exclude FILE    Do not check FILENAME (can be a directory)
+	EOF
+	exit 1
+}
+
+# nb: .editorconfig sets the options to use
+SHFMT=(shfmt --diff)
+
+# especially '--write' means we should be careful to run only from the
+# top of the sbuild repos. However, the build process will run us from
+# 'test/'
+if [ -f "./lib/Sbuild.pm" ]; then
+	: # we are already in the top dir (eg: run by hand with --write)
+elif [ -f "../lib/Sbuild.pm" ]; then
+	# we are in test (eg: run from 'make test')
+	if ! cd ..; then
+		echo "Failed to do 'cd ..' from $(pwd)" >&2
+		exit 1
+	fi
+fi
+if [ ! -f "./lib/Sbuild.pm" ]; then
+	# this should now work
+	echo "No file ./lib/Sbuild.pm - run $0 top of sbuild repos, not from $(pwd))" >&2
+	exit 1
+fi
+
+# use '$0 --write' to fix all issues at once
+UPDATE_SCRIPTS=no
+
+if ! OPTIONS=$(getopt --name check-shfmt --options "hwx:" --longoptions "help,write,exclude:" -- "$@"); then
+	echo "Error parsing options"
+	usage
+fi
+
+eval set -- "$OPTIONS"
+
+# changed to 'fail' if we found issues (unless using --write)
+STATUS=pass
+
+# scripts not to check
+EXCLUDE_NAME=(
+	! -name 'config.status'
+	! -name 'configure'
+	! -path '*scripts/config.guess'
+	! -path '*scripts/config.sub'
+	! -path '*scripts/install-sh'
+	! -path '*scripts/missing'
+	! -path '*scripts/test-driver'
+	! -name '*~'
+)
+
+while :; do
+	case "$1" in
+		--)
+			shift
+			break
+			;;
+		-h | --help) usage ;;
+		-w | --write)
+			UPDATE_SCRIPTS=yes
+			STATUS=update
+			SHFMT+=(--write)
+			;;
+		-x | --exclude)
+			shift
+			echo "Excluding: ${1##*/}"
+			EXCLUDE_NAME+=(! -name "${1##*/}")
+			;;
+	esac
+	shift
+done
+
+## Find shell scripts to check ('shfmt .' does not find everything!)
+# the awk prints FILENAME if the first line is a shell-like shebang,
+# and then exits.
+mapfile -t SCRIPTS < <(
+	find "${@-.}" -name .git -prune -false -o "(" -type f "${EXCLUDE_NAME[@]}" -print0 ")" \
+		| xargs -0 -I@ \
+			awk '/^#![[:space:]]*\/(usr\/)?bin\/(ba)?sh/{print FILENAME}{exit}' @
+)
+
+if [ -z "${SCRIPTS-}" ]; then
+	echo "check-shfmt: No scripts to check"
+	exit 1
+fi
+
+if [ -t 1 ]; then
+	COLOR="FORCE_COLOR=true"
+else
+	COLOR="NO_COLOR=true"
+fi
+
+# make tabs visible in diff output
+TAB="»   "
+
+echo "Checking ${#SCRIPTS[@]} shell scripts for consistent style with: ${SHFMT[*]}"
+for script in "${SCRIPTS[@]}"; do
+	if output=$(env "$COLOR" "${SHFMT[@]}" "$script"); then
+		echo "OK: $script"
+	elif [ "$UPDATE_SCRIPTS" = "yes" ]; then
+		echo "UPDATED: $script"
+	else
+		echo
+		echo "FAIL: $script: to fix use: ${SHFMT[*]} --write $script"
+		echo "==== [ Inconsistencies in $script ==== ]"
+		echo "${output//$'\t'/$TAB}"
+		echo "==== [ End of inconsistencies in $script ==== ]"
+		STATUS=failed
+	fi
+done
+
+if [ "$STATUS" = "pass" ]; then
+	echo "Checking shell scripts for consistent formatting: all OK"
+	exit 0
+elif [ "$UPDATE_SCRIPTS" = "yes" ]; then
+	echo "Finished updating shell scripts"
+	exit 0
+else
+	echo "FAIL: Some shell scripts have inconsistent formatting" >&2
+	echo "(Run '$0 --write' to fix everything at once)" >&2
+	exit 1
+fi

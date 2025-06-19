@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 # SPDX-License-Identifier: GPL-2.0-or-later
 #
-# Copyright © 2020-2022 Christian Kastner <ckk@debian.org>
+# Copyright © 2020-2024 Christian Kastner <ckk@debian.org>
+#             2024      Johannes Schauer Marin Rodrigues <josch@debian.org>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -113,6 +114,15 @@ def main():
         help="Skeleton directory to use for /root.",
     )
     parser.add_argument(
+        '--authorized-keys',
+        metavar='FILE',
+        action='store',
+        help="Install this file as /root/.ssh/authorized_keys within the "
+             "guest. This will automatically install the 'openssh-server' "
+             "package. This supersedes any copying of this file by the "
+             "--skel option.",
+    )
+    parser.add_argument(
         '--size',
         type=str,
         action='store',
@@ -132,6 +142,13 @@ def main():
         help="Don't actually do anything. Just print the autopkgtest-build-"
              "qemu(1) command string that would be executed, and then exit.",
     )
+    parser.add_argument(
+        '--boot',
+        choices=['auto', 'bios', 'efi', 'ieee1275', 'none'],
+        default='auto',
+        help="How the image should boot. Default is BIOS on amd64 and i386, "
+             "EFI on arm64 and armhf, and IEEE1275 on ppc64el.",
+        )
     parser.add_argument(
         'distribution',
         action='store',
@@ -164,6 +181,9 @@ def main():
     if parsed.skel:
         os.environ['SQC_SKEL'] = parsed.skel
         print('export SQC_SKEL=' + os.environ['SQC_SKEL'])
+    if parsed.authorized_keys:
+        os.environ['SQC_AUTH_KEYS'] = parsed.authorized_keys
+        print('export SQC_AUTH_KEYS=' + os.environ['SQC_AUTH_KEYS'])
     if parsed.extra_deb:
         extra_debs = ' '.join(parsed.extra_deb)
         os.environ['SQC_EXTRA_DEBS'] = extra_debs
@@ -195,6 +215,7 @@ def main():
         '--mirror',         parsed.mirror,
         '--size',           parsed.size,
         '--script',         '/usr/share/sbuild/sbuild-qemu-create-modscript',
+        '--boot',           parsed.boot,
         dist,
         out_file,
     ]

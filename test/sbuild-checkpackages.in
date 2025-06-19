@@ -22,7 +22,7 @@
 set -e
 
 for dist in unstable; do
-    for opt in --list --set --list; do
-	PERL5LIB="@abs_top_srcdir@/lib" "@abs_top_srcdir@/bin/sbuild-checkpackages" "$opt" "$dist"
-    done
+	for opt in --list --set --list; do
+		PERL5LIB="@abs_top_srcdir@/lib" "@abs_top_srcdir@/bin/sbuild-checkpackages" "$opt" "$dist"
+	done
 done

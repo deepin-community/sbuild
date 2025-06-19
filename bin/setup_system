@@ -18,7 +18,6 @@
 #
 #######################################################################
 
-
 # Needed sudoers entries:
 #buildd  ALL=NOPASSWD: ALL
 #Defaults:buildd env_keep+="APT_CONFIG DEBIAN_FRONTEND"
@@ -35,7 +34,7 @@ zcat /usr/share/doc/buildd/examples/buildd.conf.gz > buildd.conf
 zcat /usr/share/doc/sbuild/examples/sbuildrc.gz > .sbuildrc
 mkdir -p .ssh build logs mqueue old-logs stats/graphs upload upload-security
 chmod o= .ssh upload-security old-logs mqueue logs build
-echo "|/usr/bin/buildd-mail-wrapper" > .forward
+echo "|/usr/bin/buildd-mail" > .forward
 ssh-keygen -b 2048 -t rsa -f .ssh/id_rsa -N ''
 echo I: setup .forward-porters with where you want buildd mail to go.
 echo I: chroot creation commands:

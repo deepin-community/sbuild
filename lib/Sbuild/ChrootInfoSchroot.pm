@@ -27,160 +27,166 @@ use strict;
 use warnings;
 
 BEGIN {
-    use Exporter ();
-    our (@ISA, @EXPORT);
+	use Exporter ();
+	our (@ISA, @EXPORT);
 
-    @ISA = qw(Exporter Sbuild::ChrootInfo);
+	@ISA = qw(Exporter Sbuild::ChrootInfo);
 
-    @EXPORT = qw();
+	@EXPORT = qw();
 }
 
 sub new {
-    my $class = shift;
-    my $conf = shift;
+	my $class = shift;
+	my $conf  = shift;
 
-    my $self = $class->SUPER::new($conf);
-    bless($self, $class);
+	my $self = $class->SUPER::new($conf);
+	bless($self, $class);
 
-    return $self;
+	return $self;
 }
 
 sub get_info_from_stream {
-    my $self = shift;
-    my $stream = shift;
+	my $self   = shift;
+	my $stream = shift;
 
-    my $chroot_type = '';
-    my %tmp = ('Namespace' => '',
-	       'Name' => '',
-	       'Priority' => 0,
-	       'Location' => '',
-	       'Session Purged' => 0);
+	my $chroot_type = '';
+	my %tmp         = (
+		'Namespace'      => '',
+		'Name'           => '',
+		'Priority'       => 0,
+		'Location'       => '',
+		'Session Purged' => 0
+	);
 
-    while (<$stream>) {
-	chomp;
+	while (<$stream>) {
+		chomp;
 
-	last if ! $_;
+		last if !$_;
 
-	if (/^\s*(───|---) Chroot \1$/ &&
-	    $tmp{'Namespace'} eq "") {
-	    $tmp{'Namespace'} = 'chroot';
+		if (/^\s*(───|---) Chroot \1$/
+			&& $tmp{'Namespace'} eq "") {
+			$tmp{'Namespace'} = 'chroot';
+		}
+		if (/^\s*(───|---) Session \1$/
+			&& $tmp{'Namespace'} eq "") {
+			$tmp{'Namespace'} = 'session';
+		}
+		if (/^\s*(───|---) Source \1$/
+			&& $tmp{'Namespace'} eq "") {
+			$tmp{'Namespace'} = 'source';
+		}
+		if (/^\s*Name:?\s+(.*)$/
+			&& $tmp{'Name'} eq "") {
+			$tmp{'Name'} = $1;
+		}
+		if (/^\s*Type:?\s+(.*)$/) {
+			$chroot_type = $1;
+		}
+		if (/^\s*Location:?\s+(.*)$/
+			&& $tmp{'Location'} eq "") {
+			$tmp{'Location'} = $1;
+		}
+		if (/^\s*Mount Location:?\s+(.*)$/
+			&& $tmp{'Location'} eq "") {
+			$tmp{'Location'} = $1;
+		}
+		# Path takes priority over Location and Mount Location.
+		if (/^\s*Path:?\s+(.*)$/) {
+			$tmp{'Location'} = $1;
+		}
+		if (/^\s*Priority:?\s+(\d+)$/) {
+			$tmp{'Priority'} = $1;
+		}
+		if (/^\s*Session Purged\s+(.*)$/) {
+			if ($1 eq "true") {
+				$tmp{'Session Purged'} = 1;
+			}
+		}
+		if (/^\s*Aliases:?\s+(.*)$/) {
+			$tmp{'Aliases'} = $1;
+		}
 	}
-	if (/^\s*(───|---) Session \1$/ &&
-	    $tmp{'Namespace'} eq "") {
-	    $tmp{'Namespace'} = 'session';
-	}
-	if (/^\s*(───|---) Source \1$/ &&
-	    $tmp{'Namespace'} eq "") {
-	    $tmp{'Namespace'} = 'source';
-	}
-	if (/^\s*Name:?\s+(.*)$/ &&
-	    $tmp{'Name'} eq "") {
-	    $tmp{'Name'} = $1;
-	}
-	if (/^\s*Type:?\s+(.*)$/) {
-	    $chroot_type = $1;
-	}
-	if (/^\s*Location:?\s+(.*)$/ &&
-	    $tmp{'Location'} eq "") {
-	    $tmp{'Location'} = $1;
-	}
-	if (/^\s*Mount Location:?\s+(.*)$/ &&
-	    $tmp{'Location'} eq "") {
-	    $tmp{'Location'} = $1;
-	}
-	# Path takes priority over Location and Mount Location.
-	if (/^\s*Path:?\s+(.*)$/) {
-	    $tmp{'Location'} = $1;
-	}
-	if (/^\s*Priority:?\s+(\d+)$/) {
-	    $tmp{'Priority'} = $1;
-	}
-	if (/^\s*Session Purged\s+(.*)$/) {
-	    if ($1 eq "true") {
-		$tmp{'Session Purged'} = 1;
-	    }
-	}
-	if (/^\s*Aliases:?\s+(.*)$/) {
-	    $tmp{'Aliases'} = $1;
-	}
-    }
 
-    if ($self->get_conf('DEBUG') && $tmp{'Name'})  {
-	print STDERR "Found schroot chroot: $tmp{'Namespace'}:$tmp{'Name'}\n";
-	foreach (sort keys %tmp) {
-	    print STDERR "  $_ $tmp{$_}\n";
+	if ($self->get_conf('DEBUG') && $tmp{'Name'}) {
+		print STDERR "Found schroot chroot: $tmp{'Namespace'}:$tmp{'Name'}\n";
+		foreach (sort keys %tmp) {
+			print STDERR "  $_ $tmp{$_}\n";
+		}
 	}
-    }
 
-    if (!$tmp{'Name'}) {
-	return undef;
-    }
-    return \%tmp;
+	if (!$tmp{'Name'}) {
+		return undef;
+	}
+	return \%tmp;
 }
 
 sub get_info {
-    my $self = shift;
-    my $chroot = shift;
+	my $self   = shift;
+	my $chroot = shift;
 
-    my $chroot_type = "";
+	my $chroot_type = "";
 
-    # If namespaces aren't supported, try to fall back to old style session.
-    open CHROOT_DATA, '-|', $self->get_conf('SCHROOT'), '--info', '--chroot', "session:$chroot" or
-	open CHROOT_DATA, '-|', $self->get_conf('SCHROOT'), '--info', '--chroot', $chroot or
-	die 'Can\'t run ' . $self->get_conf('SCHROOT') . ' to get chroot data';
+	# If namespaces aren't supported, try to fall back to old style session.
+	open CHROOT_DATA, '-|', $self->get_conf('SCHROOT'), '--info', '--chroot',
+	  "session:$chroot"
+	  or open CHROOT_DATA, '-|', $self->get_conf('SCHROOT'), '--info',
+	  '--chroot', $chroot
+	  or die 'Can\'t run '
+	  . $self->get_conf('SCHROOT')
+	  . ' to get chroot data';
 
-    my $tmp = $self->get_info_from_stream(\*CHROOT_DATA);
+	my $tmp = $self->get_info_from_stream(\*CHROOT_DATA);
 
-    if (!$tmp) {
-	close CHROOT_DATA;
-	return undef;
-    }
+	if (!$tmp) {
+		close CHROOT_DATA;
+		return undef;
+	}
 
-    close CHROOT_DATA or die "Can't close schroot pipe getting chroot data";
+	close CHROOT_DATA or die "Can't close schroot pipe getting chroot data";
 
-    return $tmp;
+	return $tmp;
 }
 
 sub get_info_all {
-    my $self = shift;
+	my $self = shift;
 
-    my $chroots = {};
+	my $chroots = {};
 
-    local %ENV;
+	local %ENV;
 
-    $ENV{'LC_ALL'} = 'C';
-    $ENV{'LANGUAGE'} = 'C';
+	$ENV{'LC_ALL'}   = 'C';
+	$ENV{'LANGUAGE'} = 'C';
 
-    open CHROOTS, '-|', $self->get_conf('SCHROOT'), '--info'
-	or die 'Can\'t run ' . $self->get_conf('SCHROOT');
-    my $tmp = undef;
-    while (defined($tmp = $self->get_info_from_stream(\*CHROOTS))) {
-	my $namespace = $tmp->{'Namespace'};
-	$namespace = "chroot"
-	    if !$tmp->{'Namespace'};
-	$chroots->{$namespace} = {}
-	    if (!exists($chroots->{$namespace}));
-	$chroots->{$namespace}->{$tmp->{'Name'}} = $tmp;
-	foreach my $alias (split(/\s+/, $tmp->{'Aliases'})) {
-	    $chroots->{$namespace}->{$alias} = $tmp;
+	open CHROOTS, '-|', $self->get_conf('SCHROOT'), '--info'
+	  or die 'Can\'t run ' . $self->get_conf('SCHROOT');
+	my $tmp = undef;
+	while (defined($tmp = $self->get_info_from_stream(\*CHROOTS))) {
+		my $namespace = $tmp->{'Namespace'};
+		$namespace = "chroot"
+		  if !$tmp->{'Namespace'};
+		$chroots->{$namespace} = {}
+		  if (!exists($chroots->{$namespace}));
+		$chroots->{$namespace}->{ $tmp->{'Name'} } = $tmp;
+		foreach my $alias (split(/\s+/, $tmp->{'Aliases'})) {
+			$chroots->{$namespace}->{$alias} = $tmp;
+		}
 	}
-    }
-    close CHROOTS or die "Can't close schroot pipe";
+	close CHROOTS or die "Can't close schroot pipe";
 
-    $self->set('Chroots', $chroots);
+	$self->set('Chroots', $chroots);
 }
 
 sub _create {
-    my $self = shift;
-    my $chroot_id = shift;
+	my $self      = shift;
+	my $chroot_id = shift;
 
-    my $chroot = undef;
+	my $chroot = undef;
 
-    if (defined($chroot_id)) {
-	$chroot = Sbuild::ChrootSchroot->new($self->get('Config'), $chroot_id);
-    }
+	if (defined($chroot_id)) {
+		$chroot = Sbuild::ChrootSchroot->new($self->get('Config'), $chroot_id);
+	}
 
-    return $chroot;
+	return $chroot;
 }
 
 1;

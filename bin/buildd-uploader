@@ -24,7 +24,7 @@
 use strict;
 use warnings;
 
-use Buildd qw(unlock_file);
+use Buildd       qw(unlock_file);
 use Buildd::Conf qw();
 use Buildd::Uploader;
 use Sbuild::OptionsBase;
@@ -43,9 +43,9 @@ $uploader->close_log();
 exit $status;
 
 END {
-    unlock_file($conf->get('HOME') . "/buildd-uploader")
-	if (defined($conf) &&
-	    defined($uploader) &&
-	    defined($uploader->get('Uploader Lock')) &&
-	    $uploader->get('Uploader Lock'));
+	unlock_file($conf->get('HOME') . "/buildd-uploader")
+	  if ( defined($conf)
+		&& defined($uploader)
+		&& defined($uploader->get('Uploader Lock'))
+		&& $uploader->get('Uploader Lock'));
 }

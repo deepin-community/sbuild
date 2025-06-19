@@ -112,7 +112,3 @@
 # Directory for writing build statistics to
 #$stats_dir = "$HOME/stats";
 
-
-# don't remove this, Perl needs it:
-1;
-

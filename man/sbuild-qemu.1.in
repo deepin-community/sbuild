@@ -21,40 +21,34 @@ sbuild\-qemu \- sbuild using QEMU images
 .B sbuild\-qemu
 .RB [ \-h ]
 .RB [ \-\-image=IMAGE ]
-.RB [ \-\-arch=ARCH ]
-.RB [ \-d=DIST ]
 .RB [ \-\-ram\-size=MiB ]
 .RB [ \-\-cpus=CPUs ]
 .RB [ \-\-overlay\-dir=OVERLAY_DIR ]
 .RB [ \-\-noexec ]
 .RB [ \-\-autopkgtest\-debug ]
+.RB [ <sbuild-options> ]
 .PP
 Build Debian packages with \fBsbuild\fR using QEMU images, by using sbuild's
 \fB\-\-chroot\-mode=autopkgtest\fR.
 .PP
 All options other than the ones described below are passed on through to
-\fBsbuild\fR, with the exception of \fB\-\-dist\fR (it is both consumed here,
-and passed on). The image will be started in snapshot mode, so the image is
-never changed. Multiple processes can use the same image concurrently.
+\fBsbuild\fR(1), though the options \fB\-\-dist\fR, \fB\-\-arch\fR
+and \fB\-\-build\fR are peeked at when looking for images. The image will be
+started in \fB\-snapshot\fR mode, so the image is never modified. Multiple
+processes can use the same image concurrently.
 .SH OPTIONS
 .TP
 \fB\-h\fR, \fB\-\-help\fR
 Show this help message and exit.
 .TP
-\fB\-\-arch\fR=ARCH
-Architecture to use. Default is the host architecture. Currently supported
-architectures are: amd64, arm64, armhf, i386, ppc64el.
-.TP
-\fB\-d\fR=DIST, \fB\-\-dist\fR=DIST
-This corresponds to sbuild's \fB\-\-dist option\fR. It is used here to
-construct a candidate image name (if no image has been specified explicitly).
-.TP
 \fB\-\-image\fR=IMAGE
-QEMU image file to use for building. If not specified, will look for an image
-with the name \fBDIST\-autopkgtest\-ARCH.img\fR. Will first look in the current
-directory, and if no such file exists there, then the directory
-\fB$IMAGEDIR\fR is tried. A suitable image can be created with
-sbuild\-qemu\-create(1).
+QEMU image file to use for building. If not specified, sbuild-qemu will look
+for an image with the name \fBDIST\-autopkgtest\-ARCH.img\fR, where DIST is
+taken from \fB\-\-dist\fR if present, and ARCH is taken from \fB\-\-arch\fR
+or \fB\-\-build\fR if present. Otherwise, DIST defaults to 'unstable', and
+ARCH to the host architecture. sbuild-qemu will first look in the current
+directory for such an image, and then in the directory \fB$IMAGEDIR\fR. A
+suitable image can be created with sbuild\-qemu\-create(1).
 .TP
 \fB\-\-ram\-size\fR=MiB
 VM memory size in MB. Default: 2048
@@ -72,6 +66,10 @@ be executed, and then exit.
 .TP
 \fB\-\-autopkgtest\-debug\fR
 Enable debug output for the autopkgtest\-virt\-qemu(1) driver.
+.TP
+\fB\-\-boot\fR=auto,bios,efi,ieee1275,none
+How to boot the image. Default is BIOS on amd64 and i386, EFI on arm64 and
+armhf, and IEEE1275 on ppc64el.
 .SH CONSIDERATIONS
 Using a fast temporary image overlay is key to faster build times. An overlay
 created on a \fItmpfs\fR would be ideal, and can speed up I/O by an order of

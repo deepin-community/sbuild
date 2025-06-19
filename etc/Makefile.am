@@ -49,5 +49,4 @@ CLEANFILES =		\
 
 EXTRA_DIST =			\
 	$(exampleconf_DATA)	\
-	$(SETUP)		\
-	sbuild-debuild.conf
+	$(SETUP)

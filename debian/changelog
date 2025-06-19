@@ -1,8 +1,616 @@
-sbuild (0.85.0-0deepin) UNRELEASED; urgency=medium
+sbuild (0.89.3) unstable; urgency=medium
 
-  * Initial deepin packaging.
+  [ Jochen Sprickerhof ]
+  * Add option to run apt-get distclean if available
 
- -- Tianyu Chen <chentianyu1@uniontech.com>  Wed, 15 Feb 2023 15:33:27 +0800
+  [ Christian Kastner ]
+  * sbuild-qemu-boot: Drop duplicated EFI loading (Closes: #1106862)
+
+ -- Jochen Sprickerhof <jspricke@debian.org>  Sat, 07 Jun 2025 16:14:00 +0200
+
+sbuild (0.89.2) unstable; urgency=medium
+
+  [ Jochen Sprickerhof ]
+  * Add hint for --no-clean-source.
+    Thanks to Andrew Lee
+  * Add NEWS entry for deprecating sbuild-debian-developer-setup
+  * rmdir the chroot dir in end_session
+
+  [ Carlos Nihelton ]
+  * chroot: Quote escape username to prevent unintended interpolation
+
+  [ Helmut Grohne ]
+  * support --no-enable-network on the schroot backend for backends matching
+    /unschroot/ (Closes: #1104553)
+
+ -- Jochen Sprickerhof <jspricke@debian.org>  Fri, 02 May 2025 17:03:10 +0200
+
+sbuild (0.89.1) unstable; urgency=medium
+
+  [ Jochen Sprickerhof ]
+  * Allow BUILD_PATH being empty (Closes: #1103519)
+  * Set a nonexistent home for the sbuild build user
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * bin/sbuild-usernsexec:
+     - do not mount non-existing device nodes
+     - suggest installing iproute2 if 'ip link set lo up' failed
+  * lib/Sbuild/Conf{Base,}.pm: expand the HELP text of UNSHARE_TMPDIR_TEMPLATE,
+    UNSHARE_MMDEBSTRAP_DISTRO_MANGLE, CHROOT_ALIASES, CHROOT DISTRIBUTION
+  * lib/Sbuild/ChrootUnshare.pm:
+     - print why which unshare_extra_args are applied
+     - use 'find -mindepth 1 -delete' instead of 'rm -rf' (Closes: #1085646)
+  * debian/copyright: fix old-fsf-address-in-copyright-file
+  * debian/control: bump Standards-Version (no changes)
+
+ -- Johannes Schauer Marin Rodrigues <josch@debian.org>  Tue, 29 Apr 2025 00:04:05 +0200
+
+sbuild (0.89.0) unstable; urgency=medium
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * lib/Sbuild/Build.pm:
+     - improve error message for when a source package was not found
+     - if unpacked source directory already exists in schroot mode with
+       persistent mountpoint on /build (Closes: #1091222)
+  * To set an unreproducible build path, BUILD_PATH has to be the empty string
+  * man/sbuild.1.in:
+     - improve option text. Thanks to Leopold Palomo-Avellaneda
+     - document the existance of new autopkgtest backends
+  * debian/tests/get_default_release.py: support base-files from
+    proposed-updates (Closes: #1057768)
+  * lib/Sbuild/Conf.pm:
+     - do not list 'sid' in CHROOT_ALIASES (Closes: #1099551)
+     - move NOLOG to other Logging options
+  * bin/sbuild:
+     - print dpkg-source invocations with --debug (Closes: #1094982)
+     - fix error message about missing --maintainer when using --make-binNMU
+       or --append-to-version (Closes: #1095063)
+  * Store the original value of $dsc in 'DSC Orig' and use it in
+    run_autopkgtest (Closes: #1090360)
+  * Lintian 2.77.0 reversed the exit status for program errors and policy
+    violations (Closes: #1032302)
+  * lib/Sbuild/ChrootUnshare.pm:
+     - check if the unshared user can 'touch' the unpack directory
+     - warn if primary effective group id does not match the group id of the
+       user account (Closes: #1101753)
+  * Add new option --hide-log-sections to hide log sections (Closes: #1050147)
+  * disallow relative build path
+  * document a workaround for running autopkgtest backends that require
+    $HOME to be set (Closes: #1033352)
+  * Do not create a binary-only=yes d/changelog entry if --binNMU=0, relax
+    binNMU restrictions (Closes: #963756)
+  * bin/sbuild-usernsexec: Add entry for / in /proc/mounts.
+    Thanks to Helmut Grohne <helmut@subdivi.de> (Closes: #1087430)
+  * lib/Sbuild/Options.pm: add --log-filename-ts-format (Closes: #834736)
+
+  [ Jochen Sprickerhof ]
+  * Don't run dpkg-buildtree for old dpkg (Closes: #1100636)
+  * Make sure PATH is set when executing commands (Closes: #1101928)
+  * Deprecate sbuild-debian-developer-setup (Closes: #1101753)
+  * Fix uninitialized value in Build.pm
+
+  [ Daniel Gröber ]
+  * bin/sbuild-debian-developer-setup:
+     - Pass --arch through to sbuild-createchroot
+     - Tweak schroot alias logic for multiple arches (Closes: #1100769)
+
+  [ Aurelien Jarno ]
+  * sbuild.1.in: improve the aspcud criteria for experimental
+
+  [ Chris Hofstaedtler ]
+  * Remove invocation of host gpg
+  * Remove CHROOT_MODE=sudo (Closes: #731573)
+
+  [ Richard Lewis ]
+  * debian/tests/unshare: skip test if mmdebstrap fails
+  * Build.pm:
+     - Split log_file() out of open_build_log()
+     - Store name of the log file
+     - Define %SBUILD_LOG_DIR, %SBUILD_LOG_BASENAME and %SBUILD_LOG_PATH
+     - Define %SRCPACKAGE and %SRCPACKAGE_VERSION
+  * sbuild.1.in: Improve documentation of percent-escapes
+
+  [ Guillem Jover ]
+  * Buildd::Uploader: Update dupload output scrapping against latest version
+  * Update dupload queue names
+
+  [ Sebastian Crane ]
+  * Allow using doas in sbuild-debian-developer-setup
+
+  [ Jakob Haufe ]
+  * Error out when both DOAS_USER and SUDO_USER are set
+
+ -- Johannes Schauer Marin Rodrigues <josch@debian.org>  Tue, 15 Apr 2025 20:56:15 +0200
+
+sbuild (0.88.5) unstable; urgency=medium
+
+  * distro_mangle: drop duplication in regex
+  * build_as_root_when_needed: support older dpkg
+
+ -- Jochen Sprickerhof <jspricke@debian.org>  Sat, 01 Mar 2025 10:10:11 +0100
+
+sbuild (0.88.4) unstable; urgency=medium
+
+  [ Samuel Thibault ]
+  * bin/buildd-vlog: Fix against perl 5.40.
+
+  [ Richard Lewis ]
+  * .perltidyrc: Use tabs for consistency with .editorconfig
+  * Add test/check-perltidy to run perltidy on perl files
+  * run test/check-perltidy -w
+  * make lib/Sbuild/Sysconfig.pm.in perltidy
+  * make everything perltidy - additional changes from unstable version
+
+  [ Jochen Sprickerhof ]
+  * Obey $TMPDIR for unshare_tmpdir_template
+  * Use root for Rules-Requires-Root: binary-targets
+    (enable with $build_as_root_when_needed = 1)
+  * Error out when running sbuild-* in unshare mode (Closes: #1094239)
+  * AUTOPKGTEST_OPTIONS: no longer pass --apt-upgrade to unshare
+  * sbuild-usernsexec: unlink resolv.conf before creating it (Closes: #1071736)
+  * Use GET to set WANNA_BUILD_SSH_CMD value
+
+ -- Jochen Sprickerhof <jspricke@debian.org>  Thu, 20 Feb 2025 13:39:25 +0100
+
+sbuild (0.88.3) unstable; urgency=medium
+
+  [ Samuel Thibault ]
+  * bin/sbuild-createchroot: Add --extra-suites parameter.
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * lib/Buildd/ClientConf.pm: WANNA_BUILD_SSH_CMD is an array, not a string
+    (Closes: #1093536)
+  * Add a supplementary group for the build user
+  * Convert remaining bash scripts to POSIX shell
+
+  [ Jochen Sprickerhof ]
+  * Add missing build dependency on apt
+  * Don't pass --root-owner-group to old dpkg
+
+ -- Jochen Sprickerhof <jspricke@debian.org>  Sun, 02 Feb 2025 11:12:43 +0100
+
+sbuild (0.88.2) unstable; urgency=medium
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * lib/Sbuild/Conf.pm:
+     - fix examples for ENVIRONMENT_FILTER (Closes: #1090336)
+     - do not ignore an empty DEB_BUILD_PROFILES environment variable
+     - Add CHROOT_ALIASES configuration option, allowing one to look up chroots
+       under a different name (Closes: #1089035)
+  * lib/Sbuild/ConfBase.pm:
+     - run check after setting all values
+     - preserve order of configuration options
+     - Set variables to their default values in ~/.config/sbuild/config.pl
+       (Closes: #1090358)
+  * lib/Sbuild/ChrootUnshare.pm:
+     - check if mmdebstrap is installed only when needed
+     - instead of passing the tarball path to the decompressor, let sbuild open
+       it and feed it to the decompressor program via standard input (Closes:
+       #1091169)
+  * debian/tests/unshare:
+     - install ca-certificates for https debci hosts. Thanks to Paul Gevers
+     - run dpkg-deb with --root-owner-group (Closes: #1092091)
+  * lib/Sbuild/Build.pm: fail if dpkg --print-foreign-architectures failed
+  * lib/Sbuild/ResolverBase.pm: build metapackage with dpkg-deb
+    --root-owner-group (Closes: #1092557)
+  * Use dpkg-buildtree to figure out if fakeroot is required
+  * die if exec fails because it cannot find the program
+
+  [ Simon McVittie ]
+  * man: Cross-reference the --build-dir option in BUILD ARTIFACTS
+  * man: Document how and where log files are saved
+
+  [ Guillem Jover ]
+  * lib/Sbuild/Conf.pm: Do not use deprecated Dpkg::Build::Info module
+
+  [ Chris Hofstaedtler ]
+  * Remove deborphan from Suggests:, package was removed
+  * sbuild-update: abort if chroot-mode=unshare (Closes: #1089105, #1091370)
+
+  [ Santiago Ruano Rincón ]
+  * Add Recommends on iproute2
+  * Fix mmdebstrap+unshare setup-hook when handling *-security suites
+
+  [ Jakub Wilk ]
+  * man: Remove stray quotation mark
+
+  [ Richard Lewis ]
+  * man/sbuild.1.in: remove stray quotation mark
+  * Document the need to retain package lists in the chroot if $apt_update is 0
+    (Closes: #1091170)
+
+  [ Jochen Sprickerhof ]
+  * unshare: Use $BUILD_USER as the default user
+  * unshare: Use 'sbuild' as the default user
+  * Use BUILD_USER for architecture and disk space check
+
+ -- Johannes Schauer Marin Rodrigues <josch@debian.org>  Thu, 16 Jan 2025 07:46:28 +0100
+
+sbuild (0.88.1) unstable; urgency=medium
+
+  [ Helmut Grohne ]
+  * configure apt's barbarian architectures for the cross build profile
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * lib/Sbuild/ResolverBase.pm: disable the sbuild-cross-resolver without
+    apt-utils in the chroot
+
+ -- Johannes Schauer Marin Rodrigues <josch@debian.org>  Mon, 16 Dec 2024 13:55:17 +0100
+
+sbuild (0.88.0) unstable; urgency=medium
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * Breaking change: UNSHARE_MMDEBSTRAP_EXTRA_ARGS now supports globs and
+    regexes as keys and is a list instead of a hash. The last part means that
+    if you set $unshare_mmdebstrap_extra_args in your ~/.sbuildrc, you have to
+    convert it to a list. See sbuild.conf(5) for examples and documentation.
+    (Closes: #1088653)
+  * lib/Sbuild/ChrootUnshare.pm:
+     - eval replacement string to be able to reference matches in the regex
+     - support distro mangle replacement strings containing a prefix to $1
+     - filter out CHRTYPE and BLKTYPE entries from tarballs (Closes: #1068382)
+  * lib/Sbuild/Conf.pm: also replace percent-escapes in the mmdebstrap
+    arguments
+  * debian/tests/unshare:
+     - disable cross-builds until #1088971 is fixed in autopkgtest
+     - use --bd-uninstallable-explainer=apt because the dose explainer does not
+       respect apt pinning and thus presents useless successes
+  * lib/Sbuild/Build.pm:
+     - don't copy in /usr/lib/apt/solvers/apt from the outside (Closes:
+       #1088836)
+     - refactor condition to avoid nesting and reduce indentation
+     - be more verbose about dpkg-buildpackage failures
+  * bin/sbuild-cross-resolver: support debug output when used by the apt
+    BD_UNINSTALLABLE_EXPLAINER for cross building
+  * Add a few more 'I:' status messages
+
+  [ Samuel Henrique ]
+  * Add .*-security to UNSHARE_MMDEBSTRAP_DISTRO_MANGLE (closes: #1088655)
+
+  [ Chris Hofstaedtler ]
+  * example.sbuildrc: drop "1;"
+
+  [ Jochen Sprickerhof ]
+  * Pass host architecture to piuparts
+  * Fix mmdebstrap command when keep_tarball is not set
+  * Add newline to uidmap error message (Closes: #1089126)
+  * Map any UNRELEASED.* string to unstable
+
+  [ Emanuele Rocca ]
+  * bin/sbuild-usernsexec: fix passwd typos
+
+  [ Julian Andres Klode ]
+  * d/t/build-procenv: Cat the debootstrap.log if it fails
+
+  [ Matthias Klose ]
+  * add timestamps to subsection logging (Closes: #1088662)
+
+  [ Niko Tyni ]
+  * Use build start time when generating binNMU timestamp (Closes: #1089088)
+
+  [ Richard Lewis ]
+  * Remove old dependencies
+
+  [ Santiago Vila ]
+  * Use standard location for perl
+
+ -- Johannes Schauer Marin Rodrigues <josch@debian.org>  Sun, 15 Dec 2024 22:39:40 +0100
+
+sbuild (0.87.1) unstable; urgency=medium
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * prefer ~/.config/sbuild/config.pl over ~/.sbuildrc (Closes: #1087378)
+  * default build path is /build/reproducible-path and switch off log filtering
+  * bin/sbuild: run dpkg-buildpackage --target clean instead of running
+    debian/rules clean under fakeroot
+  * lib/Sbuild/Conf.pm:
+     - throw out FAKEROOT
+     - add UNSHARE_MMDEBSTRAP_DISTRO_MANGLE
+  * lib/Sbuild/ChrootUnshare.pm:
+     - create new tarball for a chroot given via --chroot if it was missing
+     - always print mmdebstrap invocation when creating new chroot tarballs
+     - if mmdebstrap failed unlink (probably empty) tarball
+     - print out the files that were ignored because they are empty
+     - also translate UNRELEASED->unstable via unshare_mmdebstrap_distro_mangle
+  * bin/sbuild-usernsexec:
+     - do not attempt bind-mounting something that does not exist on the
+       outside
+     - be more verbose about what failed to mount
+  * bin/sbuild-cross-resolver: switch license to mit/expat
+  * Be more elaborate with explanation for insufficient disk space
+    (Closes: #1087656)
+  * debian/tests/unshare: test cross compilation
+  * debian/copyright: modernize
+
+  [ Alexis Murzeau ]
+  * lib/Sbuild/Base.pm: add function to add items to array conf options
+  * lib/Sbuild/Options.pm: replace uses of push by push_conf
+  * test/sbuild-options-parsing.pl: test that options correctly set conf
+    variables
+
+  [ Jochen Sprickerhof ]
+  * Improve wording about future schroot deprecation
+  * Use mmdebstrap to create piuparts chroot
+
+  [ Chris Hofstaedtler ]
+  * Reword schroot/unshare compat warning
+
+ -- Johannes Schauer Marin Rodrigues <josch@debian.org>  Mon, 25 Nov 2024 11:17:42 +0100
+
+sbuild (0.87.0) unstable; urgency=medium
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * If a tarball can't be found, create a chroot on-demand using mmdebstrap.
+    This version introduces an experimental new feature for the unshare
+    backend which is supposed to make sbuild more easy to use because sbuild
+    will manage the chroot tarballs itself.  With unshare-mode, sbuild will
+    now automatically create a chroot tarball upon startup using mmdebstrap
+    if it cannot find one in ~/.cache/sbuild.  This feature can be disabled
+    by setting $unshare_mmdebstrap_auto_create=0; in your ~/.sbuildrc. If
+    you like the feature and you would like to keep the tarballs sbuild
+    creates so that they can be re-used in subsequent invocations of sbuild,
+    you can set $unshare_mmdebstrap_keep_tarball=1; in your ~/.sbuildrc.
+    This will also make sbuild update an existing tarball (by re-creating
+    it) if it has become too old. The maximum age of a chroot tarball can be
+    specified by setting $unshare_mmdebstrap_max_age to a maximum age value
+    in seconds (default is 604800, which is one week). To customize the
+    chroot tarball creation, refer to the setting
+    UNSHARE_MMDEBSTRAP_EXTRA_ARGS in your sbuild.conf(5).
+
+  [ Jochen Sprickerhof ]
+  * Use empty release in unshare autopkgtest (Closes: #1085450)
+
+ -- Johannes Schauer Marin Rodrigues <josch@debian.org>  Tue, 12 Nov 2024 00:09:38 +0100
+
+sbuild (0.86.3) unstable; urgency=medium
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * bin/sbuild-usernsexec: add interesting package sets for the unshare backend
+  * bin/sbuild-usernsexec: do not die if symlink creation fails but warn with
+    the possible reason for failure
+    (Closes: #1085219)
+
+  [ Chris Hofstaedtler ]
+  * Drop sbuild-debuild code
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * If run in unshare mode and if unset in ~/.sbuildrc, run piuparts and
+    autopkgtest in unshare mode as well, re-using the sbuild tarball
+  * unify ROOT_ARGS handling of autopkgtest and piuparts
+  * lib/Sbuild/Build.pm: remove use of apt's Debug::BuildDeps=1 which was last
+    used in jessie and no longer exists in apt since stretch
+
+  [ Benjamin Drung ]
+  * debian/tests/unshare-qemuwrapper: Test absolute paths in %SBUILD_DSC
+  * debian/tests/unshare: Test fix building symlinks not ending on .dsc
+    (Closes: #1012856)
+
+  [ Jochen Sprickerhof ]
+  * Don't show "Keeping session:" in unshare mode (Closes: #1073295)
+  * Update sbuild wiki link
+
+ -- Jochen Sprickerhof <jspricke@debian.org>  Sun, 27 Oct 2024 08:12:10 +0100
+
+sbuild (0.86.2) unstable; urgency=medium
+
+  * unshare: disable pivot_root (Closes: #1084956)
+
+ -- Johannes Schauer Marin Rodrigues <josch@debian.org>  Sat, 12 Oct 2024 21:57:54 +0200
+
+sbuild (0.86.1) unstable; urgency=medium
+
+  * unshare: Don't setsid() for hooks (Closes: #1084174)
+  * Add warning for schroot users
+  * Fix lintian warning superfluous-file-pattern
+
+ -- Jochen Sprickerhof <jspricke@debian.org>  Fri, 11 Oct 2024 09:33:39 +0200
+
+sbuild (0.86.0) unstable; urgency=medium
+
+  [ Chris Hofstaedtler ]
+  * Remove buildd-mail-wrapper compat symlink
+  * Remove NEWS-buildd, ending in 2004
+  * Remove reference to deleted ChangeLog-buildd
+  * Remove Makefile-buildd
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * lib/Sbuild/Build.pm: warn if source package name is not defined
+  * lib/Sbuild/ConfBase.pm: fall back to sane PATH if unset
+  * debian/salsa-ci.yml: SALSA_CI_REPROTEST_ENABLE_DIFFOSCOPE: 1
+  * remove ./debian/buildd.init
+  * d/rules: set LC_ALL=C.UTF-8 for reproduciblity (Closes: #1082358)
+  * refactor the unshare backend as /usr/libexec/sbuild-usernsexec
+
+  [ Helmut Grohne ]
+  * sbuild-usernsexec: avoid getpwnam inside the chroot
+
+  [ Grzegorz Szymaszek ]
+  * man/sbuild-update.1: delete clean from an example
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * add .perltidyrc
+  * lib/Sbuild/Build.pm: when auto-adding deb-src to EXTRA_REPOSITORIES,
+    consider sources.list entries unique by Repo-URI, Codename and Component
+
+  [ Jochen Sprickerhof ]
+  * Remove unused use
+  * unshare: mkdir before bind mounting
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * bin/sbuild-usernsexec: let make_path croak() by itself on error.
+    Thanks to Guillem Jover
+
+ -- Jochen Sprickerhof <jspricke@debian.org>  Wed, 02 Oct 2024 14:59:15 +0200
+
+sbuild (0.85.11) unstable; urgency=medium
+
+  [ Christian Kastner ]
+  * sbuild-qemu: Add discard=unmap to drive options
+  * sbuild-qemu-update: Reduce image size after update (Closes: #1073509)
+
+  [ Paride Legovini ]
+  * Unshare: run useradd/groupadd with --prefix instead of --root
+
+  [ Jochen Sprickerhof ]
+  * Mark dumb-init as :native (Closes: #1079731)
+
+ -- Jochen Sprickerhof <jspricke@debian.org>  Wed, 28 Aug 2024 11:15:11 +0200
+
+sbuild (0.85.10) unstable; urgency=medium
+
+  * autopkgtest: skip test for unreleased architecture
+
+ -- Jochen Sprickerhof <jspricke@debian.org>  Thu, 30 May 2024 10:41:26 +0200
+
+sbuild (0.85.9) unstable; urgency=medium
+
+  [ Aurelien Jarno ]
+  * Unshare: add IPv6 loopback address to /etc/hosts
+  * Unshare: preserve HOME environment variable
+  * Unshare: define the LOGNAME environment variable
+
+  [ Christian Kastner ]
+  * sbuild-qemu: Fix typo breaking one guess for image path
+  * sbuild-qemu: Don't add --dist (Closes: #1071000)
+
+  [ Helmut Grohne ]
+  * lib/Sbuild/ChrootUnshare.pm: Do not expose /sys/kernel in the unshare backend.
+    (Closes: #1071234)
+
+  [ Timo Röhling ]
+  * Relax permissions on pipes connected to STDOUT (Closes: #1070007)
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * lib/Sbuild/Conf.pm: make the schroot binary configurable via ~/.sbuildrc
+  * bin/sbuild: only check group membership if 'schroot' is configured as the schroot binary
+
+ -- Jochen Sprickerhof <jspricke@debian.org>  Wed, 29 May 2024 10:46:22 +0200
+
+sbuild (0.85.8) unstable; urgency=medium
+
+  [ Aurelien Jarno ]
+  * man/sbuild-createchroot.8.in: fix unshare mode example
+  * Unshare: use linux32 personality for 32-bit on 64-bit architectures
+
+ -- Jochen Sprickerhof <jspricke@debian.org>  Thu, 25 Apr 2024 14:49:56 +0200
+
+sbuild (0.85.7) unstable; urgency=medium
+
+  [ Santiago Ruano Rincón ]
+  * Remove deprecation note about the sudo chroot mode
+
+  [ Christian Kastner ]
+  * sbuild-qemu: Use 4M OVMF images if available
+
+  [ Jochen Sprickerhof ]
+  * Add --{no-,}enable-network and ENABLE_NETWORK options
+  * Unshare: use dumb-init for build
+  * Run post-build-failed-commands before cleanup
+  * Add myself to uploaders
+
+  [ Boyuan Yang ]
+  * "directory" is available for "--extra-package" (Closes: #1040978)
+
+ -- Jochen Sprickerhof <jspricke@debian.org>  Fri, 12 Apr 2024 18:50:09 +0200
+
+sbuild (0.85.6) unstable; urgency=medium
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * d/tests/unshare: generate a new GPG key every time using sqop.
+  * d/tests/unshare: copy apt sources and preferences from outside the chroot
+  * d/control: let buildd depend on sbuild (= ${binary:Version}) as it is not
+    arch:any
+  * d/tests/unshare-qemuwrapper: drop --mode=unshare in favour of mmdebstrap
+    picking the mode automatically depending on what is available
+  * man/sbuild-debian-developer-setup.1.in: document where the chroot is placed
+  * lib/Sbuild/ChrootUnshare.pm: use HOME from config instead of the
+    environment
+  * follow adduser's changes in example: --gecos => --comment
+
+  [ Benjamin Drung ]
+  * d/t/get_default_release.py: Support Ubuntu
+  * Test unshare autopkgtest directly
+
+  [ Dave Jones ]
+  * Update verify_deb to match current zstd output
+
+  [ Tianyu Chen ]
+  * Fix extra-packages log output
+
+  [ Arnaud Rebillout ]
+  * Update sbuild-createchroot man page regarding merged-usr
+
+ -- Johannes Schauer Marin Rodrigues <josch@debian.org>  Mon, 26 Feb 2024 19:22:49 +0100
+
+sbuild (0.85.5) unstable; urgency=medium
+
+  [ Jochen Sprickerhof ]
+  * Replace ‐ with - in commands
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * sbuild-qemu-update: pass exec args as list avoiding a sub-shell
+  * sbuild-qemu-update: add --verbose and --quiet
+  * sbuild-qemu-update: allow passing arbitrary extra options to qemu after
+    a double dash
+  * sbuild-qemu-update: add --boot option analogous to autopkgtest-virt-qemu
+    (Closes: #1061636)
+
+  [ Christian Kastner ]
+  * sbuild-qemu-create: add --boot option analogous to autopkgtest-build-qemu
+  * sbuild-qemu-boot: add --boot option analogous to autopkgtest-virt-qemu
+  * sbuild-qemu: add --boot option analogous to autopkgtest-virt-qemu
+  * sbuild-qemu-update: Add help message to --boot
+  * sbuild-qemu*: Update manpages for --boot
+  * sbuild-qemu-create: Remove APT lists to reduce image size.
+  * Bump copyrights
+
+ -- Christian Kastner <ckk@debian.org>  Tue, 13 Feb 2024 19:59:25 +0100
+
+sbuild (0.85.4) unstable; urgency=medium
+
+  * debian/tests/unshare-qemuwrapper:
+     - use hook directory copy-host-apt-sources-and-preferences
+     - explicitly choose unshare mode
+  * debian/tests/control:
+     - remove needs-root from unshare-qemuwrapper
+     - add dep on uidmap
+
+ -- Johannes Schauer Marin Rodrigues <josch@debian.org>  Thu, 26 Oct 2023 23:01:14 +0200
+
+sbuild (0.85.3) unstable; urgency=medium
+
+  [ Lee Garrett ]
+  * Remove reference to bug that has been closed for 6 years
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * debian/tests/unshare-qemuwrapper: use debvm
+
+ -- Johannes Schauer Marin Rodrigues <josch@debian.org>  Sun, 24 Sep 2023 01:06:51 +0200
+
+sbuild (0.85.2) unstable; urgency=medium
+
+  * buildd: Demote lsb-base dependency to the lesser alternative.
+
+ -- Christian Kastner <ckk@debian.org>  Sat, 11 Mar 2023 10:05:09 +0100
+
+sbuild (0.85.1) unstable; urgency=medium
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * add .mailmap
+
+  [ Christian Kastner ]
+  * Add myself to .mailmap
+  * Bump Standards-Version to 4.6.2 (no changes needed)
+  * sbuild-qemu: Properly handle --arch, --build, --host.
+  * sbuild-qemu: Fix broken --overlay-dir
+  * sbuild-qemu-update: Increase default timeout to 600s.
+  * sbuild-qemu-update: Add --timeout option
+  * sbuild-qemu-create: Add support for /root/.ssh/authorized_keys
+  * sbuild-qemu-create: Properly quote variables
+  * sbuild-qemu-boot: Set tty geometry to host's geometry
+  * sbuild-qemu-boot: Add option to forward SSH
+
+ -- Christian Kastner <ckk@debian.org>  Fri, 10 Mar 2023 22:17:29 +0100
 
 sbuild (0.85.0) unstable; urgency=medium
 

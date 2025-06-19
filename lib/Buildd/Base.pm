@@ -24,153 +24,161 @@ use strict;
 use warnings;
 
 use IO::File;
-use Buildd qw(lock_file unlock_file);
+use Buildd         qw(lock_file unlock_file);
 use Buildd::Client qw();
 
 use Sbuild::Base;
 use Sbuild qw($devnull);
 
 BEGIN {
-    use Exporter ();
-    our (@ISA, @EXPORT);
+	use Exporter ();
+	our (@ISA, @EXPORT);
 
-    @ISA = qw(Exporter Sbuild::Base);
+	@ISA = qw(Exporter Sbuild::Base);
 
-    @EXPORT = qw();
+	@EXPORT = qw();
 }
 
 sub new {
-    my $class = shift;
-    my $conf = shift;
+	my $class = shift;
+	my $conf  = shift;
 
-    my $self = $class->SUPER::new($conf);
-    bless($self, $class);
+	my $self = $class->SUPER::new($conf);
+	bless($self, $class);
 
-    $self->set('PID', $$);
+	$self->set('PID', $$);
 
-    $self->open_log();
+	$self->open_log();
 
-    return $self;
+	return $self;
 }
 
 sub open_log ($) {
-    my $self = shift;
+	my $self = shift;
 
-    my $logfile = $self->get_conf('DAEMON_LOG_FILE');
+	my $logfile = $self->get_conf('DAEMON_LOG_FILE');
 
-    my $log = IO::File->new("$logfile", O_CREAT|O_WRONLY|O_APPEND, 0640)
-	or die "$0: Cannot open logfile $logfile: $!\n";
-    $log->autoflush(1);
+	my $log = IO::File->new("$logfile", O_CREAT | O_WRONLY | O_APPEND, 0640)
+	  or die "$0: Cannot open logfile $logfile: $!\n";
+	$log->autoflush(1);
 
-    # Since we are a daemon, fully detach from terminal by reopening
-    # stdout and stderr to redirect to the log file.  Note messages
-    # should be printed using log(), not printing directly to the
-    # filehandle.  This is a fallback only.
-    open(STDOUT, '>&', $log) or warn "Can't redirect stderr\n";
-    open(STDERR, '>&', $log) or warn "Can't redirect stderr\n";
+	# Since we are a daemon, fully detach from terminal by reopening
+	# stdout and stderr to redirect to the log file.  Note messages
+	# should be printed using log(), not printing directly to the
+	# filehandle.  This is a fallback only.
+	open(STDOUT, '>&', $log) or warn "Can't redirect stderr\n";
+	open(STDERR, '>&', $log) or warn "Can't redirect stderr\n";
 
-    $self->set('Log Stream', $log);
+	$self->set('Log Stream', $log);
 
-    return $log;
+	return $log;
 }
 
 sub close_log ($) {
-    my $self = shift;
+	my $self = shift;
 
-    # We can't close stdout and stderr, so redirect to /dev/null.
-    open(STDOUT, '>&', $devnull) or warn "Can't redirect stderr\n";
-    open(STDERR, '>&', $devnull) or warn "Can't redirect stderr\n";
+	# We can't close stdout and stderr, so redirect to /dev/null.
+	open(STDOUT, '>&', $devnull) or warn "Can't redirect stderr\n";
+	open(STDERR, '>&', $devnull) or warn "Can't redirect stderr\n";
 
-    my $log = $self->get('Log Stream');
-    $self->set('Log Stream', undef);
+	my $log = $self->get('Log Stream');
+	$self->set('Log Stream', undef);
 
-    return $log->close();
+	return $log->close();
 }
 
 sub reopen_log ($) {
-    my $self = shift;
+	my $self = shift;
 
-    my $log = $self->get('Log Stream');
+	my $log = $self->get('Log Stream');
 
-    if ($self->close_log()) {
-	$log = $self->open_log();
-    }
+	if ($self->close_log()) {
+		$log = $self->open_log();
+	}
 
-    return $log;
+	return $log;
 }
 
 sub write_stats ($$$) {
-    my $self = shift;
-    my ($cat, $val) = @_;
+	my $self = shift;
+	my ($cat, $val) = @_;
 
-    local( *F );
+	local (*F);
 
-    my $home = $self->get_conf('HOME');
+	my $home = $self->get_conf('HOME');
 
-    lock_file( "$home/stats" );
-    open( F, ">>$home/stats/$cat" );
-    print F "$val\n";
-    close( F );
-    unlock_file( "$home/stats" );
+	lock_file("$home/stats");
+	open(F, ">>$home/stats/$cat");
+	print F "$val\n";
+	close(F);
+	unlock_file("$home/stats");
 }
 
 sub get_db_handle ($$) {
-    my $self = shift;
-    my $dist_config = shift;
+	my $self        = shift;
+	my $dist_config = shift;
 
-    my $db = Buildd::Client->new($dist_config);
-    $db->set('Log Stream', $self->get('Log Stream'));
-    return $db;
+	my $db = Buildd::Client->new($dist_config);
+	$db->set('Log Stream', $self->get('Log Stream'));
+	return $db;
 }
 
 sub get_dist_config_by_name ($$) {
-    my $self = shift;
-    my $dist_name = shift;
+	my $self      = shift;
+	my $dist_name = shift;
 
-    my $dist_config;
-    for my $dist_config_entry (@{$self->get_conf('DISTRIBUTIONS')}) {
-        if ($dist_config_entry->get('DIST_NAME') eq $dist_name) {
-            $dist_config = $dist_config_entry;
-        }
-    }
+	my $dist_config;
+	for my $dist_config_entry (@{ $self->get_conf('DISTRIBUTIONS') }) {
+		if ($dist_config_entry->get('DIST_NAME') eq $dist_name) {
+			$dist_config = $dist_config_entry;
+		}
+	}
 
-    if (!$dist_config) {
-        $self->set('Mail Short Error',
-                $self->get('Mail Short Error') .
-                "No configuration found for dist $dist_name\n");
-        $self->set('Mail Error',
-                $self->get('Mail Error') .
-                "Answer could not be processed, as dist=$dist_name does not match any of\n".
-                "the entries in the buildd configuration.\n");
-    }
+	if (!$dist_config) {
+		$self->set(
+			'Mail Short Error',
+			$self->get('Mail Short Error')
+			  . "No configuration found for dist $dist_name\n"
+		);
+		$self->set(
+			'Mail Error',
+			$self->get('Mail Error')
+			  . "Answer could not be processed, as dist=$dist_name does not match any of\n"
+			  . "the entries in the buildd configuration.\n"
+		);
+	}
 
-    return $dist_config;
+	return $dist_config;
 }
 
 sub get_arch_dist_config_by_name ($$) {
-    my $self = shift;
-    my $arch_name = shift;
-    my $dist_name = shift;
+	my $self      = shift;
+	my $arch_name = shift;
+	my $dist_name = shift;
 
-    my $arch_config, my $dist_config;
-    for my $dist_config_entry (@{$self->get_conf('DISTRIBUTIONS')}) {
-        if ($dist_config_entry->get('BUILT_ARCHITECTURE') eq $arch_name &&
-            $dist_config_entry->get('DIST_NAME') eq $dist_name) {
-            $dist_config = $dist_config_entry;
-        }
-    }
+	my $arch_config, my $dist_config;
+	for my $dist_config_entry (@{ $self->get_conf('DISTRIBUTIONS') }) {
+		if (   $dist_config_entry->get('BUILT_ARCHITECTURE') eq $arch_name
+			&& $dist_config_entry->get('DIST_NAME') eq $dist_name) {
+			$dist_config = $dist_config_entry;
+		}
+	}
 
-    if (!$dist_config) {
-        $self->set('Mail Short Error',
-                $self->get('Mail Short Error') .
-                "No configuration found for arch=$arch_name, dist=$dist_name\n");
-        $self->set('Mail Error',
-                $self->get('Mail Error') .
-                "Answer could not be processed, as arch=$arch_name, dist=$dist_name".
-                "does not match any of the entries in the buildd configuration.\n");
-    }
+	if (!$dist_config) {
+		$self->set(
+			'Mail Short Error',
+			$self->get('Mail Short Error')
+			  . "No configuration found for arch=$arch_name, dist=$dist_name\n"
+		);
+		$self->set(
+			'Mail Error',
+			$self->get('Mail Error')
+			  . "Answer could not be processed, as arch=$arch_name, dist=$dist_name"
+			  . "does not match any of the entries in the buildd configuration.\n"
+		);
+	}
 
-    return $dist_config;
+	return $dist_config;
 }
 
 sub log {
@@ -179,8 +187,7 @@ sub log {
 	my $timestamp = localtime;
 	# omit weekday and year for brevity
 	$timestamp =~ s/^\w+\s(.*)\s\d+$/$1/;
-	my $prefix = "$timestamp $Buildd::progname\[" .
-	    $self->get('PID') . "\]: ";
+	my $prefix = "$timestamp $Buildd::progname\[" . $self->get('PID') . "\]: ";
 
 	for my $line (split(/\n/, join("", @_))) {
 		Sbuild::Base::log($self, $prefix, $line, "\n");

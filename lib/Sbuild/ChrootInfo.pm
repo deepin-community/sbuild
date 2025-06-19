@@ -30,114 +30,115 @@ use FileHandle;
 use File::Temp ();
 
 BEGIN {
-    use Exporter ();
-    our (@ISA, @EXPORT);
+	use Exporter ();
+	our (@ISA, @EXPORT);
 
-    @ISA = qw(Exporter Sbuild::Base);
+	@ISA = qw(Exporter Sbuild::Base);
 
-    @EXPORT = qw();
+	@EXPORT = qw();
 }
 
 sub new {
-    my $class = shift;
-    my $conf = shift;
+	my $class = shift;
+	my $conf  = shift;
 
-    my $self = $class->SUPER::new($conf);
-    bless($self, $class);
+	my $self = $class->SUPER::new($conf);
+	bless($self, $class);
 
-    $self->set('Chroots', {});
+	$self->set('Chroots', {});
 
-    $self->get_info_all();
+	$self->get_info_all();
 
-    return $self;
+	return $self;
 }
-
-
 
 sub create {
-    my $self = shift;
-    my $namespace = shift;
-    my $distribution = shift;
-    my $chroot = shift;
-    my $arch = shift; # this is the build arch
+	my $self         = shift;
+	my $namespace    = shift;
+	my $distribution = shift;
+	my $chroot       = shift;
+	my $arch         = shift;    # this is the build arch
 
-    my $chrootid = $self->find($namespace, $distribution, $chroot, $arch);
+	my $chrootid = $self->find($namespace, $distribution, $chroot, $arch);
 
-    my $newchroot = $self->_create($chrootid);
+	my $newchroot = $self->_create($chrootid);
 
-    if (defined($newchroot)) {
-	$newchroot->set('Chroots', $self);
-    }
+	if (defined($newchroot)) {
+		$newchroot->set('Chroots', $self);
+	}
 
-    return $newchroot;
+	return $newchroot;
 }
 
-
 sub find {
-    my $self = shift;
-    my $namespace = shift;
-    my $distribution = shift;
-    my $chroot = shift;
-    my $arch = shift; # this is the build arch
+	my $self         = shift;
+	my $namespace    = shift;
+	my $distribution = shift;
+	my $chroot       = shift;
+	my $arch         = shift;    # this is the build arch
 
-    # Use namespace given from $distribution if one is found
-    if ($distribution =~ /^([^:]+):/msx) {
-	$namespace = $1;
-	$distribution =~ s/^[^:]+://msx;
-    }
-
-    my $chroots = $self->get('Chroots');
-
-    # Don't do strict arch checking if ARCH == HOST_ARCH.
-    if (!defined($arch) || $arch eq "") {
-	$arch = $self->get_conf('BUILD_ARCH');
-    }
-    my $host_arch = $self->get_conf('HOST_ARCH');
-
-    if (!defined $chroot) {
-	my $ns = $chroots->{$namespace};
-	if (!defined($ns)) {
-	    if ($namespace ne 'chroot') {
-		$chroot = $self->find('chroot', $distribution, $chroot, $arch);
-	    } else {
-		return undef;
-	    }
+	# Use namespace given from $distribution if one is found
+	if ($distribution =~ /^([^:]+):/msx) {
+		$namespace = $1;
+		$distribution =~ s/^[^:]+://msx;
 	}
 
-        if ($arch ne $host_arch &&
-            defined($ns->{"${distribution}-${arch}-${host_arch}-sbuild"})) {
-            $chroot = "${namespace}:${distribution}-${arch}-${host_arch}-sbuild";
-        }
-        elsif ($arch ne $host_arch &&
-            defined($ns->{"${distribution}-${arch}-${host_arch}"})) {
-            $chroot = "${namespace}:${distribution}-${arch}-${host_arch}";
-        }
-        elsif ($arch ne "" &&
-            defined($ns->{"${distribution}-${arch}-sbuild"})) {
-            $chroot = "${namespace}:${distribution}-${arch}-sbuild";
-        }
-        elsif (defined($ns->{"${distribution}-sbuild"})) {
-            $chroot = "${namespace}:${distribution}-sbuild";
-        }
-        elsif ($arch ne "" &&
-               defined($ns->{"${distribution}-${arch}"})) {
-            $chroot = "${namespace}:${distribution}-${arch}";
-        } elsif (defined($ns->{$distribution})) {
-            $chroot = "${namespace}:${distribution}";
+	if (defined $self->get_conf('CHROOT_ALIASES')
+		&& exists $self->get_conf('CHROOT_ALIASES')->{$distribution}) {
+		$distribution = $self->get_conf('CHROOT_ALIASES')->{$distribution};
 	}
-    }
 
-    if (!$chroot) {
-	# Fall back to chroot namespace.
-	if ($namespace ne 'chroot') {
-	    $chroot = $self->find('chroot', $distribution, $chroot, $arch);
-	} else {
-		$self->log_error("Chroot for distribution $distribution, architecture $arch not found\n");
-		return undef;
+	my $chroots = $self->get('Chroots');
+
+	# Don't do strict arch checking if ARCH == HOST_ARCH.
+	if (!defined($arch) || $arch eq "") {
+		$arch = $self->get_conf('BUILD_ARCH');
 	}
-    }
+	my $host_arch = $self->get_conf('HOST_ARCH');
 
-    return $chroot;
+	if (!defined $chroot) {
+		my $ns = $chroots->{$namespace};
+		if (!defined($ns)) {
+			if ($namespace ne 'chroot') {
+				$chroot = $self->find('chroot', $distribution, $chroot, $arch);
+			} else {
+				return undef;
+			}
+		}
+
+		if ($arch ne $host_arch
+			&& defined($ns->{"${distribution}-${arch}-${host_arch}-sbuild"})) {
+			$chroot
+			  = "${namespace}:${distribution}-${arch}-${host_arch}-sbuild";
+		} elsif ($arch ne $host_arch
+			&& defined($ns->{"${distribution}-${arch}-${host_arch}"})) {
+			$chroot = "${namespace}:${distribution}-${arch}-${host_arch}";
+		} elsif ($arch ne ""
+			&& defined($ns->{"${distribution}-${arch}-sbuild"})) {
+			$chroot = "${namespace}:${distribution}-${arch}-sbuild";
+		} elsif (defined($ns->{"${distribution}-sbuild"})) {
+			$chroot = "${namespace}:${distribution}-sbuild";
+		} elsif ($arch ne ""
+			&& defined($ns->{"${distribution}-${arch}"})) {
+			$chroot = "${namespace}:${distribution}-${arch}";
+		} elsif (defined($ns->{$distribution})) {
+			$chroot = "${namespace}:${distribution}";
+		}
+	}
+
+	if (!$chroot) {
+		# Fall back to chroot namespace.
+		if ($namespace ne 'chroot') {
+			$chroot = $self->find('chroot', $distribution, $chroot, $arch);
+		} else {
+			$self->log_error(
+"Chroot for distribution $distribution, architecture $arch not found\n"
+			);
+			return undef;
+		}
+	}
+
+	return $chroot;
 }
 
 1;

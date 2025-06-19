@@ -1,0 +1,12 @@
+sbuild-debian-developer-setup (0.89.2) unstable; urgency=medium
+
+    sbuild-debian-developer-setup is deprecated and the package may be removed
+    or renamed in the future.
+    Debian buildds switched to the unshare backend in 2024. To start using the
+    unshare backend, run sbuild with --chroot-mode=unshare or put 
+      $chroot_mode = 'unshare';
+    into your ~/.config/sbuild/config.pl. sbuild is able to manage your
+    chroots for you without cron jobs. See the man page of sbuild(1) for
+    more details.
+
+ -- Jochen Sprickerhof <jspricke@debian.org>  Thu, 01 May 2025 11:17:14 +0200

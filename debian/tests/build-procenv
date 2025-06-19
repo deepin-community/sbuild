@@ -7,11 +7,10 @@
 #---------------------------------------------------------------------
 set -e
 
-die()
-{
-    msg="$*"
-    echo "ERROR: $msg" >&2
-    exit 1
+die() {
+	msg="$*"
+	echo "ERROR: $msg" >&2
+	exit 1
 }
 
 # The package we'll ask sbuild to build (we know its buildable since
@@ -24,49 +23,55 @@ die()
 pkg=procenv
 components=""
 
-distro=$(lsb_release -is|tr '[:upper:]' '[:lower:]')
+distro=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
 [ -z "$distro" ] && die "cannot establish distribution"
 
 host_release=$(lsb_release -cs)
 [ -z "$host_release" ] && die "cannot establish release running on host"
 
-if [ "$distro" = ubuntu ]
-then
-    # Build chroot for latest release.
-    release=$(distro-info --devel)
-    components=main,universe
+if [ "$distro" = ubuntu ]; then
+	# Build chroot for latest release.
+	release=$(distro-info --devel)
+	components=main,universe
 
-    case $(dpkg --print-architecture) in
-        amd64|i386)
-            url=http://archive.ubuntu.com/ubuntu
-            ;;
-        *)
-            url=http://ports.ubuntu.com/ubuntu-ports
-            ;;
-    esac
-elif [ "$distro" = debian ]
-then
-    # Build chroot for latest stable release since
-    # sid may not be buildable on a particular day.
-    release=$(distro-info --stable)
+	case $(dpkg --print-architecture) in
+		amd64 | i386)
+			url=http://archive.ubuntu.com/ubuntu
+			;;
+		*)
+			url=http://ports.ubuntu.com/ubuntu-ports
+			;;
+	esac
+elif [ "$distro" = debian ]; then
+	# Build chroot for latest stable release since
+	# sid may not be buildable on a particular day.
+	release=$(distro-info --stable)
 
-    url=http://httpredir.debian.org/debian
+	url=http://httpredir.debian.org/debian
 else
-    die "need to know where archive is for distro '$distro'"
+	die "need to know where archive is for distro '$distro'"
 fi
 
-arch=$(dpkg --print-architecture 2>/dev/null)
+arch=$(dpkg --print-architecture 2> /dev/null)
 [ -z "$arch" ] && die "cannot establish architecture"
 
 [ -z "$AUTOPKGTEST_TMP" ] && die "AUTOPKGTEST_TMP not set"
 dir="$AUTOPKGTEST_TMP/schroot-$release"
 
 if ! mknod "$AUTOPKGTEST_TMP"/test-dev-null c 1 3; then
-    echo "Cannot make special nodes; running in unprivileged container?" >&2
-    exit 77
+	echo "Cannot make special nodes; running in unprivileged container?" >&2
+	exit 77
 else
-    rm "$AUTOPKGTEST_TMP"/test-dev-null
+	rm "$AUTOPKGTEST_TMP"/test-dev-null
 fi
+
+# on Debian Salsa CI, $AUTOPKGTEST_NORMAL_USER is empty
+if [ -z "$AUTOPKGTEST_NORMAL_USER" ]; then
+	AUTOPKGTEST_NORMAL_USER=debci
+	useradd --create-home "$AUTOPKGTEST_NORMAL_USER"
+fi
+passwd --delete "$AUTOPKGTEST_NORMAL_USER"
+usermod --append --groups sudo,sbuild "$AUTOPKGTEST_NORMAL_USER"
 
 # The expected name of the schroot that sbuild-createchroot will create
 chroot="${release}-${arch}-sbuild"
@@ -80,45 +85,57 @@ chroot="${release}-${arch}-sbuild"
 # don't match on the _type_ of schroot in case new schroot types are
 # added and this test is not updated to take account of the new types.
 
-schroots=$(schroot -l 2>/dev/null)
+schroots=$(schroot -l 2> /dev/null)
 
-if [ -n "$schroots" ] && echo "$schroots"|grep -q ":${release}-${arch}"
-then
-    echo "INFO:"
-    echo "INFO: Existing schroots detected for current release ($release)"
-    echo "INFO: and architecture ($arch)"
-    echo "INFO:"
-    echo "INFO: Not continuing."
-    echo "INFO:"
+if [ -n "$schroots" ] && echo "$schroots" | grep -q ":${release}-${arch}"; then
+	echo "INFO:"
+	echo "INFO: Existing schroots detected for current release ($release)"
+	echo "INFO: and architecture ($arch)"
+	echo "INFO:"
+	echo "INFO: Not continuing."
+	echo "INFO:"
 
-    # exit successfully
-    exit 0
+	# exit successfully
+	exit 0
 fi
 
 if [ -z "$http_proxy" ]; then
-    RES=$(apt-config shell http_proxy Acquire::http::Proxy)
-    # shellcheck disable=SC2086
-    eval $RES
-    export http_proxy
-    echo "INFO: using proxy: ${http_proxy:-(none)}"
+	RES=$(apt-config shell http_proxy Acquire::http::Proxy)
+	# shellcheck disable=SC2086
+	eval $RES
+	export http_proxy
+	echo "INFO: using proxy: ${http_proxy:-(none)}"
 fi
 
 echo "INFO: Creating sbuild chroot '$chroot' for release '$release' in directory '$dir' from url '$url'"
+
+# Test if there is actually a release for that architecture
+wget --quiet --spider "$url/dists/$release/main/binary-$arch/Release" || exit 77
+
+# Don't test/override custom settings
+test -f "$HOME/.sbuildrc" && exit 77
+# shellcheck disable=SC2016
+printf '$chroot_mode = "schroot";\n$schroot = "schroot";\n' > "$HOME/.sbuildrc"
+
 [ -n "$components" ] && components="--components=$components"
 # avoid "debconf: delaying package configuration, since apt-utils is not installed"
-sbuild-createchroot $components "$release" "$dir" "$url"
+if ! runuser -u "$AUTOPKGTEST_NORMAL_USER" -- sudo sbuild-createchroot $components "$release" "$dir" "$url"; then
+	cat "$dir/debootstrap/debootstrap.log"
+	exit 1
+fi
+
 if [ -n "$http_proxy" ]; then
-    echo "Acquire::http { Proxy \"$http_proxy\"; };" > "$dir/etc/apt/apt.conf.d/01proxy"
+	echo "Acquire::http { Proxy \"$http_proxy\"; };" > "$dir/etc/apt/apt.conf.d/01proxy"
 fi
 
 echo "INFO: Checking chroot '$chroot' is known"
-schroot --list --all-chroots|grep "^chroot:${chroot}$"
+schroot --list --all-chroots | grep "^chroot:${chroot}$"
 
 echo "INFO: Displaying information about chroot '$chroot'"
 schroot --info "${chroot}"
 
 echo "INFO: Building package '$pkg' for release '$release'"
-sbuild --verbose -A -d "$release" "$pkg" 2>&1
+runuser -u "$AUTOPKGTEST_NORMAL_USER" -- sbuild --verbose -A -d "$release" "$pkg" 2>&1
 
 deb=$(ls ${pkg}_*"_${arch}.deb")
 
@@ -137,19 +154,18 @@ extract="$AUTOPKGTEST_TMP/extract"
 echo "INFO: Extracting '$deb' to '$extract'"
 dpkg --extract "$deb" "$extract"
 
-if [ "$release" = "$host_release" ]
-then
-    echo "INFO: Installing package '$pkg' from '$deb'"
-    apt -o Apt::Cmd::Disable-Script-Warning=1 -o APT::Get::Assume-Yes=1 install "$(pwd)/$deb"
+if [ "$release" = "$host_release" ]; then
+	echo "INFO: Installing package '$pkg' from '$deb'"
+	apt -o Apt::Cmd::Disable-Script-Warning=1 -o APT::Get::Assume-Yes=1 install "$(pwd)/$deb"
 
-    # run the command to prove the build worked but also to expose the
-    # auto-package-test environment used for this test.
-    cmd=$pkg
-    echo "INFO: Showing AutoPkgTest environment by running '$cmd' from package '$pkg'"
-    "$cmd"
+	# run the command to prove the build worked but also to expose the
+	# auto-package-test environment used for this test.
+	cmd=$pkg
+	echo "INFO: Showing AutoPkgTest environment by running '$cmd' from package '$pkg'"
+	"$cmd"
 else
-    echo "INFO: Not installing package '$pkg' as host release ('$host_release')"
-    echo "INFO: differs to release package is built for ('$release')"
+	echo "INFO: Not installing package '$pkg' as host release ('$host_release')"
+	echo "INFO: differs to release package is built for ('$release')"
 fi
 
 # There is no sbuild/schroot command to actually delete the chroot, but
@@ -159,16 +175,15 @@ fi
 # automatically by the AutoPkgTest environment.
 
 echo "INFO: Establishing schroot sessions for chroot '$chroot'"
-session=$(schroot --list --all-sessions|grep "^session:${release}-${arch}-" || :)
-if [ -n "$session" ]
-then
-    count=$(echo "$session"|wc -l)
-    [ "$count" -eq 1 ] || die "expected 1 session, found $count"
+session=$(schroot --list --all-sessions | grep "^session:${release}-${arch}-" || :)
+if [ -n "$session" ]; then
+	count=$(echo "$session" | wc -l)
+	[ "$count" -eq 1 ] || die "expected 1 session, found $count"
 
-    echo "INFO: Ending schroot session '$session'"
-    schroot --end-session --chroot "$session"
+	echo "INFO: Ending schroot session '$session'"
+	schroot --end-session --chroot "$session"
 else
-    echo "INFO: No schroot session to end"
+	echo "INFO: No schroot session to end"
 fi
 
 echo "INFO: Cleaning up"
