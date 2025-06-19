@@ -28,26 +28,26 @@ use warnings;
 use Sbuild::ChrootPlain;
 
 BEGIN {
-    use Exporter ();
-    our (@ISA, @EXPORT);
+	use Exporter ();
+	our (@ISA, @EXPORT);
 
-    @ISA = qw(Exporter Sbuild::ChrootPlain);
+	@ISA = qw(Exporter Sbuild::ChrootPlain);
 
-    @EXPORT = qw();
+	@EXPORT = qw();
 }
 
 sub new {
-    my $class = shift;
-    my $conf = shift;
+	my $class = shift;
+	my $conf  = shift;
 
-    my $self = $class->SUPER::new($conf, '/');
-    bless($self, $class);
+	my $self = $class->SUPER::new($conf, '/');
+	bless($self, $class);
 
-    # There's no difference between split and unsplit when running on
-    # the root filesystem.
-    $self->set('Split', 0);
+	# There's no difference between split and unsplit when running on
+	# the root filesystem.
+	$self->set('Split', 0);
 
-    return $self;
+	return $self;
 }
 
 1;

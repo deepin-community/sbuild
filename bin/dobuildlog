@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/sh
 #
 # Copyright © 2002 Rick Younie <rick@def.debian.net>
 #
@@ -31,20 +31,20 @@
 
 # these require setting by the user
 SIGNOPTS='--clearsign --default-key younie@debian.org'
-FROM="$EMAIL"	# "Your Name <your@addr.ess>"
-ARCH=m68k		# for the bug report log link
+FROM="$EMAIL" # "Your Name <your@addr.ess>"
+ARCH=m68k     # for the bug report log link
 
-print_header () {
-    echo "From: $FROM"
-    sed -n '
+print_header() {
+	echo "From: $FROM"
+	sed -n '
 		/^-----/,/^Automatic/ {
 			s/From: /To: /p
 			s/^Subject: Log/Subject: Re: Log/p
 		}'
-    echo
+	echo
 }
 
-fail_options () {
+fail_options() {
 	cat << EOF
 failed
  this one takes a comment,
@@ -64,33 +64,33 @@ upload-rem
 EOF
 }
 
-success_fail () {
-    STATUS=$(sed -n '/^-----/,/^Automatic/ s/^Subject: Log for \([^ ]*\) build .*/\1/p')
+success_fail() {
+	STATUS=$(sed -n '/^-----/,/^Automatic/ s/^Subject: Log for \([^ ]*\) build .*/\1/p')
 
-    case "$STATUS" in
-	successful )
-	    print_header
-	    sed -n '/\.changes:$/,$ {
+	case "$STATUS" in
+		successful)
+			print_header
+			sed -n '/\.changes:$/,$ {
 				/^Format: /,/^$/p
-			}' |$SIGNPRG 2>/dev/null
-	    ;;
-	failed )
-	    print_header
-	    fail_options
-	    sed -n '/^Automatic build of/,$p'
-	    ;;
-	* )
-	    echo "..this doesn't appear to be a buildd success/fail message"
-	    exit 1
-	    ;;
-    esac
+			}' | $SIGNPRG 2> /dev/null
+			;;
+		failed)
+			print_header
+			fail_options
+			sed -n '/^Automatic build of/,$p'
+			;;
+		*)
+			echo "..this doesn't appear to be a buildd success/fail message"
+			exit 1
+			;;
+	esac
 }
 
-bug_report () {
-    PKG=$1
-    VERS=$2
+bug_report() {
+	PKG=$1
+	VERS=$2
 
-    cat << EOF
+	cat << EOF
 From: $FROM
 To: submit@bugs.debian.org
 Subject: $PKG_VERS: fails to build
@@ -104,8 +104,8 @@ Hi,
 
 EOF
 
-    sed -n '/^Automatic build of/,/^Build needed/ s/^/| /p'
-    cat <<EOF
+	sed -n '/^Automatic build of/,/^Build needed/ s/^/| /p'
+	cat << EOF
 
 
 The $ARCH build logs for $PKG can be found at
@@ -116,17 +116,17 @@ EOF
 }
 
 case "$1" in
-    gpg | agpg )
-	SIGNPRG="$1 $SIGNOPTS"
-	success_fail
-	exit 0
-	;;
-    bug )
-	PKG_VERS=$(sed -n '/^-----/,/^Automatic/ s/^Subject: Log for \([^ ]*\) build of \([^ ]*\) .*/\2/p')
-	bug_report $(echo "$PKG_VERS" |sed 's/_/ /')
-	;;
-    * )
-	echo "Usage: $(basename $0) gpg|agpg|bug"
-	exit 1
-	;;
+	gpg | agpg)
+		SIGNPRG="$1 $SIGNOPTS"
+		success_fail
+		exit 0
+		;;
+	bug)
+		PKG_VERS=$(sed -n '/^-----/,/^Automatic/ s/^Subject: Log for \([^ ]*\) build of \([^ ]*\) .*/\2/p')
+		bug_report $(echo "$PKG_VERS" | sed 's/_/ /')
+		;;
+	*)
+		echo "Usage: $(basename $0) gpg|agpg|bug"
+		exit 1
+		;;
 esac

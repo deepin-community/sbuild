@@ -47,9 +47,18 @@ reproducibility purposes.
 \fB\-\-arch\fR=ARCH
 Architecture to use (instead of attempting to auto\-guess).
 .TP
+\fB\-\-timeout\fR=SECS
+Maximum time to wait for command to finish with expected result. Mostly
+relevant for foreign architectures, where \fBapt-get update\fR can take
+quite a while. Default: 600s.
+.TP
 \fB\-\-noexec\fR
 Don't actually do anything. Just print the command string that
 would be executed, and then exit.
+.TP
+\fB\-\-boot\fR=auto,bios,efi,ieee1275,none
+How to boot the image. Default is BIOS on amd64 and i386, EFI on arm64 and
+armhf, and IEEE1275 on ppc64el.
 .SH EXAMPLES
 \fB$ sbuild\-qemu\-update unstable\-autopkgtest\-amd64.img\fR
 .PP

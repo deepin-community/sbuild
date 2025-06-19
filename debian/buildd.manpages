@@ -1,5 +1,4 @@
 usr/share/man/man1/buildd-abort.1
-usr/share/man/man1/buildd-mail-wrapper.1
 usr/share/man/man1/buildd-mail.1
 usr/share/man/man1/buildd-update-chroots.1
 usr/share/man/man1/buildd-uploader.1

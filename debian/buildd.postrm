@@ -18,23 +18,21 @@ set -e
 
 case "$1" in
 
-    remove|upgrade|failed-upgrade|abort-install|abort-upgrade)
+	remove | upgrade | failed-upgrade | abort-install | abort-upgrade) ;;
 
-        ;;
+	purge | disappear)
 
-    purge|disappear)
+		# Lock buildd account.
+		usermod -L -e 1 buildd || true
 
-	# Lock buildd account.
-	usermod -L -e 1 buildd || true
+		;;
 
-        ;;
+	*)
 
-    *)
+		echo "postrm called with unknown argument \`$1'" >&2
+		exit 0
 
-        echo "postrm called with unknown argument \`$1'" >&2
-        exit 0
-
-	;;
+		;;
 esac
 
 # dh_installdeb will replace this with shell code automatically

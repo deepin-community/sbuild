@@ -1,0 +1,16 @@
+root=true
+
+[*]
+indent_style = tab
+
+# other shfmt options:
+# --case-indent (indent the 'xxx)' inside case..esac
+# --space-redirects (othereise it wants command >file)
+# --binary-next-line (break long lines before | or &&)
+# --simplify (eg remove $ in, eg (( $x +1 ))
+# --posix (a no-op, but ensures no bash scripts are added)
+switch_case_indent = true
+space_redirects = true
+binary_next_line = true
+simplify = true
+posix = true

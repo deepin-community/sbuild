@@ -25,19 +25,19 @@ package Buildd::Conf;
 use strict;
 use warnings;
 
-use Buildd::DistConf qw();
+use Buildd::DistConf        qw();
 use Buildd::UploadQueueConf qw();
 use Sbuild::ConfBase;
 use Sbuild::Sysconfig;
 use Buildd::ClientConf qw();
 
 BEGIN {
-    use Exporter ();
-    our (@ISA, @EXPORT);
+	use Exporter ();
+	our (@ISA, @EXPORT);
 
-    @ISA = qw(Exporter);
+	@ISA = qw(Exporter);
 
-    @EXPORT = qw($reread_config new setup read);
+	@EXPORT = qw($reread_config new setup read);
 }
 
 our $reread_config = 0;
@@ -46,246 +46,256 @@ sub setup ($);
 sub read ($);
 
 sub new {
-    my $conf = Sbuild::ConfBase->new(@_);
-    Buildd::Conf::setup($conf);
-    Buildd::Conf::read($conf);
+	my $conf = Sbuild::ConfBase->new(@_);
+	Buildd::Conf::setup($conf);
+	Buildd::Conf::read($conf);
 
-    return $conf;
+	return $conf;
 }
 
 sub setup ($) {
-    my $conf = shift;
-
-    my $validate_program = sub {
 	my $conf = shift;
-	my $entry = shift;
-	my $key = $entry->{'NAME'};
-	my $program = $conf->get($key);
 
-	die "$key binary is not defined"
-	    if !defined($program) || !$program;
+	my $validate_program = sub {
+		my $conf    = shift;
+		my $entry   = shift;
+		my $key     = $entry->{'NAME'};
+		my $program = $conf->get($key);
 
-	# Emulate execvp behaviour by searching the binary in the PATH.
-	my @paths = split(/:/, $conf->get('PATH'));
-	# Also consider the empty path for absolute locations.
-	push (@paths, '');
-	my $found = 0;
-	foreach my $path (@paths) {
-	    $found = 1 if (-x File::Spec->catfile($path, $program));
-	}
+		die "$key binary is not defined"
+		  if !defined($program) || !$program;
 
-	die "$key binary '$program' does not exist or is not executable"
-	    if !$found;
-    };
+		# Emulate execvp behaviour by searching the binary in the PATH.
+		my @paths = split(/:/, $conf->get('PATH'));
+		# Also consider the empty path for absolute locations.
+		push(@paths, '');
+		my $found = 0;
+		foreach my $path (@paths) {
+			$found = 1 if (-x File::Spec->catfile($path, $program));
+		}
 
-    my $validate_directory = sub {
-	my $conf = shift;
-	my $entry = shift;
-	my $key = $entry->{'NAME'};
-	my $directory = $conf->get($key);
+		die "$key binary '$program' does not exist or is not executable"
+		  if !$found;
+	};
 
-	die "$key directory is not defined"
-	    if !defined($directory) || !$directory;
+	my $validate_directory = sub {
+		my $conf      = shift;
+		my $entry     = shift;
+		my $key       = $entry->{'NAME'};
+		my $directory = $conf->get($key);
 
-	die "$key directory '$directory' does not exist"
-	    if !-d $directory;
-    };
+		die "$key directory is not defined"
+		  if !defined($directory) || !$directory;
 
-    our $HOME = $conf->get('HOME');
-    $main::HOME = $HOME; # TODO: Remove once Buildd.pm uses $conf
-    my $arch = $conf->get('ARCH');
+		die "$key directory '$directory' does not exist"
+		  if !-d $directory;
+	};
 
-    my %buildd_keys = (
-	'ADMIN_MAIL'				=> {
-	    TYPE => 'STRING',
-	    VARNAME => 'admin_mail',
-	    GROUP => 'Mail',
-	    DEFAULT => 'root',
-	    HELP => 'email address for admin'
-	},
-	'APT_GET'				=> {
-	    TYPE => 'STRING',
-	    VARNAME => 'apt_get',
-	    GROUP => 'Programs',
-	    CHECK => $validate_program,
-	    DEFAULT => 'apt-get',
-	    HELP => 'Path to apt-get binary'
-	},
-	'DPKG_FILE_SUFFIX'	=> {
-	    TYPE => 'STRING',
-	    VARNAME => 'dpkg_file_suffix',
-	    GROUP => 'Programs',
-	    DEFAULT => '',
-	    HELP => 'Value for the sbuild dpkg-file-suffix option, to be passed on to sbuild',
-	},
-	'BUILD_LOG_KEEP'			=> {
-	    TYPE => 'NUMERIC',
-	    VARNAME => 'build_log_keep',
-	    GROUP => 'Watcher',
-	    DEFAULT => 2,
-	    HELP => 'Number of days until build logs are archived'
-	},
-	'DAEMON_LOG_FILE'			=> {
-	    TYPE => 'STRING',
-	    VARNAME => 'daemon_log_file',
-	    GROUP => 'Daemon',
-	    IGNORE_DEFAULT => 1, # Don't dump the current home
-	    DEFAULT => "$HOME/daemon.log",
-	    HELP => 'Main buildd daemon log file'
-	},
-	'DAEMON_LOG_KEEP'			=> {
-	    TYPE => 'NUMERIC',
-	    VARNAME => 'daemon_log_keep',
-	    GROUP => 'Watcher',
-	    DEFAULT => 7,
-	    HELP => 'Number of days until old daemon logs are archived in a .tar.gz file'
-	},
-	'DAEMON_LOG_ROTATE'			=> {
-	    TYPE => 'NUMERIC',
-	    VARNAME => 'daemon_log_rotate',
-	    GROUP => 'Watcher',
-	    DEFAULT => 1,
-	    HELP => 'Number how many days until daemon logs are rotated (one is kept as daemon.log.old, others are moved to old-logs and gzipped)'
-	},
-	'DAEMON_LOG_SEND'			=> {
-	    TYPE => 'BOOL',
-	    VARNAME => 'daemon_log_send',
-	    GROUP => 'Watcher',
-	    DEFAULT => 1,
-	    HELP => 'email rotated daemon logs to the admin?'
-	},
-	'DELAY_AFTER_GIVE_BACK'			=> {
-	    TYPE => 'NUMERIC',
-	    VARNAME => 'delay_after_give_back',
-	    GROUP => 'Daemon',
-	    DEFAULT => 8 * 60, # 8 hours
-	    HELP => 'Time to avoid packages that have automatically been given back by sbuild (in minutes)'
-	},
-	'ERROR_MAIL_WINDOW'			=> {
-	    TYPE => 'NUMERIC',
-	    VARNAME => 'error_mail_window',
-	    GROUP => 'Mail',
-	    DEFAULT => 8*60*60,
-	    HELP => 'If more than five error mails are received within the specified time (in seconds), do not forward (to avoid possible mail loops)'
-	},
-	'IDLE_SLEEP_TIME'			=> {
-	    TYPE => 'NUMERIC',
-	    VARNAME => 'idle_sleep_time',
-	    GROUP => 'Daemon',
-	    DEFAULT => 5*60,
-	    HELP => 'Time to sleep when idle (in seconds) between wanna-build --list=needs-build calls)'
-	},
-	'LOG_QUEUED_MESSAGES'			=> {
-	    TYPE => 'BOOL',
-	    VARNAME => 'log_queued_messages',
-	    GROUP => 'Mail',
-	    DEFAULT => 0,
-	    HELP => 'Log success messages from upload queue daemon?'
-	},
-	'MAX_SBUILD_FAILS'				=> {
-	    TYPE => 'NUMERIC',
-	    VARNAME => 'max_sbuild_fails',
-	    GROUP => 'Daemon',
-	    DEFAULT => 2,
-	    HELP => 'Maximum number of times sbuild can fail before sleeping'
-	},
-	'MIN_FREE_SPACE'			=> {
-	    TYPE => 'NUMERIC',
-	    VARNAME => 'min_free_space',
-	    GROUP => 'Daemon',
-	    DEFAULT => 50*1024,
-	    HELP => 'Minimum free space (in KiB) on build filesystem'
-	},
-	'NICE_LEVEL'				=> {
-	    TYPE => 'NUMERIC',
-	    VARNAME => 'nice_level',
-	    GROUP => 'Build options',
-	    DEFAULT => 10,
-	    HELP => 'Nice level to run sbuild.  Dedicated build daemons should not be niced.'
-	},
-	'NO_DETACH'				=> {
-	    TYPE => 'BOOL',
-	    VARNAME => 'no_detach',
-	    GROUP => 'Daemon',
-	    DEFAULT => 0,
-	    HELP => 'Disable becoming a daemon, for debugging purposes.  Set to 1 to stop daemonising, otherwise set to 0 to become a daemon.'
-	},
-	'NO_WARN_PATTERN'			=> {
-	    TYPE => 'STRING',
-	    VARNAME => 'no_warn_pattern',
-	    GROUP => 'Watcher',
-	    DEFAULT => '^build/(SKIP|REDO|SBUILD-GIVEN-BACK|buildd\.pid|[^/]*.ssh|chroot-[^/]*|current-[^/]*)$',
-	    HELP => 'Don\'t complain about old files if they match the regexp.'
-	},
-	'PIDFILE'                               => {
-	    TYPE => 'STRING',
-	    VARNAME => 'pidfile',
-	    GROUP => 'Daemon',
+	our $HOME = $conf->get('HOME');
+	$main::HOME = $HOME;    # TODO: Remove once Buildd.pm uses $conf
+	my $arch = $conf->get('ARCH');
+
+	my @buildd_keys = (
+		'ADMIN_MAIL' => {
+			TYPE    => 'STRING',
+			VARNAME => 'admin_mail',
+			GROUP   => 'Mail',
+			DEFAULT => 'root',
+			HELP    => 'email address for admin'
+		},
+		'APT_GET' => {
+			TYPE    => 'STRING',
+			VARNAME => 'apt_get',
+			GROUP   => 'Programs',
+			CHECK   => $validate_program,
+			DEFAULT => 'apt-get',
+			HELP    => 'Path to apt-get binary'
+		},
+		'DPKG_FILE_SUFFIX' => {
+			TYPE    => 'STRING',
+			VARNAME => 'dpkg_file_suffix',
+			GROUP   => 'Programs',
+			DEFAULT => '',
+			HELP    =>
+'Value for the sbuild dpkg-file-suffix option, to be passed on to sbuild',
+		},
+		'BUILD_LOG_KEEP' => {
+			TYPE    => 'NUMERIC',
+			VARNAME => 'build_log_keep',
+			GROUP   => 'Watcher',
+			DEFAULT => 2,
+			HELP    => 'Number of days until build logs are archived'
+		},
+		'DAEMON_LOG_FILE' => {
+			TYPE           => 'STRING',
+			VARNAME        => 'daemon_log_file',
+			GROUP          => 'Daemon',
+			IGNORE_DEFAULT => 1,                  # Don't dump the current home
+			DEFAULT        => "$HOME/daemon.log",
+			HELP           => 'Main buildd daemon log file'
+		},
+		'DAEMON_LOG_KEEP' => {
+			TYPE    => 'NUMERIC',
+			VARNAME => 'daemon_log_keep',
+			GROUP   => 'Watcher',
+			DEFAULT => 7,
+			HELP    =>
+'Number of days until old daemon logs are archived in a .tar.gz file'
+		},
+		'DAEMON_LOG_ROTATE' => {
+			TYPE    => 'NUMERIC',
+			VARNAME => 'daemon_log_rotate',
+			GROUP   => 'Watcher',
+			DEFAULT => 1,
+			HELP    =>
+'Number how many days until daemon logs are rotated (one is kept as daemon.log.old, others are moved to old-logs and gzipped)'
+		},
+		'DAEMON_LOG_SEND' => {
+			TYPE    => 'BOOL',
+			VARNAME => 'daemon_log_send',
+			GROUP   => 'Watcher',
+			DEFAULT => 1,
+			HELP    => 'email rotated daemon logs to the admin?'
+		},
+		'DELAY_AFTER_GIVE_BACK' => {
+			TYPE    => 'NUMERIC',
+			VARNAME => 'delay_after_give_back',
+			GROUP   => 'Daemon',
+			DEFAULT => 8 * 60,                    # 8 hours
+			HELP    =>
+'Time to avoid packages that have automatically been given back by sbuild (in minutes)'
+		},
+		'ERROR_MAIL_WINDOW' => {
+			TYPE    => 'NUMERIC',
+			VARNAME => 'error_mail_window',
+			GROUP   => 'Mail',
+			DEFAULT => 8 * 60 * 60,
+			HELP    =>
+'If more than five error mails are received within the specified time (in seconds), do not forward (to avoid possible mail loops)'
+		},
+		'IDLE_SLEEP_TIME' => {
+			TYPE    => 'NUMERIC',
+			VARNAME => 'idle_sleep_time',
+			GROUP   => 'Daemon',
+			DEFAULT => 5 * 60,
+			HELP    =>
+'Time to sleep when idle (in seconds) between wanna-build --list=needs-build calls)'
+		},
+		'LOG_QUEUED_MESSAGES' => {
+			TYPE    => 'BOOL',
+			VARNAME => 'log_queued_messages',
+			GROUP   => 'Mail',
+			DEFAULT => 0,
+			HELP    => 'Log success messages from upload queue daemon?'
+		},
+		'MAX_SBUILD_FAILS' => {
+			TYPE    => 'NUMERIC',
+			VARNAME => 'max_sbuild_fails',
+			GROUP   => 'Daemon',
+			DEFAULT => 2,
+			HELP => 'Maximum number of times sbuild can fail before sleeping'
+		},
+		'MIN_FREE_SPACE' => {
+			TYPE    => 'NUMERIC',
+			VARNAME => 'min_free_space',
+			GROUP   => 'Daemon',
+			DEFAULT => 50 * 1024,
+			HELP    => 'Minimum free space (in KiB) on build filesystem'
+		},
+		'NICE_LEVEL' => {
+			TYPE    => 'NUMERIC',
+			VARNAME => 'nice_level',
+			GROUP   => 'Build options',
+			DEFAULT => 10,
+			HELP    =>
+'Nice level to run sbuild.  Dedicated build daemons should not be niced.'
+		},
+		'NO_DETACH' => {
+			TYPE    => 'BOOL',
+			VARNAME => 'no_detach',
+			GROUP   => 'Daemon',
+			DEFAULT => 0,
+			HELP    =>
+'Disable becoming a daemon, for debugging purposes.  Set to 1 to stop daemonising, otherwise set to 0 to become a daemon.'
+		},
+		'NO_WARN_PATTERN' => {
+			TYPE    => 'STRING',
+			VARNAME => 'no_warn_pattern',
+			GROUP   => 'Watcher',
+			DEFAULT =>
+'^build/(SKIP|REDO|SBUILD-GIVEN-BACK|buildd\.pid|[^/]*.ssh|chroot-[^/]*|current-[^/]*)$',
+			HELP => 'Don\'t complain about old files if they match the regexp.'
+		},
+		'PIDFILE' => {
+			TYPE    => 'STRING',
+			VARNAME => 'pidfile',
+			GROUP   => 'Daemon',
 # Set once running as a system service.
 #          DEFAULT => "${Sbuild::Sysconfig::paths{'LOCALSTATEDIR'}/run/buildd.pid"
-	    IGNORE_DEFAULT => 1, # Don't dump the current home
-	    DEFAULT => "$HOME/build/buildd.pid",
-	    HELP => 'PID file to identify running daemon.'
-	},
-	'PKG_LOG_KEEP'				=> {
-	    TYPE => 'NUMERIC',
-	    VARNAME => 'pkg_log_keep',
-	    GROUP => 'Watcher',
-	    DEFAULT => 7,
-	    HELP => 'Number of days until to package logs are archived'
-	},
-	'SHOULD_BUILD_MSGS'			=> {
-	    TYPE => 'BOOL',
-	    VARNAME => 'should_build_msgs',
-	    GROUP => 'Daemon',
-	    DEFAULT => 1,
-	    HELP => 'Should buildd send "Should I build" messages?'
-	},
-	'STATISTICS_MAIL'			=> {
-	    TYPE => 'STRING',
-	    VARNAME => 'statistics_mail',
-	    GROUP => 'Watcher',
-	    DEFAULT => 'root',
-	    HELP => 'email address for statistics summaries'
-	},
-	'STATISTICS_PERIOD'			=> {
-	    TYPE => 'NUMERIC',
-	    VARNAME => 'statistics_period',
-	    GROUP => 'Watcher',
-	    DEFAULT => 7,
-	    HELP => 'Period for statistic summaries (days)'
-	},
-	'SUDO'					=> {
-	    TYPE => 'STRING',
-	    VARNAME => 'sudo',
-	    GROUP => 'Programs',
-	    CHECK => $validate_program,
-	    DEFAULT => 'sudo',
-	    HELP => 'Path to sudo binary'
-	},
-	'WARNING_AGE'				=> {
-	    TYPE => 'NUMERIC',
-	    VARNAME => 'warning_age',
-	    GROUP => 'Watcher',
-	    DEFAULT => 7,
-	    HELP => 'Age (in days) after which a warning is issued for files in upload and dirs in build'
-	},
-	'CONFIG_TIME'				=> {
-	    TYPE => 'NUMERIC',
-	    VARNAME => 'config_time',
-	    GROUP => '__INTERNAL',
-	    DEFAULT => {},
-	    HELP => 'Time configuration was last read'
-	},
-	'DISTRIBUTIONS'                         => {
-	    TYPE => 'ARRAY:HASH:SCALAR',
-	    VARNAME => 'distributions',
-	    GROUP => 'Build options',
-	    DEFAULT => [],
-	    IGNORE_DEFAULT => 1, # Don't dump class to config
-	    HELP => 'List of distributions that buildd should take packages from',
-	    EXAMPLE =>
-'$distributions = [
+			IGNORE_DEFAULT => 1,    # Don't dump the current home
+			DEFAULT        => "$HOME/build/buildd.pid",
+			HELP           => 'PID file to identify running daemon.'
+		},
+		'PKG_LOG_KEEP' => {
+			TYPE    => 'NUMERIC',
+			VARNAME => 'pkg_log_keep',
+			GROUP   => 'Watcher',
+			DEFAULT => 7,
+			HELP    => 'Number of days until to package logs are archived'
+		},
+		'SHOULD_BUILD_MSGS' => {
+			TYPE    => 'BOOL',
+			VARNAME => 'should_build_msgs',
+			GROUP   => 'Daemon',
+			DEFAULT => 1,
+			HELP    => 'Should buildd send "Should I build" messages?'
+		},
+		'STATISTICS_MAIL' => {
+			TYPE    => 'STRING',
+			VARNAME => 'statistics_mail',
+			GROUP   => 'Watcher',
+			DEFAULT => 'root',
+			HELP    => 'email address for statistics summaries'
+		},
+		'STATISTICS_PERIOD' => {
+			TYPE    => 'NUMERIC',
+			VARNAME => 'statistics_period',
+			GROUP   => 'Watcher',
+			DEFAULT => 7,
+			HELP    => 'Period for statistic summaries (days)'
+		},
+		'SUDO' => {
+			TYPE    => 'STRING',
+			VARNAME => 'sudo',
+			GROUP   => 'Programs',
+			CHECK   => $validate_program,
+			DEFAULT => 'sudo',
+			HELP    => 'Path to sudo binary'
+		},
+		'WARNING_AGE' => {
+			TYPE    => 'NUMERIC',
+			VARNAME => 'warning_age',
+			GROUP   => 'Watcher',
+			DEFAULT => 7,
+			HELP    =>
+'Age (in days) after which a warning is issued for files in upload and dirs in build'
+		},
+		'CONFIG_TIME' => {
+			TYPE    => 'NUMERIC',
+			VARNAME => 'config_time',
+			GROUP   => '__INTERNAL',
+			DEFAULT => {},
+			HELP    => 'Time configuration was last read'
+		},
+		'DISTRIBUTIONS' => {
+			TYPE           => 'ARRAY:HASH:SCALAR',
+			VARNAME        => 'distributions',
+			GROUP          => 'Build options',
+			DEFAULT        => [],
+			IGNORE_DEFAULT => 1,                   # Don't dump class to config
+			HELP           =>
+			  'List of distributions that buildd should take packages from',
+			EXAMPLE => '$distributions = [
 	{
 		# name of the suite to build (also used to query wanna-build)
 		dist_name => ["unstable", "testing"],
@@ -342,16 +352,15 @@ sub setup ($) {
 
 	}
 ];'
-	},
-	'UPLOAD_QUEUES'                         => {
-	    TYPE => 'ARRAY:HASH:SCALAR',
-	    VARNAME => 'upload_queues',
-	    GROUP => 'Uploader',
-	    DEFAULT => [],
-	    IGNORE_DEFAULT => 1, # Don't dump class to config
-	    HELP => 'Package upload queues',
-	    EXAMPLE =>
-'$upload_queues = [
+		},
+		'UPLOAD_QUEUES' => {
+			TYPE           => 'ARRAY:HASH:SCALAR',
+			VARNAME        => 'upload_queues',
+			GROUP          => 'Uploader',
+			DEFAULT        => [],
+			IGNORE_DEFAULT => 1,                   # Don't dump class to config
+			HELP           => 'Package upload queues',
+			EXAMPLE        => '$upload_queues = [
 	{
 		# Local queue directory where binaries are stored before uploaded
 		# by dupload.
@@ -359,7 +368,7 @@ sub setup ($) {
 
 		# Upload site for buildd-upload to pass to dupload(1); see
 		# /etc/dupload.conf for possible values.
-		dupload_archive_name => "anonymous-ftp-master",
+		dupload_archive_name => "debian-ftp",
 	},
 
 	{
@@ -369,47 +378,47 @@ sub setup ($) {
 
 		# Upload site for buildd-upload to pass to dupload(1); see
 		# /etc/dupload.conf for possible values.
-		dupload_archive_name => "security",
+		dupload_archive_name => "debian-ssh-security",
 	}
 ];'
-	});
+		});
 
-    $conf->set_allowed_keys(\%buildd_keys);
-    Buildd::ClientConf::setup($conf);
+	$conf->set_allowed_keys(@buildd_keys);
+	Buildd::ClientConf::setup($conf);
 }
 
 sub read ($) {
-    my $conf = shift;
+	my $conf = shift;
 
-    my $HOME = $conf->get('HOME');
+	my $HOME = $conf->get('HOME');
 
-    my $global = $Sbuild::Sysconfig::paths{'BUILDD_CONF'};
-    my $user = "$HOME/.builddrc";
-    my %config_time = ();
-    my $user_time = 0;
+	my $global      = $Sbuild::Sysconfig::paths{'BUILDD_CONF'};
+	my $user        = "$HOME/.builddrc";
+	my %config_time = ();
+	my $user_time   = 0;
 
-    my $reread = 0;
+	my $reread = 0;
 
-    sub ST_MTIME () { 9 }
+	sub ST_MTIME () { 9 }
 
-    my @config_files = ($global, $user);
+	my @config_files = ($global, $user);
 
-    $reread = 1 if $reread_config;
+	$reread = 1 if $reread_config;
 
-    foreach (@config_files) {
-	if (-r $_) {
-	    $config_time{$_} = 0;
-	    my @stat = stat($_);
-	    if (!defined($conf->get('CONFIG_TIME')->{$_}) ||
-		$conf->get('CONFIG_TIME')->{$_} < $stat[ST_MTIME]) {
-		$config_time{$_} = $stat[ST_MTIME];
-		$reread = 1;
-	    }
+	foreach (@config_files) {
+		if (-r $_) {
+			$config_time{$_} = 0;
+			my @stat = stat($_);
+			if (!defined($conf->get('CONFIG_TIME')->{$_})
+				|| $conf->get('CONFIG_TIME')->{$_} < $stat[ST_MTIME]) {
+				$config_time{$_} = $stat[ST_MTIME];
+				$reread = 1;
+			}
+		}
 	}
-    }
 
-    # For compatibility only.  Non-scalars are deprecated.
-    my $deprecated_init = <<END;
+	# For compatibility only.  Non-scalars are deprecated.
+	my $deprecated_init = <<END;
 # Variables are undefined, so config will default to DEFAULT if unset.
 my \$defaults;
 my \@distributions;
@@ -432,9 +441,9 @@ my \$wanna_build_user = undef;
 my \$wanna_build_dbbase = undef;
 END
 
-    my $deprecated_setup = '';
+	my $deprecated_setup = '';
 
-    my $custom_setup = <<END;
+	my $custom_setup = <<END;
 if (\$sshcmd && \$sshcmd =~ /^\\s*(\\S+)\\s+(.+)/) {
     my \$rest = \$2;
     \$conf->set('SSH', \$1);
@@ -612,17 +621,17 @@ if (-t STDIN && -t STDOUT && \$conf->get('NO_DETACH')) {
 }
 END
 
-    $conf->read(\@config_files, $deprecated_init, $deprecated_setup,
+	$conf->read(\@config_files, $deprecated_init, $deprecated_setup,
 		$custom_setup);
 
-    # Update times
-    if ($reread) {
-	foreach (@config_files) {
-	    if (-r $_) {
-		$conf->get('CONFIG_TIME')->{$_} = $config_time{$_};
-	    }
+	# Update times
+	if ($reread) {
+		foreach (@config_files) {
+			if (-r $_) {
+				$conf->get('CONFIG_TIME')->{$_} = $config_time{$_};
+			}
+		}
 	}
-    }
 }
 
 1;

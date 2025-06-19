@@ -47,6 +47,10 @@ sbuild\-createchroot \- create sbuild chroot
 .B buildd\-create\-chroot
 .B USER SUITE TARGET-DIRECTORY [DEBIAN-MIRROR-URI]
 .SH DESCRIPTION
+
+Note that this tool is only useful for the schroot backend.
+Debian buildds have switched to the unshare backend in 2024.
+
 \fBsbuild\-createchroot\fR runs
 .BR debootstrap (1)
 to create a chroot suitable for building packages with sbuild.  Note that while
@@ -169,13 +173,12 @@ symbolic links to their counterparts in \fI/usr\fP.
 .BR \-\-no-merged-usr
 Create a chroot in which \fI/bin\fP, \fI/sbin\fP and \fI/lib*\fP are
 ordinary directories distinct from their counterparts in \fI/usr\fP.
-This is the default.
 .TP
 .BR \-\-auto-merged-usr
 Do not specify whether \fI/bin\fP, \fI/sbin\fP and \fI/lib*\fP are
 symbolic links to their counterparts in \fI/usr\fP. In this case
 debootstrap will use its default behaviour (which is suite-specific).
-This might become the default in a future version of sbuild-createchroot.
+This is the default.
 .TP
 .B SUITE
 The distribution to bootstrap (e.g. \[oq]stretch[cq], \[oq]buster\[cq],
@@ -333,7 +336,7 @@ the unshare backend:
 .br
     --make-sbuild-tarball ~/.cache/sbuild/unstable-amd64.tar.gz \\
 .br
-    unstable `mktemp -d` http://deb.debian.org/debian/ \\
+    unstable `mktemp -d` http://deb.debian.org/debian\fP\[CR]
 .PP
 .SH HISTORY
 sbuild\-createchroot was previously known as \fBbuildd.chroot\fP.

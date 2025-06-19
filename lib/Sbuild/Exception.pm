@@ -24,11 +24,12 @@ use strict;
 use warnings;
 
 use Exception::Class (
-    'Sbuild::Exception::Base',
+	'Sbuild::Exception::Base',
 
-    'Sbuild::Exception::Build' => { isa => 'Sbuild::Exception::Base',
-				    fields => [ 'info', 'status', 'failstage' ] }
+	'Sbuild::Exception::Build' => {
+		isa    => 'Sbuild::Exception::Base',
+		fields => ['info', 'status', 'failstage'] }
 
-    );
+);
 
 1;

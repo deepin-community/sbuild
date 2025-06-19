@@ -26,77 +26,76 @@ use strict;
 use warnings;
 
 use Getopt::Long qw(:config no_ignore_case auto_abbrev gnu_getopt);
-use Sbuild qw(help_text version_text usage_error);
+use Sbuild       qw(help_text version_text usage_error);
 use Sbuild::Base;
 
 BEGIN {
-    use Exporter ();
-    our (@ISA, @EXPORT);
+	use Exporter ();
+	our (@ISA, @EXPORT);
 
-    @ISA = qw(Exporter Sbuild::Base);
+	@ISA = qw(Exporter Sbuild::Base);
 
-    @EXPORT = qw();
+	@EXPORT = qw();
 }
 
 sub new {
-    my $class = shift;
-    my $conf = shift;
-    my $program = shift;
-    my $section = shift;
+	my $class   = shift;
+	my $conf    = shift;
+	my $program = shift;
+	my $section = shift;
 
-    my $self = $class->SUPER::new($conf);
-    bless($self, $class);
+	my $self = $class->SUPER::new($conf);
+	bless($self, $class);
 
-    $self->add_options("h|help" => sub { help_text($section, $program); },
-		       "V|version" => sub {version_text($program); },
-		       "D|debug" => sub {
-			   $self->set_conf('DEBUG',
-					   $self->get_conf('DEBUG') + 1); },
-		       "v|verbose" => sub {
-			   $self->set_conf('VERBOSE',
-					   $self->get_conf('VERBOSE') + 1);
-		       },
-		       "q|quiet" => sub {
-			   $self->set_conf('VERBOSE',
-					   $self->get_conf('VERBOSE') - 1)
-			       if $self->get_conf('VERBOSE');
-		       });
+	$self->add_options(
+		"h|help"    => sub { help_text($section, $program); },
+		"V|version" => sub { version_text($program); },
+		"D|debug"   => sub {
+			$self->set_conf('DEBUG', $self->get_conf('DEBUG') + 1);
+		},
+		"v|verbose" => sub {
+			$self->set_conf('VERBOSE', $self->get_conf('VERBOSE') + 1);
+		},
+		"q|quiet" => sub {
+			$self->set_conf('VERBOSE', $self->get_conf('VERBOSE') - 1)
+			  if $self->get_conf('VERBOSE');
+		});
 
-    $self->set_options();
+	$self->set_options();
 
-    if (!$self->parse_options()) {
-	usage_error($program, "Error parsing command-line options");
-	return undef;
-    }
-    $self->extrapolate_options();
-    return $self;
+	if (!$self->parse_options()) {
+		usage_error($program, "Error parsing command-line options");
+		return undef;
+	}
+	$self->extrapolate_options();
+	return $self;
 }
 
 sub add_options () {
-    my $self = shift;
-    my @newopts = @_;
+	my $self    = shift;
+	my @newopts = @_;
 
-    my %options;
-    if (defined($self->get('Options'))) {
-	%options = (%{$self->get('Options')}, @newopts);
-    } else {
-	%options = (@newopts);
-    }
-    $self->set('Options', \%options);
+	my %options;
+	if (defined($self->get('Options'))) {
+		%options = (%{ $self->get('Options') }, @newopts);
+	} else {
+		%options = (@newopts);
+	}
+	$self->set('Options', \%options);
 }
 
 sub set_options () {
-    my $self = shift;
+	my $self = shift;
 }
 
 sub extrapolate_options () {
-    my $self = shift;
+	my $self = shift;
 }
 
 sub parse_options {
-    my $self = shift;
+	my $self = shift;
 
-    return GetOptions((%{$self->get('Options')}));
+	return GetOptions((%{ $self->get('Options') }));
 }
 
 1;

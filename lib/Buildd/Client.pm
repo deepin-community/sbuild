@@ -29,107 +29,107 @@ use Sbuild::ChrootRoot;
 use Cwd;
 
 BEGIN {
-    use Exporter ();
-    our (@ISA, @EXPORT);
+	use Exporter ();
+	our (@ISA, @EXPORT);
 
-    @ISA = qw(Exporter Sbuild::Base);
+	@ISA = qw(Exporter Sbuild::Base);
 
-    @EXPORT = qw();
+	@EXPORT = qw();
 }
 
 sub new {
-    my $class = shift;
-    my $conf = shift;
+	my $class = shift;
+	my $conf  = shift;
 
-    my $self = $class->SUPER::new($conf);
-    bless($self, $class);
+	my $self = $class->SUPER::new($conf);
+	bless($self, $class);
 
-    $self->set('SETUP', 0);
+	$self->set('SETUP', 0);
 
-    return $self;
+	return $self;
 }
 
 sub setup {
-    my $self = shift;
+	my $self = shift;
 
-    if (!$self->get('SETUP')) {
-	my $host = Sbuild::ChrootRoot->new($self->get('Config'));
-	$host->begin_session();
-	$host->set('Log Stream', $self->get('Log Stream'));
-	$self->set('Host', $host);
-	$self->set('SETUP', 1);
-    }
+	if (!$self->get('SETUP')) {
+		my $host = Sbuild::ChrootRoot->new($self->get('Config'));
+		$host->begin_session();
+		$host->set('Log Stream', $self->get('Log Stream'));
+		$self->set('Host',       $host);
+		$self->set('SETUP',      1);
+	}
 }
 
 sub get_query {
-    my $self = shift;
+	my $self = shift;
 
-    my @command = (@{$self->get_conf('WANNA_BUILD_SSH_CMD')}, 'wanna-build');
-    if ($self->get_conf('WANNA_BUILD_DB_NAME')) {
-	push(@command, "--database=" . $self->get_conf('WANNA_BUILD_DB_NAME'));
-    } else {
-        if ($self->get_conf('BUILT_ARCHITECTURE')) {
-            push(@command, "--arch=" . $self->get_conf('BUILT_ARCHITECTURE'));
-        }
-        if ($self->get_conf('DIST_NAME')) {
-            push(@command, "--dist=" . $self->get_conf('DIST_NAME'));
-        }
-    }
-    push(@command, "--user=" . $self->get_conf('WANNA_BUILD_DB_USER'))
-	if $self->get_conf('WANNA_BUILD_DB_USER');
-    push(@command, @_);
+	my @command = (@{ $self->get_conf('WANNA_BUILD_SSH_CMD') }, 'wanna-build');
+	if ($self->get_conf('WANNA_BUILD_DB_NAME')) {
+		push(@command, "--database=" . $self->get_conf('WANNA_BUILD_DB_NAME'));
+	} else {
+		if ($self->get_conf('BUILT_ARCHITECTURE')) {
+			push(@command, "--arch=" . $self->get_conf('BUILT_ARCHITECTURE'));
+		}
+		if ($self->get_conf('DIST_NAME')) {
+			push(@command, "--dist=" . $self->get_conf('DIST_NAME'));
+		}
+	}
+	push(@command, "--user=" . $self->get_conf('WANNA_BUILD_DB_USER'))
+	  if $self->get_conf('WANNA_BUILD_DB_USER');
+	push(@command, @_);
 
-    return @command;
+	return @command;
 }
 
 sub run_query {
-    my $self = shift;
+	my $self = shift;
 
-    my @command = $self->get_query(@_);
+	my @command = $self->get_query(@_);
 
-    $self->setup();
+	$self->setup();
 
-    my $pipe = $self->get('Host')->run_command(
-	{ COMMAND => [@command],
-	  USER => $self->get_conf('USERNAME'),
-	  PRIORITY => 0,
+	my $pipe = $self->get('Host')->run_command({
+		COMMAND  => [@command],
+		USER     => $self->get_conf('USERNAME'),
+		PRIORITY => 0,
 	});
 }
 
 sub pipe_query {
-    my $self = shift;
+	my $self = shift;
 
-    my @command = $self->get_query(@_);
+	my @command = $self->get_query(@_);
 
-    $self->setup();
+	$self->setup();
 
-    my $pipe = $self->get('Host')->pipe_command(
-	{ COMMAND => [@command],
-	  USER => $self->get_conf('USERNAME'),
-	  PRIORITY => 0,
-          DIR => getcwd(),
-          STREAMERR => \*STDOUT,
+	my $pipe = $self->get('Host')->pipe_command({
+		COMMAND   => [@command],
+		USER      => $self->get_conf('USERNAME'),
+		PRIORITY  => 0,
+		DIR       => getcwd(),
+		STREAMERR => \*STDOUT,
 	});
 
-    return $pipe;
+	return $pipe;
 }
 
 sub pipe_query_out {
-    my $self = shift;
+	my $self = shift;
 
-    my @command = $self->get_query(@_);
+	my @command = $self->get_query(@_);
 
-    $self->setup();
+	$self->setup();
 
-    my $pipe = $self->get('Host')->pipe_command(
-	{ COMMAND => [@command],
-	  USER => $self->get_conf('USERNAME'),
-	  PIPE => 'out',
-	  STREAMOUT => $devnull,
-	  PRIORITY => 0,
+	my $pipe = $self->get('Host')->pipe_command({
+		COMMAND   => [@command],
+		USER      => $self->get_conf('USERNAME'),
+		PIPE      => 'out',
+		STREAMOUT => $devnull,
+		PRIORITY  => 0,
 	});
 
-    return $pipe;
+	return $pipe;
 }
 
 1;

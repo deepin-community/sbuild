@@ -34,117 +34,119 @@ use File::Temp ();
 use Sbuild::Sysconfig;
 
 BEGIN {
-    use Exporter ();
-    use Sbuild::Chroot;
-    our (@ISA, @EXPORT);
+	use Exporter ();
+	use Sbuild::Chroot;
+	our (@ISA, @EXPORT);
 
-    @ISA = qw(Exporter Sbuild::Chroot);
+	@ISA = qw(Exporter Sbuild::Chroot);
 
-    @EXPORT = qw();
+	@EXPORT = qw();
 }
 
 sub new {
-    my $class = shift;
-    my $conf = shift;
-    my $chroot_id = shift;
+	my $class     = shift;
+	my $conf      = shift;
+	my $chroot_id = shift;
 
-    my $self = $class->SUPER::new($conf, $chroot_id);
-    bless($self, $class);
+	my $self = $class->SUPER::new($conf, $chroot_id);
+	bless($self, $class);
 
-    # Only run split, because plain makes no guarantee that networking
-    # works inside the chroot.
-    $self->set('Split', 1);
+	# Only run split, because plain makes no guarantee that networking
+	# works inside the chroot.
+	$self->set('Split', 1);
 
-    return $self;
+	return $self;
 }
 
 sub begin_session {
-    my $self = shift;
+	my $self = shift;
 
-    $self->set('Priority', 0);
-    $self->set('Location', $self->get('Chroot ID'));
-    $self->set('Session Purged', 0);
+	$self->set('Priority',       0);
+	$self->set('Location',       $self->get('Chroot ID'));
+	$self->set('Session Purged', 0);
 
-    return 0 if !defined $self->get('Chroot ID');
+	return 0 if !defined $self->get('Chroot ID');
 
-    # only setup plain chroot if the directory is not the root of the host
-    if ($self->get('Location') ne '/') {
-	return 0 if !$self->_setup_options();
-    }
+	# only setup plain chroot if the directory is not the root of the host
+	if ($self->get('Location') ne '/') {
+		return 0 if !$self->_setup_options();
+	}
 
-    return 1;
+	return 1;
 }
 
 sub end_session {
-    my $self = shift;
+	my $self = shift;
 
-    # No-op for sudo.
+	# No-op for sudo.
 
-    return 1;
+	return 1;
 }
 
 sub get_command_internal {
-    my $self = shift;
-    my $options = shift;
+	my $self    = shift;
+	my $options = shift;
 
-    # Command to run. If I have a string, use it. Otherwise use the list-ref
-    my $command = $options->{'INTCOMMAND_STR'} // $options->{'INTCOMMAND'};
+	# Command to run. If I have a string, use it. Otherwise use the list-ref
+	my $command = $options->{'INTCOMMAND_STR'} // $options->{'INTCOMMAND'};
 
-    my $user = $options->{'USER'};          # User to run command under
-    my $dir;                                # Directory to use (optional)
-    $dir = $self->get('Defaults')->{'DIR'} if
-	(defined($self->get('Defaults')) &&
-	 defined($self->get('Defaults')->{'DIR'}));
-    $dir = $options->{'DIR'} if
-	defined($options->{'DIR'}) && $options->{'DIR'};
+	my $user = $options->{'USER'};    # User to run command under
+	my $dir;                          # Directory to use (optional)
+	$dir = $self->get('Defaults')->{'DIR'}
+	  if ( defined($self->get('Defaults'))
+		&& defined($self->get('Defaults')->{'DIR'}));
+	$dir = $options->{'DIR'}
+	  if defined($options->{'DIR'}) && $options->{'DIR'};
 
-    if (!defined $user || $user eq "") {
-	$user = $self->get_conf('USERNAME');
-    }
+	if (!defined $user || $user eq "") {
+		$user = $self->get_conf('USERNAME');
+	}
 
-    my @cmdline;
+	my @cmdline;
 
-    if (!defined($dir)) {
-	$dir = '/';
-    }
+	if (!defined($dir)) {
+		$dir = '/';
+	}
 
-    my $need_chroot = 0;
-    $need_chroot = 1
-	if ($self->get('Location') ne '/');
+	my $need_chroot = 0;
+	$need_chroot = 1
+	  if ($self->get('Location') ne '/');
 
-    my $need_su = 0;
-    $need_su = 1
-	if (($need_chroot && $user ne 'root') ||
-	    (!$need_chroot && $user ne $self->get_conf('USERNAME')));
+	my $need_su = 0;
+	$need_su = 1
+	  if ( ($need_chroot && $user ne 'root')
+		|| (!$need_chroot && $user ne $self->get_conf('USERNAME')));
 
-    push(@cmdline, $self->get_conf('SUDO'))
-	if (($need_chroot || $need_su) && $user ne 'root');
-    push(@cmdline, '/usr/sbin/chroot', $self->get('Location'))
-	if ($need_chroot);
-    push(@cmdline, $self->get_conf('SU'), "$user", '-s')
-	if ($need_su);
+	push(@cmdline, $self->get_conf('SUDO'))
+	  if (($need_chroot || $need_su) && $user ne 'root');
+	push(@cmdline, '/usr/sbin/chroot', $self->get('Location'))
+	  if ($need_chroot);
+	push(@cmdline, $self->get_conf('SU'), "$user", '-s')
+	  if ($need_su);
 
+	if (ref $command) {
+		my $shellcommand;
+		foreach (@$command) {
+			my $tmp = $_;
+			if ($shellcommand) {
+				$shellcommand .= " " . shellescape $tmp;
+			} else {
+				$shellcommand = shellescape $tmp;
+			}
+		}
+		push(@cmdline,
+			'/bin/sh', '-c', "cd " . (shellescape $dir) . " && $shellcommand");
+	} else {
+		push(@cmdline,
+			'/bin/sh', '-c', "cd " . (shellescape $dir) . " && ( $command )");
+	}
 
-    if( ref $command ) {
-        my $shellcommand;
-        foreach (@$command) {
-            my $tmp = $_;
-            if ($shellcommand) {
-		$shellcommand .= " " . shellescape $tmp;
-            } else {
-		$shellcommand = shellescape $tmp;
-            }
-        }
-        push(@cmdline, '/bin/sh', '-c', "cd " . (shellescape $dir) . " && $shellcommand");
-    } else {
-        push(@cmdline, '/bin/sh', '-c', "cd " . (shellescape $dir) . " && ( $command )");
-    }
-
-    $options->{'USER'} = $user;
-    $options->{'COMMAND'} = ref($command) ? $command : [split(/\s+/, $command)];
-    $options->{'EXPCOMMAND'} = \@cmdline;
-    $options->{'CHDIR'} = undef;
-    $options->{'DIR'} = $dir;
+	$options->{'USER'} = $user;
+	$options->{'COMMAND'}
+	  = ref($command) ? $command : [split(/\s+/, $command)];
+	$options->{'EXPCOMMAND'} = \@cmdline;
+	$options->{'CHDIR'}      = undef;
+	$options->{'DIR'}        = $dir;
 }
 
 1;

@@ -27,41 +27,41 @@ use strict;
 use warnings;
 
 BEGIN {
-    use Exporter ();
-    our (@ISA, @EXPORT);
+	use Exporter ();
+	our (@ISA, @EXPORT);
 
-    @ISA = qw(Exporter Sbuild::ChrootInfo);
+	@ISA = qw(Exporter Sbuild::ChrootInfo);
 
-    @EXPORT = qw();
+	@EXPORT = qw();
 }
 
 sub new {
-    my $class = shift;
-    my $conf = shift;
+	my $class = shift;
+	my $conf  = shift;
 
-    my $self = $class->SUPER::new($conf);
-    bless($self, $class);
+	my $self = $class->SUPER::new($conf);
+	bless($self, $class);
 
-    return $self;
+	return $self;
 }
 
 sub get_info_all {
-    my $self = shift;
+	my $self = shift;
 
-    my $chroots = {};
+	my $chroots = {};
 
-    $self->set('Chroots', $chroots);
+	$self->set('Chroots', $chroots);
 }
 
 sub _create {
-    my $self = shift;
-    my $chroot_id = shift;
+	my $self      = shift;
+	my $chroot_id = shift;
 
-    my $chroot = undef;
+	my $chroot = undef;
 
-    $chroot = Sbuild::ChrootAutopkgtest->new($self->get('Config'), $chroot_id);
+	$chroot = Sbuild::ChrootAutopkgtest->new($self->get('Config'), $chroot_id);
 
-    return $chroot;
+	return $chroot;
 }
 
 1;

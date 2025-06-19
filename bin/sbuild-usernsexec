@@ -1,0 +1,614 @@
+#!/usr/bin/perl
+# SPDX-FileCopyrightText: Copyright 2024 Johannes Schauer Marin Rodrigues <josch@debian.org>
+# SPDX-License-Identifier: MIT
+#
+# This script, similar to lxc-usernsexec, runs commands in a namespace
+# created by unshare (with or without chrooting). Unlike unshare(1) it
+# ensures that system componants like dev, proc and sys work
+# appropriately inside the namespace.
+#
+# Example 1: run id as 'root' in the namespace (no chroot)
+# $ SUBUIDS="$(awk -F: "\$1==\"$USER\"{print \"u:0:\" \$2 \":\" \$3}" /etc/subuid)"
+# $ SUBGIDS="$(awk -F: "\$1==\"$USER\"{print \"g:0:\" \$2 \":\" \$3}" /etc/subgid)"
+# $ sbuild-usernsexec "$SUBUIDS" "$SUBGIDS" -- id
+#
+# The $SUBUIDS argument determins how users are 'mapped' from the host
+# to the namespace: For example, 'u:0:100000:65536' ensures that what
+# appears to be root (uid 0) inside the namespace is actually user
+# 100000 on the host, and similarly for the next 65536 uids (see
+# subuid(5)). The $SUBGID is similar but for groups.
+
+# Example 2a: Unpack a chroot tarball, with 'correct' user- and group-ids
+# $ /usr/libexec/sbuild-usernsexec "$SUBUIDS" "$SUBGIDS" -- mkdir /tmp/unpacked
+# $ /usr/libexec/sbuild-usernsexec "$SUBUIDS" "$SUBGIDS" -- \
+#   tar --directory=/tmp/unpacked --exclude=./dev/* \
+#       -zxf - < ~/.cache/sbuild/chroot.tar.gz
+
+# Example 2b: run a shell (/tmp/unpacked/bin/bash) with apparent
+# 'root' privilages in the namespace (which will actually be running
+# as an unprivilated user on the host):
+# $ env PATH=/usr/sbin:/usr/bin USER=root LOGNAME=root \
+#     /usr/libexec/sbuild-usernsexec "$SUBUIDS" "$SUBGIDS" \
+#     --pivotroot --nosetsid /tmp/unpacked root / -- bash -i
+#
+# This populates /dev in the chroot, sets the hostname and mounts
+# usual things like /proc and /sys in the chroot session.
+#
+# The "--" is required to separate this script's options from the
+# command to be run. As well as --pivotroot and --nosetsid, this
+# script understands --nonet to prevent the chroot accessing the
+# network, and --32bit to set a 32-bit personality(2).  You can also
+# request directories be bind-mounted into the namespace by passing a
+# directory on the host and a mountpoint after the 'unpackdir user
+# dir' part:
+# /usr/libexec/sbuild-usernsexec "$SUBUIDS" "$SUBGIDS" \
+#   /tmp/unpacked root / /dir/on/host mnt/point/inside/namespace  -- bash -i
+
+# Example 3c: repack the tarball to preserve changes:
+# $ /usr/libexec/sbuild-usernsexec "$SUBUIDS" "$SUBGIDS" -- \
+# $     tar --directory=/tmp/unpacked --exclude=./dev/* \
+#            --one-file-system -czf - . > /tmp/new-chroot.tar.gz
+# $ mv /tmp/new-chroot.tar.gz ~/.cache/sbuild/chroot.tar.gz
+
+# Example 3d: discard the session:
+# $ /usr/libexec/sbuild-usernsexec "$SUBUIDS" "$SUBGIDS" -- \
+#       rm --one-file-system -rf /tmp/unpacked
+
+# Here is an "interesting" set of packages which FTBFS with 'unshare' mode in
+# April 2024: buildbot debugpy dumb-init foolscap globus-gram-job-manager
+# heimdal idzebra kf5-messagelib kpat libapp-daemon-perl
+# libdaemon-control-perl libdaemon-generic-perl libfile-flock-perl
+# libfirefox-marionette-perl libmoosex-daemonize-perl libproc-daemon-perl
+# libproc-pid-file-perl libsoup2.4 libtest-postgresql-perl
+# libtest2-harness-perl libvirt manila-ui mosh munge mypy nautilus nbdkit
+# neovim ngircd node-async ocaml-extunix openvswitch ovn pgbouncer procps
+# public-inbox pyranges python-psutil ros-actionlib ruby-childprocess
+# ruby-process-daemon swtpm thin tracker-miners unicorn
+#
+# These seem to not like pivot_root in October 2024: daemontools elogind
+# flatpak gnome-shell golang-github-containers-toolbox
+# golang-github-shirou-gopsutil golang-github-tklauser-go-sysconf
+# golang-github-tklauser-numcpus golang-github-ungerik-go-sysfs ipsvd
+# ironic-python-agent macs netplan.io network-manager pyopencl python-mne
+# ruby-macaddr sasmodels silx tuned ucspi-tcp umockdev util-linux gpyfft
+# policykit-1 rust-lfs-core rust-udev
+#
+# These packages require supplementary groups being set:
+# daemontools (#1092530), ucspi-tcp (#1092535) and ipsvd (#1090184)
+#
+# When making changes to the unshare backend, consider testing against
+# the above list of packages.
+
+use strict;
+use warnings;
+
+use English;
+use File::Path qw(make_path);
+use POSIX      qw(WEXITSTATUS WIFEXITED);
+
+require 'syscall.ph';
+require "sys/ioctl.ph";
+
+# from sched.h
+# use typeglob constants because "use constant" has several drawback as
+# explained in the documentation for the Readonly CPAN module
+*CLONE_NEWNS                 = \0x20000;       # mount namespace
+*CLONE_NEWUTS                = \0x4000000;     # utsname
+*CLONE_NEWIPC                = \0x8000000;     # ipc
+*CLONE_NEWUSER               = \0x10000000;    # user
+*CLONE_NEWPID                = \0x20000000;    # pid
+*CLONE_NEWNET                = \0x40000000;    # net
+*_LINUX_CAPABILITY_VERSION_3 = \0x20080522;
+*CAP_SYS_ADMIN               = \21;
+*PR_CAPBSET_READ             = \23;
+# from sys/mount.h
+*MS_BIND    = \0x1000;
+*MS_REC     = \0x4000;
+*MNT_DETACH = \2;
+# from personality.h
+*PER_LINUX32 = \0x0008;
+
+*TIOCNOTTY = \0x5422;
+*TIOCSCTTY = \0x540E;
+our (
+	$CLONE_NEWNS,                 $CLONE_NEWUTS,
+	$CLONE_NEWIPC,                $CLONE_NEWUSER,
+	$CLONE_NEWPID,                $CLONE_NEWNET,
+	$_LINUX_CAPABILITY_VERSION_3, $CAP_SYS_ADMIN,
+	$PR_CAPBSET_READ,             $MS_BIND,
+	$MS_REC,                      $MNT_DETACH,
+	$PER_LINUX32,                 $TIOCNOTTY,
+	$TIOCSCTTY
+);
+
+my $disable_network = 0;
+my $perlinux32      = 0;
+my $pivotroot       = 0;
+my $setsid          = 1;
+while ($ARGV[0] !~ /^[ugb]:/) {
+	if ($ARGV[0] eq '--nonet') {
+		$disable_network = 1;
+		shift;
+	} elsif ($ARGV[0] eq '--32bit') {
+		$perlinux32 = 1;
+		shift;
+	} elsif ($ARGV[0] eq '--pivotroot') {
+		$pivotroot = 1;
+		shift;
+	} elsif ($ARGV[0] eq '--nosetsid') {
+		$setsid = 0;
+		shift;
+	} else {
+		print STDERR "invalid option $ARGV[0]\n";
+		exit 1;
+	}
+}
+
+my $uidmapcmd = "";
+my $gidmapcmd = "";
+while ($ARGV[0] =~ /^[ugb]:/) {
+	my ($t, $hostid, $nsid, $range) = split /:/, $ARGV[0];
+	if ($t eq "u" or $t eq "b") {
+		$uidmapcmd .= " $hostid $nsid $range";
+	}
+	if ($t eq "g" or $t eq "b") {
+		$gidmapcmd .= " $hostid $nsid $range";
+	}
+	shift;
+}
+
+# Workaround for #1070007 (Permission denied if STDOUT points to a pipe)
+use Fcntl qw(:mode);
+chmod(0666, *STDOUT) if ((stat(*STDOUT))[2] & S_IFMT) == S_IFIFO;
+
+{
+	# Create a pipe for the parent process to signal the child process that it
+	# is done with calling unshare() so that the child can go ahead setting up
+	# uid_map and gid_map.
+	pipe my $rfh, my $wfh;
+
+	# We have to do this dance with forking a process and then modifying the
+	# parent from the child because:
+	#  - new[ug]idmap can only be called on a process id after that process has
+	#    unshared the user namespace
+	#  - a process that unshared the user namespace by default does not have
+	#    the privileges to call new[ug]idmap on itself
+	my $ppid = $$;
+	my $cpid = fork() // die "fork() failed: $!";
+	if ($cpid == 0) {
+		# child
+
+		# Close the writing descriptor at our end of the pipe so that we see
+		# EOF when parent closes its descriptor.
+		close $wfh;
+
+		# Wait for the parent process to finish its unshare() call by waiting
+		# for an EOF.
+		0 == sysread $rfh, my $c, 1 or die "read() did not receive EOF";
+
+		# The program's new[ug]idmap have to be used because they are setuid
+		# root. These privileges are needed to map the ids from /etc/sub[ug]id
+		# to the user namespace set up by the parent. Without these privileges,
+		# only the id of the user itself can be mapped into the new namespace.
+		#
+		# Since new[ug]idmap is setuid root we also don't need to write "deny"
+		# to /proc/$$/setgroups beforehand (this is otherwise required for
+		# unprivileged processes trying to write to /proc/$$/gid_map since
+		# kernel version 3.19 for security reasons) and therefore the parent
+		# process keeps its ability to change its own group here.
+		#
+		# Since /proc/$ppid/[ug]id_map can only be written to once,
+		# respectively, instead of making multiple calls to new[ug]idmap, we
+		# assemble a command line that makes one call each.
+		if ($uidmapcmd ne "") {
+			0 == system "newuidmap $ppid $uidmapcmd"
+			  or die "newuidmap $ppid $uidmapcmd failed: $!";
+		}
+		if ($gidmapcmd ne "") {
+			0 == system "newgidmap $ppid $gidmapcmd"
+			  or die "newgidmap $ppid $gidmapcmd failed: $!";
+		}
+		exit 0;
+	}
+
+	# parent
+	close $rfh;
+
+	# We always unshare the user namespace.
+	my $unshare_flags = $CLONE_NEWUSER;
+
+	# If the user intends to enter a chroot environment, we unshare a few
+	# more namespaces. If there is no chroot (yet), only the user namespace
+	# needs to be unshared as the utilities that are run to set up and tear
+	# down the chroot (like tar, useradd or rm -r) do not need more isolation.
+	#
+	# We do not unshare the cgroup namespace as that one
+	# cannot be unshared without coordination with systemd. The normal user
+	# lacks the required privileges to have write access to a cgroup in a
+	# common user setup. We want sbuild to not depend on any cgroup manager
+	# for creating and delegating a cgroup, so we keep the cgroup namespace
+	# shared with the host. We do not unshare the time namespace because
+	# its main use is Checkpoint/Restore In Userspace and we are not doing
+	# any of that here.
+	if ($ARGV[0] ne "--" && scalar @ARGV >= 3) {
+		$unshare_flags
+		  |= $CLONE_NEWNS | $CLONE_NEWPID | $CLONE_NEWUTS | $CLONE_NEWIPC;
+	}
+
+	# If the network is to be disabled, we unshare that namespace as well.
+	if ($disable_network) {
+		$unshare_flags |= $CLONE_NEWNET;
+	}
+
+	# After fork()-ing, the parent immediately calls unshare...
+	0 == syscall &SYS_unshare, $unshare_flags or die "unshare() failed: $!";
+
+	# .. and then signals the child process that we are done with the unshare()
+	# call by sending an EOF.
+	close $wfh;
+
+	# Wait for the child process to finish its setup by waiting for its exit.
+	$cpid == waitpid $cpid, 0 or die "waitpid() failed: $!";
+	if ($? != 0) {
+		die "child had a non-zero exit status: $?";
+	}
+}
+
+# Currently, according to /proc/sys/kernel/overflow{u,g}id, we are nobody (uid
+# and gid are 65534). So we become root user and group instead.
+#
+# We are using direct syscalls instead of setting $(, $), $< and $> because
+# then perl would do additional stuff which we don't need or want here, like
+# checking /proc/sys/kernel/ngroups_max (which might not exist). It would also
+# also call setgroups() in a way that makes the root user be part of the
+# group unknown.
+0 == syscall &SYS_setgid,    0 or die "setgid failed: $!";
+0 == syscall &SYS_setuid,    0 or die "setuid failed: $!";
+0 == syscall &SYS_setgroups, 0, 0 or die "setgroups failed: $!";
+
+if ($perlinux32) {
+	my $personality = $PER_LINUX32;
+	syscall &SYS_personality, $personality;
+}
+
+if ($ARGV[0] eq "--" || scalar @ARGV < 3) {
+	shift;
+	exec @ARGV;
+	die "Failed to exec: $ARGV[0]: $!";
+}
+
+# When the pid namespace is also unshared, then processes expect a master
+# pid to always be alive within the namespace. To achieve this, we fork()
+# here instead of exec() to always have one dummy process running as pid 1
+# inside the namespace. This is also what the unshare tool does when used
+# with the --fork option.
+#
+# Once pid 1 dies (for whatever reason), Linux will immediately send
+# SIGKILL to all child processes. This also implies that no new processes
+# can be forked, but the reason for that is that there are no processes
+# left that could invoke fork.
+
+if (defined ioctl(STDIN, $TIOCNOTTY, 0)) {
+	# When the session leader detaches from its controlling tty via
+	# TIOCNOTTY, the kernel sends SIGHUP and SIGCONT to the process
+	# group. We need to be careful not to forward these on to the
+	# dumb-init child so that it doesn't receive a SIGHUP and
+	# terminate itself https://github.com/Yelp/dumb-init/issues/136
+	if (syscall(&SYS_getsid, 0) == $PROCESS_ID) {
+		#$signal_temporary_ignores{SIGHUP}  = 1;
+		#$signal_temporary_ignores{SIGCONT} = 1;
+	} else {
+		# Detached from controlling tty, but was not session leader
+	}
+}
+
+{
+	my $cpid = fork() // die "fork() failed: $!";
+	if ($cpid != 0) {
+		# This is the parent process which stays on the outside. It forwards
+		# signals it receives to its child.
+		my $handle_signal = sub {
+			my $signum = shift;
+			if ($signum eq "CHLD") { return; }
+			# forward signal to child
+			kill $signum, $cpid;
+		};
+		$SIG{$_} = $handle_signal for keys %SIG;
+		waitpid($cpid, 0);
+		exit $? >> 8;
+	}
+}
+
+# child
+# here we are pid 1
+
+{
+	my $cpid = fork() // die "fork() failed: $!";
+	if ($cpid != 0) {
+		# The parent process will stay alive as pid 1 in this namespace until
+		# the child finishes executing. This is important because pid 1 must
+		# never die or otherwise nothing new can be forked.
+		#
+		# This process, as pid 1, has to take over some tasks that otherwise
+		# init would have to take care of, like reaping zombie processes.
+		my $handle_signal = sub {
+			my $signum = shift;
+			if ($signum eq "CHLD") { return; }
+			# negative process id to forward signal to the whole process group
+			kill $signum, -$cpid;
+		};
+		$SIG{$_} = $handle_signal for keys %SIG;
+		# as pid 1, we need to wait for all children, which also reaps zombies
+		while (1) {
+			my $pid = wait;
+			if ($pid == -1 or $pid == $cpid) {
+				if (WIFEXITED(${^CHILD_ERROR_NATIVE})) {
+					# process exited normally, pass on exit status
+					exit(WEXITSTATUS(${^CHILD_ERROR_NATIVE}));
+				}
+				# If the process died from a signal, pass the signal on
+				# as the exit status, making sure it is not zero.
+				# Exit 128 indicates a core dump.
+				exit(128 | ${^CHILD_ERROR_NATIVE});
+			}
+		}
+	}
+}
+
+# child
+
+# setsid is needed so procps does not FTBFS.
+# On the other hand it breaks the /dev/tty for interactive shells so we need to
+# disable it there.
+if ($setsid == 1 && POSIX::setsid() == -1) {
+	exit 1;
+}
+
+if (!defined ioctl(STDIN, $TIOCSCTTY, 0)) {
+	# Unable to attach to controlling tty
+}
+
+my $rootdir = shift @ARGV;
+
+# make sure that our new mount namespace has an entry for / in /proc/mounts
+0 == system('mount', '-o', 'rbind', $rootdir, $rootdir)
+  or die "mount failed: $!";
+
+my $user = shift @ARGV;
+my $dir  = shift @ARGV;
+while (scalar @ARGV > 0) {
+	if ($ARGV[0] eq "--") {
+		shift @ARGV;
+		last;
+	}
+	if (!-d "$rootdir/$ARGV[1]") {
+		make_path "$rootdir/$ARGV[1]";
+	}
+	0 == system('mount', '-o', 'rbind', $ARGV[0], "$rootdir/$ARGV[1]")
+	  or die "mount failed: $!";
+	shift @ARGV;
+	shift @ARGV;
+}
+0 == system('hostname', 'sbuild') or die "hostname failed: $!";
+
+foreach my $dir ("dev", "etc") {
+	if (!-d "$rootdir/$dir") {
+		mkdir "$rootdir/$dir" or die "Failed creating $dir";
+	}
+}
+
+{
+	open my $handle, '>', "$rootdir/etc/hosts"
+	  or die "opening /etc/hosts failed: $!";
+	print $handle ("127.0.0.1 localhost\n"
+		  . "127.0.1.1 sbuild\n"
+		  . "::1 localhost ip6-localhost ip6-loopback\n");
+	close $handle or die "closing failed: $!";
+}
+
+if ($disable_network) {
+	if (0 != system("ip", "link", "set", "lo", "up")) {
+		print STDERR
+"W: 'ip link set lo up' failed -- do you have the package iproute2 installed on the host outside the chroot?\n";
+		die "failed running ip: $!";
+	}
+	open my $handle, ">", "$rootdir/etc/resolv.conf"
+	  or die "opening /etc/resolv.conf failed: $!";
+	close $handle;
+} else {
+	# On systems with libnss-resolve installed there is no need for a
+	# /etc/resolv.conf. This works around this by adding 127.0.0.53
+	# (default for systemd-resolved) in that case.
+	unlink "$rootdir/etc/resolv.conf";
+	open my $handle, ">", "$rootdir/etc/resolv.conf"
+	  or die "opening /etc/resolv.conf failed: $!";
+	my $content = "nameserver 127.0.0.53\n";
+	if (-e "/etc/resolv.conf") {
+		open my $handle2, "<", "/etc/resolv.conf"
+		  or die "opening /etc/resolv.conf failed: $!";
+		$content = do { local $/; <$handle2> };
+		close $handle2;
+	}
+	print $handle $content;
+	close $handle;
+}
+
+foreach my $f ("null", "zero", "full", "random", "urandom", "tty", "console") {
+	if (!-e "/dev/$f") {
+		warn
+		  "cannot bind-mount /dev/$f as it does not exist outside the chroot";
+		next;
+	}
+	if (!-e "$rootdir/dev/$f") {
+		open my $fh, '>', "$rootdir/dev/$f"
+		  or die "failed opening $rootdir/dev/$f: $!";
+		close $fh;
+	}
+	chmod 0, "$rootdir/dev/$f" or die "chmod failed: $!";
+	0 == system("mount", "-o", "bind", "/dev/$f", "$rootdir/dev/$f")
+	  or die "bind mounting /dev/$f failed: $!";
+}
+
+for my $link (
+	["/dev/fd",     "/proc/self/fd"],
+	["/dev/stdin",  "/proc/self/fd/0"],
+	["/dev/stdout", "/proc/self/fd/1"],
+	["/dev/stderr", "/proc/self/fd/2"],
+	["/dev/ptmx",   "/dev/pts/ptmx"],
+	["/dev/ptmx",   "/dev/pts/ptmx"]
+) {
+	my ($link, $target) = @{$link};
+	if (-l "$rootdir/$link") {
+		unlink "$rootdir/$link" or die "cannot unlink $link";
+	}
+	if (-e "$rootdir/$link") {
+		unlink "$rootdir/$link" or die "cannot unlink $link";
+	}
+	if (0 == symlink $target, "$rootdir/$link") {
+		warn "failed to create symlink $link: $!";
+		if (-l "$rootdir/$link") {
+			my $target = readlink "$rootdir/$link";
+			warn "$rootdir/$link is a symlink to $target";
+		} elsif (-f "$rootdir/$link") {
+			warn "$rootdir/$link is a plain file";
+		} elsif (-d "$rootdir/$link") {
+			warn "$rootdir/$link is a directory";
+		} elsif (-e "$rootdir/$link") {
+			warn "$rootdir/$link exists and is not a symlink";
+		}
+	}
+}
+
+if (!-d "$rootdir/dev/pts") {
+	mkdir "$rootdir/dev/pts" or die "failed creating /dev/pts: $!";
+}
+
+0 == system("mount", "-o", "noexec,nosuid,gid=5,mode=620,ptmxmode=666",
+	"-t", "devpts", "none", "$rootdir/dev/pts")
+  or die "mount failed: $!";
+
+if (!-d "$rootdir/dev/shm") {
+	mkdir "$rootdir/dev/shm" or die "failed creating /dev/shm: $!";
+}
+0 == system("mount", "-t", "tmpfs", "tmpfs", "$rootdir/dev/shm")
+  or die "mounting /dev/shm failed: $!";
+
+if (!-d "$rootdir/sys") {
+	mkdir "$rootdir/sys" or die "failed to mkdir /sys";
+}
+
+0 == system("mount", "-o", "rbind", "/sys", "$rootdir/sys")
+  or die "mount failed: $!";
+0 == system(
+	"mount", "-o",    "mode=0000,size=4k,ro", "-t",
+	"tmpfs", "tmpfs", "$rootdir/sys/kernel"
+) or die "mount failed $!";
+if (!-d "$rootdir/proc") {
+	mkdir "$rootdir/proc" or die "failed to mkdir /proc";
+}
+0 == system("mount", "-t", "proc", "proc", "$rootdir/proc")
+  or warn "mounting /proc failed: $!";
+
+if (!$pivotroot) {
+	exec @ARGV;
+	die "Failed to exec: $ARGV[0]: $!";
+}
+
+if (defined $ENV{'SBUILD_ENABLE_PIVOT_ROOT'}) {
+	# pivot root
+	my $target  = "/mnt";
+	my $put_old = "tmp";
+	0 == syscall &SYS_mount, $rootdir, $target, 0, $MS_REC | $MS_BIND, 0
+	  or die "mount failed: $!";
+	chdir "/mnt" or die "failed chdir() to /mnt: $!";
+	0 == syscall &SYS_pivot_root, my $new_root = ".", $put_old
+	  or die "pivot_root failed: $!";
+
+	# FIXME: is the 'chroot "."' even needed? It is done here because that's
+	# what is done in pivot_root(8) but why is it done?
+	chroot "." or die "failed to chroot() to .: $!";
+	0 == syscall &SYS_umount2, $put_old, $MNT_DETACH
+	  or die "umount2 failed: $!";
+
+	# FIXME: why is /sys unmounted here?
+	0 == syscall &SYS_umount2, my $sys = "sys", $MNT_DETACH
+	  or die "umount2 failed: $!";
+
+	# chdir while we are still root
+	chdir $dir or die "unable to chdir $dir: $!";
+} else {
+	chroot $rootdir or die "failed to chroot() to .: $!";
+	chdir $dir      or die "unable to chdir $dir: $!";
+}
+
+# Look up the uid and gid for $user without getpwnam as that could call into
+# nss modules and the version and architecture of the running perl interpreter
+# may mismatch the chroot.
+{
+	open my $fh, '<', '/etc/passwd'
+	  or die "opening /etc/passwd failed: $!";
+	my $uid;
+	my $gid;
+	while (my $line = <$fh>) {
+		my @fields = split /:/, $line;
+		next unless $#fields >= 4 and $fields[0] eq $user;
+		unless ($fields[2] =~ /\d+/ and $fields[3] =~ /\d+/) {
+			die "invalid /etc/passwd line: $line";
+		}
+		$uid = int $fields[2];
+		$gid = int $fields[3];
+		last;
+	}
+	close $fh;
+
+	unless (defined $uid and defined $gid) {
+		die "user $user not found in /etc/passwd";
+	}
+
+	my @groups = ($gid);
+	open my $fh2, '<', '/etc/group'
+	  or die "opening /etc/group failed: $!";
+	while (my $line = <$fh2>) {
+		chomp $line;
+		my @fields = split /:/, $line;
+		next unless $fields[3];
+		unless ($fields[2] =~ /\d+/) {
+			die "invalid /etc/group line: $line";
+		}
+		# skip primary group as it's already part of the array
+		next if $fields[2] == $gid;
+		foreach my $u (split /,/, $fields[3]) {
+			next unless $u eq $user;
+			push @groups, $fields[2];
+			last;
+		}
+	}
+	close $fh2;
+
+	my $gidarr = pack("I*", @groups);
+	my $len    = scalar @groups;
+	0 == syscall &SYS_setgroups, $len, $gidarr
+	  or die "setgroups failed: $!";
+
+	# we must set the uid *after* setgroups() or otherwise we do not have
+	# permissions to set the set the list of supplementary group IDs
+	0 == syscall &SYS_setgid, $gid or die "setgid failed: $!";
+	0 == syscall &SYS_setuid, $uid or die "setuid failed: $!";
+
+	# sanity check for supplementary group membership
+	my @effgroups = POSIX::getgroups();
+	if (scalar @groups != scalar @effgroups) {
+		print STDERR ((join " ", @groups) . "\n");
+		print STDERR ((join " ", @effgroups) . "\n");
+		die "E: setgroups() did the wrong thing for user $user";
+	}
+	foreach my $i (0 .. $#groups) {
+		if ($groups[$i] ne $effgroups[$i]) {
+			die "E: setgroups() did the wrong thing";
+		}
+	}
+
+}
+
+exec @ARGV;
+die "Failed to exec: $ARGV[0]: $!";

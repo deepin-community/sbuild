@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 # SPDX-License-Identifier: GPL-2.0-or-later
 #
-# Copyright © 2020-2022 Christian Kastner <ckk@debian.org>
+# Copyright © 2020-2024 Christian Kastner <ckk@debian.org>
+#             2024      Johannes Schauer Marin Rodrigues <josch@debian.org>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -39,6 +40,7 @@ IMAGEDIR = os.environ.get(
     os.path.join(os.path.expanduser('~'), '.cache', 'sbuild'),
 )
 
+DEFAULT_DIST = 'unstable'
 DEFAULT_ARCH = subprocess.check_output(
     ['dpkg', '--print-architecture'],
     text=True,
@@ -49,34 +51,26 @@ def main():
     # init options
     parser = argparse.ArgumentParser(
         description="Build Debian packages with sbuild(1) using QEMU images",
-        epilog="All other options are passed on through to sbuild(1). "
-               "The image will be started in -snapshot mode, so no changes "
-               "are saved, and multiple processes can use the same image "
-               "concurrently.",
-    )
-    parser.add_argument(
-        '--arch',
-        action='store',
-        default=DEFAULT_ARCH,
-        help="Architecture to use. Default is the host architecture. "
-             "Currently supported architectures are: "
-            f"{', '.join(DEB_ARCH_TO_QEMU.keys())}.",
-    )
-    parser.add_argument(
-        '-d', '--dist',
-        action='store',
-        default='unstable',
-        help=f"Distribution (for the .changes file). "
-             f"Default: 'unstable'.",
+        epilog="All options other than the ones described below are passed on "
+               "through to sbuild(1), though the options --dist, --arch, and "
+               "--build are peeked at when looking for images. The image will "
+               "be started in snapshot mode, so the image is never modified. "
+               "Multiple processes can use the same image concurrently. The "
+               "architectures currently supported by sbuild-qemu are: "
+               f"{', '.join(DEB_ARCH_TO_QEMU.keys())}.",
     )
     parser.add_argument(
         '--image',
         action='store',
-        help="QEMU image file to use for building. If not specified, will "
-             "look for an image with the name DIST-autopkgtest-ARCH.img. Will "
-             "first look in the current directory, and if no such file exists "
-             "there, then the directory $IMAGEDIR is tried. A suitable image "
-             "can be created with qemu-sbuild-create(1).",
+        help="QEMU image file to use for building. If not specified, "
+             "sbuild-qemu will look for an image with the name "
+             "DIST-autopkgtest-ARCH.img, where DIST is taken from --dist "
+             "if present, and ARCH is taken from --arch or --build if "
+             "present. Otherwise, DIST defaults to 'unstable', and ARCH to "
+             "the host architecture. sbuild-qemu will first look in the "
+             "current directory for such an image, and then in the directory "
+             "$IMAGEDIR. A suitable image can be created with "
+             "qemu-sbuild-create(1).",
     )
     parser.add_argument(
         '--ram-size',
@@ -95,6 +89,7 @@ def main():
     parser.add_argument(
         '--overlay-dir',
         action='store',
+	default='/tmp',
         help="Directory for the temporary image overlay instead of "
              "autopkgtest's default of /tmp (or $TMPDIR).",
     )
@@ -109,12 +104,38 @@ def main():
         action='store_true',
         help="Enable debug output for the autopkgtest-virt-qemu(1) driver.",
     )
+    parser.add_argument(
+        '--boot',
+        choices=['auto', 'bios', 'efi', 'ieee1275', 'none'],
+        default='auto',
+        help="How to boot the image. Default is BIOS on amd64 and i386, EFI "
+             "on arm64 and armhf, and IEEE1275 on ppc64el.",
+        )
     parsed_args, unparsed_args = parser.parse_known_args()
 
+    # These aren't options for us specifically, but we use them for guessing
+    # image locations
+    peeker = argparse.ArgumentParser()
+    peeker.add_argument(
+        '--dist',
+        action='store',
+    )
+    peeker.add_argument(
+        '--arch',
+        action='store',
+        default=DEFAULT_ARCH,
+    )
+    peeker.add_argument(
+        '--build',
+        action='store',
+    )
+    peeked_args, _ = peeker.parse_known_args(unparsed_args)
+
+    build_arch = peeked_args.build or peeked_args.arch
     try:
-        qemu_arch = DEB_ARCH_TO_QEMU[parsed_args.arch]
+        qemu_arch = DEB_ARCH_TO_QEMU[build_arch]
     except KeyError:
-        print(f"Unsupported architecture: {parsed_args.arch}", file=sys.stderr)
+        print(f"Unsupported architecture: {build_arch}", file=sys.stderr)
         print("Supported architectures are: ", file=sys.stderr, end="")
         print(f"{', '.join(DEB_ARCH_TO_QEMU.keys())}", file=sys.stderr)
         sys.exit(1)
@@ -125,14 +146,11 @@ def main():
         else:
             image = os.path.join(IMAGEDIR, parsed_args.image)
     else:
-        guessed_name = f'{parsed_args.dist}-autopkgtest-{parsed_args.arch}.img'
+        guessed_name = f'{peeked_args.dist or DEFAULT_DIST}-autopkgtest-{build_arch}.img'
         if os.path.exists(os.path.abspath(guessed_name)):
-            images = os.path.abspath(guessed_name)
+            image = os.path.abspath(guessed_name)
         else:
-            image = os.path.join(
-                IMAGEDIR,
-                f'{parsed_args.dist}-autopkgtest-{parsed_args.arch}.img',
-            )
+            image = os.path.join(IMAGEDIR, guessed_name)
 
     if not os.path.exists(image):
         print(f"File {image} does not exist.", file=sys.stderr)
@@ -140,27 +158,23 @@ def main():
 
     args = [
             'sbuild',
-            '--arch',                           parsed_args.arch,
-            '--dist',                           parsed_args.dist,
             '--purge-build=never',
             '--purge-deps=never',
             '--chroot-mode=autopkgtest',
             '--autopkgtest-virt-server=qemu',
-            '--autopkgtest-virt-server-opt',    '--overlay-dir=/tmp',
+            '--autopkgtest-virt-server-opt',    f'--overlay-dir={parsed_args.overlay_dir}',
             '--autopkgtest-virt-server-opt',    f'--qemu-architecture={qemu_arch}',
             '--autopkgtest-virt-server-opt',    f'--ram-size={parsed_args.ram_size}',
             '--autopkgtest-virt-server-opt',    f'--cpus={parsed_args.cpus}',
+            '--autopkgtest-virt-server-opt',    f'--boot={parsed_args.boot}',
             '--autopkgtest-virt-server-opt',    image,
             # Worarkound -- dose can hang stuff in a qemu VM
             '--bd-uninstallable-explainer',     'apt',
         ]
     if parsed_args.autopkgtest_debug:
         args += ['--autopkgtest-virt-server-opt', '--debug']
-    if parsed_args.overlay_dir:
-        d = parsed_args.overlay_dir
-        args += ['--autopkgtest-virt-server-opt', f'--overlay_dir={d}']
 
-    # Pass on the remaining arguments to sbuild
+    # Pass on the remaining (before peeking) arguments to sbuild
     args += unparsed_args
 
     print(' '.join(str(a) for a in args))

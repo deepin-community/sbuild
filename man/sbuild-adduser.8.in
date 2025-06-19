@@ -22,6 +22,10 @@ sbuild\-adduser \- add an sbuild user
 .RB [ \-h \[or] \-\-help " \[or] " \-V \[or] \-\-version ]
 .BR USER1 " [" USER2 " [" USER\f[BI]n\fP... ]]
 .SH DESCRIPTION
+
+Note that this tool is only useful for the schroot backend.
+Debian buildds have switched to the unshare backend in 2024.
+
 \fBsbuild\-adduser\fR adds the specified users to the \fIsbuild\fP group,
 granting them the privilege to build packages with
 .BR sbuild (1).

@@ -26,52 +26,75 @@ use v5.10;
 use Getopt::Long;
 use Sbuild qw(help_text);
 
-my $dist = "debian";
+my $dist  = "debian";
 my $suite = "unstable";
-chomp(my $arch = `dpkg --print-architecture`);
+chomp(my $host_arch = `dpkg --print-architecture`);
+my $arch = $host_arch;
 
 my @options = (
-    'distribution=s' => \$dist,
-    'suite=s' => \$suite,
-    'arch=s' => \$arch,
-    'help' => sub { help_text(1, "sbuild-debian-developer-setup") },
-    );
+	'distribution=s' => \$dist,
+	'suite=s'        => \$suite,
+	'arch=s'         => \$arch,
+	'help'           => sub { help_text(1, "sbuild-debian-developer-setup") },
+);
 GetOptions(@options);
 
-if (!defined($ENV{SUDO_USER})) {
-    die "Please run sudo $0";
+print "Deprecated: Note that this uses the schroot backend which is no\n";
+print "longer used on the Debian buildds. Please switch to the unshare\n";
+print "backend. It does not need any prior setup nor regular cron jobs.\n";
+print "You can do that by running sbuild --chroot-mode=unshare.\n";
+print "Don't run newgrp sbuild for the unshare backend as it will break\n";
+print "the unshare calls.\n";
+
+my $username;
+
+if (defined($ENV{SUDO_USER}) && defined($ENV{DOAS_USER})) {
+	die("Both SUDO_USER and DOAS_USER are set, this is unexpected, aborting!");
 }
 
-system("adduser", "--", $ENV{SUDO_USER}, "sbuild") == 0
-    or die "adduser failed: $?";
+$username //= $ENV{SUDO_USER};
+$username //= $ENV{DOAS_USER};
+if (!defined($username)) {
+	die "Please run sudo/doas $0";
+}
+
+system("adduser", "--", $username, "sbuild") == 0
+  or die "adduser failed: $?";
 
 sub chroot_exists {
-    system("schroot -i -c chroot:$suite-$arch-sbuild >/dev/null 2>&1") == 0
+	system("schroot -i -c chroot:$suite-$arch-sbuild >/dev/null 2>&1") == 0;
 }
 
 if (!chroot_exists()) {
-    my @aliases = ();
-    if ( $suite eq "unstable" || $suite eq "sid" ) {
-        @aliases = ( "--alias=UNRELEASED", "--alias=UNRELEASED-$arch-sbuild" );
-        if ( $suite eq "unstable" ) {
-            push @aliases, "--alias=sid";
-        }
-        if ( $suite eq "sid" ) {
-            push @aliases, "--alias=unstable";
-        }
-    }
-    system("sbuild-createchroot",
-	   "--command-prefix=eatmydata",
-	   "--include=eatmydata",
-	   @aliases,
-	   "$suite",
-	   "/srv/chroot/$suite-$arch-sbuild",
-	   "http://localhost:3142/deb.debian.org/debian") == 0
-	       or die "sbuild-createchroot failed: $!";
+	my @aliases     = ();
+	my $is_unstable = $suite eq "unstable" || $suite eq "sid";
+	my $othersuite  = $suite eq "unstable" ? "sid" : "unstable";
+	if ($is_unstable) {
+		push @aliases, "--alias=$othersuite-$arch-sbuild";
+		push @aliases, "--alias=UNRELEASED-$arch-sbuild";
+		if ($arch eq $host_arch) {
+			push @aliases, "--alias=UNRELEASED";
+			push @aliases, "--alias=$othersuite";
+		}
+	}
+	my @cmd = (
+		"sbuild-createchroot",
+		"--command-prefix=eatmydata",
+		"--include=eatmydata",
+		@aliases,
+		"--arch=$arch",
+		"$suite",
+		"/srv/chroot/$suite-$arch-sbuild",
+		"http://localhost:3142/deb.debian.org/debian"
+	);
+	say "Running:\n    \$ @cmd";
+	system(@cmd) == 0
+	  or die "sbuild-createchroot failed: $!";
 } else {
-    say "chroot $suite-$arch-sbuild already exists";
+	say "chroot $suite-$arch-sbuild already exists";
 }
 
-say "Your current user is now part of the sbuild group (no need to run sbuild-adduser) and a chroot environment exists in /srv/chroot/$suite-$arch-sbuild";
+say
+"Your current user is now part of the sbuild group (no need to run sbuild-adduser) and a chroot environment exists in /srv/chroot/$suite-$arch-sbuild";
 
 say "Now run `newgrp sbuild', or log out and log in again.";

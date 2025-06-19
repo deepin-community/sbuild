@@ -29,12 +29,12 @@ use Sbuild::ConfBase;
 use Sbuild::Sysconfig;
 
 BEGIN {
-    use Exporter ();
-    our (@ISA, @EXPORT);
+	use Exporter ();
+	our (@ISA, @EXPORT);
 
-    @ISA = qw(Exporter);
+	@ISA = qw(Exporter);
 
-    @EXPORT = qw(new_hash setup read_hash);
+	@EXPORT = qw(new_hash setup read_hash);
 }
 
 sub new_hash (@);
@@ -42,55 +42,55 @@ sub setup ($);
 sub read_hash ($$);
 
 sub new_hash (@) {
-    my %opts = @_;
+	my %opts = @_;
 
-    my $queue_config = Sbuild::ConfBase->new(%opts);
+	my $queue_config = Sbuild::ConfBase->new(%opts);
 
-    Buildd::UploadQueueConf::setup($queue_config);
-    Buildd::UploadQueueConf::read_hash($queue_config, $opts{'HASH'});
+	Buildd::UploadQueueConf::setup($queue_config);
+	Buildd::UploadQueueConf::read_hash($queue_config, $opts{'HASH'});
 
-    return $queue_config;
+	return $queue_config;
 }
 
 sub setup ($) {
-    my $conf = shift;
-
-    my $validate_directory_in_home = sub {
 	my $conf = shift;
-	my $entry = shift;
-	my $key = $entry->{'NAME'};
-	my $directory = $conf->get($key);
-	my $home_directory = $conf->get('HOME');
 
-	die "$key directory is not defined"
-	    if !defined($directory) || !$directory;
+	my $validate_directory_in_home = sub {
+		my $conf           = shift;
+		my $entry          = shift;
+		my $key            = $entry->{'NAME'};
+		my $directory      = $conf->get($key);
+		my $home_directory = $conf->get('HOME');
 
-	die "$key directory '$home_directory/$directory' does not exist"
-	    if !-d $home_directory . "/" . $directory;
-    };
+		die "$key directory is not defined"
+		  if !defined($directory) || !$directory;
 
-    my %dupload_queue_keys = (
-	'DUPLOAD_LOCAL_QUEUE_DIR'		=> {
-	    CHECK => $validate_directory_in_home,
-	    DEFAULT => 'upload'
-	},
-	'DUPLOAD_ARCHIVE_NAME'		=> {
-	    DEFAULT => 'anonymous-ftp-master'
-	},
-    );
+		die "$key directory '$home_directory/$directory' does not exist"
+		  if !-d $home_directory . "/" . $directory;
+	};
 
-    $conf->set_allowed_keys(\%dupload_queue_keys);
+	my @dupload_queue_keys = (
+		'DUPLOAD_LOCAL_QUEUE_DIR' => {
+			CHECK   => $validate_directory_in_home,
+			DEFAULT => 'upload'
+		},
+		'DUPLOAD_ARCHIVE_NAME' => {
+			DEFAULT => 'debian-ftp'
+		},
+	);
 
-    Buildd::ClientConf::setup($conf);
+	$conf->set_allowed_keys(@dupload_queue_keys);
+
+	Buildd::ClientConf::setup($conf);
 }
 
 sub read_hash ($$) {
-    my $conf = shift;
-    my $data = shift;
+	my $conf = shift;
+	my $data = shift;
 
-    for my $key (keys %$data) {
-	$conf->set($key, $data->{$key});
-    }
+	for my $key (keys %$data) {
+		$conf->set($key, $data->{$key});
+	}
 }
 
 1;

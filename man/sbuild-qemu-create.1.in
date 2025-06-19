@@ -25,6 +25,7 @@ sbuild\-qemu\-create \- QEMU image creator for sbuild
 .RB [ \-\-extra\-deb=EXTRA_DEB]
 .RB [ \-\-components=COMPONENTS ]
 .RB [ \-\-skel=SKEL ]
+.RB [ \-\-authorized\-keys=FILE ]
 .RB [ \-\-size=SIZE ]
 .RB [ \-o=OUT_FILE  ]
 .RB [ \-\-noexec ]
@@ -32,9 +33,9 @@ sbuild\-qemu\-create \- QEMU image creator for sbuild
 .RB [MIRROR]
 .PP
 Build an image for use with \fBsbuild-qemu\fR and \fBautopkgtest\fR.
-\fBRELEASE\fR will be debootstrapped from \fBMIRROR\fR.
-Note that the same mirror will also be used for the \fIsources.list\fR file
-within the VM. See MIRROR below.
+\fBRELEASE\fR will be debootstrapped from \fBMIRROR\fR. This mirror
+will also be used for the \fIsources.list\fR file within the VM.
+See MIRROR below.
 .PP
 Note that sbuild\-qemu\-create is just a simple wrapper around
 autopkgtest\-build\-qemu(1) that automates a few additional steps commonly
@@ -63,6 +64,11 @@ Default: main.
 \fB\-\-skel\fR=SKEL
 Skeleton directory to use for \fI\,/root\/\fP.
 .TP
+\fB\-\-authorized\-keys\fR=FILE
+Install this file as \fI/root/.ssh/authorized_keys\fR within the guest. This
+will automatically install the \fBopenssh-server\fR package. This supersedes
+any copying of this file by the \-\-skel option.
+.TP
 \fB\-\-size\fR=SIZE
 Image size to use. Note that the images will be created in qcow2 format, so
 they won't consume that space right away. Default: 10G.
@@ -74,6 +80,10 @@ used.
 \fB\-\-noexec\fR
 Don't actually do anything. Just print the autopkgtest\-build\-qemu(1) command
 string that would be executed, and then exit.
+.TP
+\fB\-\-boot\fR=auto,bios,efi,ieee1275,none
+How the image should boot. Default is BIOS on amd64 and i386, EFI on arm64 and
+armhf, and IEEE1275 on ppc64el.
 .SH "MIRROR"
 It is \fBhighly recommended\fR that you use an APT cache, like approx(8) or
 apt\-cacher\-ng(8), on the \fBlocal\fR machine (so that the VM can access
@@ -108,6 +118,11 @@ To share a directory on the host with the VM, QEMU should be started with
 the following additional options:
 .PP
 \fB \-virtfs local,path=/path/to/host/dir,id=sbuild-qemu,mount_tag=sbuild-qemu,security_model=none
+.SH "TTY GEOMETRY"
+sbuild\-qemu\-creates a file
+\fI/etc/profile.d/sbuild\-qemu\-terminal\-settings.sh\fR within the VM. This file
+reads terminal column and row geometry passed on through from the host, and
+sets the geometry within the guest using stty(1).
 .SH EXAMPLES
 \fB$ sudo sbuild\-qemu\-create unstable http://deb.debian.org/debian\fR
 .PP

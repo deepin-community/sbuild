@@ -21,10 +21,9 @@
 
 set -e
 
-for program in "@abs_top_srcdir@/bin/"*
-do
-    if grep '#!/usr/bin/perl' "$program" 2>&1 >/dev/null; then
-	echo "Checking $program"
-	PERL5LIB="@abs_top_srcdir@/lib" /usr/bin/perl -cw "$program"
-    fi
+for program in "@abs_top_srcdir@/bin/"*; do
+	if grep '#!/usr/bin/perl' "$program" 2>&1 > /dev/null; then
+		echo "Checking $program"
+		PERL5LIB="@abs_top_srcdir@/lib" /usr/bin/perl -cw "$program"
+	fi
 done

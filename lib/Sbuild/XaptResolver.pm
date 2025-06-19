@@ -29,79 +29,81 @@ use Sbuild::Base;
 use Sbuild::ResolverBase;
 
 BEGIN {
-    use Exporter ();
-    our (@ISA, @EXPORT);
+	use Exporter ();
+	our (@ISA, @EXPORT);
 
-    @ISA = qw(Exporter Sbuild::ResolverBase);
+	@ISA = qw(Exporter Sbuild::ResolverBase);
 
-    @EXPORT = qw();
+	@EXPORT = qw();
 }
 
 sub new {
-    my $class = shift;
-    my $conf = shift;
-    my $session = shift;
-    my $host = shift;
+	my $class   = shift;
+	my $conf    = shift;
+	my $session = shift;
+	my $host    = shift;
 
-    my $self = $class->SUPER::new($conf, $session, $host);
-    bless($self, $class);
+	my $self = $class->SUPER::new($conf, $session, $host);
+	bless($self, $class);
 
-    return $self;
+	return $self;
 }
 
 sub install_deps {
-    my $self = shift;
-    my $name = shift;
-    my @pkgs = @_;
+	my $self = shift;
+	my $name = shift;
+	my @pkgs = @_;
 
-    my $status = 0;
-    my $session = $self->get('Session');
-#    my $dummy_pkg_name = 'sbuild-build-depends-' . $name. '-dummy';
+	my $status  = 0;
+	my $session = $self->get('Session');
+	#    my $dummy_pkg_name = 'sbuild-build-depends-' . $name. '-dummy';
 
-    # Call functions to setup an archive to install dummy package.
-#    return 0 unless ($self->setup_apt_archive($dummy_pkg_name, @pkgs));
-#    return 0 unless (!$self->update_archive());
+	# Call functions to setup an archive to install dummy package.
+	#    return 0 unless ($self->setup_apt_archive($dummy_pkg_name, @pkgs));
+	#    return 0 unless (!$self->update_archive());
 
+	$self->log_subsection(
+		"Install $name cross-build dependencies (xapt-based resolver)");
 
-    $self->log_subsection("Install $name cross-build dependencies (xapt-based resolver)");
-
-    # Install the dummy package
-    my (@instd, @rmvd);
-    $self->log("Installing cross-build dependencies\n");
-    if (!$self->run_xapt("-a", $self->get_conf('HOST_ARCH'), @pkgs)) {
-	$self->log("Package installation failed\n");
-	if (defined ($self->get('Session')->get('Session Purged')) &&
-	    $self->get('Session')->get('Session Purged') == 1) {
-	    $self->log("Not removing build depends: cloned chroot in use\n");
-	} else {
-	    $self->set_installed(@instd);
-	    $self->set_removed(@rmvd);
-	    goto package_cleanup;
+	# Install the dummy package
+	my (@instd, @rmvd);
+	$self->log("Installing cross-build dependencies\n");
+	if (!$self->run_xapt("-a", $self->get_conf('HOST_ARCH'), @pkgs)) {
+		$self->log("Package installation failed\n");
+		if (defined($self->get('Session')->get('Session Purged'))
+			&& $self->get('Session')->get('Session Purged') == 1) {
+			$self->log("Not removing build depends: cloned chroot in use\n");
+		} else {
+			$self->set_installed(@instd);
+			$self->set_removed(@rmvd);
+			goto package_cleanup;
+		}
+		return 0;
 	}
-	return 0;
-    }
-    $self->set_installed(@instd);
-    $self->set_removed(@rmvd);
-    $status = 1;
+	$self->set_installed(@instd);
+	$self->set_removed(@rmvd);
+	$status = 1;
 
   package_cleanup:
-    if ($status == 0) {
-	if (defined ($session->get('Session Purged')) &&
-	    $session->get('Session Purged') == 1) {
-	    $self->log("Not removing installed packages: cloned chroot in use\n");
-	} else {
-	    $self->uninstall_deps();
+	if ($status == 0) {
+		if (defined($session->get('Session Purged'))
+			&& $session->get('Session Purged') == 1) {
+			$self->log(
+				"Not removing installed packages: cloned chroot in use\n");
+		} else {
+			$self->uninstall_deps();
+		}
 	}
-    }
 
-    return $status;
+	return $status;
 }
 
 sub purge_extra_packages {
-    my $self = shift;
-    my $name = shift;
+	my $self = shift;
+	my $name = shift;
 
-    $self->log_error('Xapt resolver doesn\'t implement purging of extra packages yet.\n');
+	$self->log_error(
+		'Xapt resolver doesn\'t implement purging of extra packages yet.\n');
 }
 
 1;

@@ -1,5 +1,8 @@
 #!/usr/bin/make -f
 
+# prevent different timestamps in man pages (see #1082358)
+export LC_ALL=C.UTF-8
+
 %:
 	dh $@
 

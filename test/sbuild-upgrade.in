@@ -22,5 +22,5 @@
 set -e
 
 for dist in unstable; do
-    PATH="@abs_top_srcdir@/bin:$PATH" PERL5LIB="@abs_top_srcdir@/lib" "@abs_top_srcdir@/bin/sbuild-upgrade" "$dist"
+	PATH="@abs_top_srcdir@/bin:$PATH" PERL5LIB="@abs_top_srcdir@/lib" "@abs_top_srcdir@/bin/sbuild-upgrade" "$dist"
 done

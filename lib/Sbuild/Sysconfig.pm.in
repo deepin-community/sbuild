@@ -24,61 +24,61 @@ use strict;
 use warnings;
 
 BEGIN {
-    use Exporter ();
-    our (@ISA, @EXPORT_OK);
+	use Exporter ();
+	our (@ISA, @EXPORT_OK);
 
-    @ISA = qw(Exporter);
+	@ISA = qw(Exporter);
 
-    @EXPORT_OK = qw($version $release_date $compat_mode %paths %programs);
+	@EXPORT_OK = qw($version $release_date $compat_mode %paths %programs);
 }
 
-our $version = "@PACKAGE_VERSION@";
+our $version      = "@PACKAGE_VERSION@";
 our $release_date = "@RELEASE_DATE@";
-our $compat_mode = @SBUILD_COMPAT@;
+our $compat_mode  = @SBUILD_COMPAT@;
 
 # Paths
-my $prefix = "@prefix@";
+my $prefix      = "@prefix@";
 my $exec_prefix = "@exec_prefix@";
 # Depend on prefix
-my $includedir = "@includedir@";
-my $localstatedir = "@localstatedir@";
+my $includedir     = "@includedir@";
+my $localstatedir  = "@localstatedir@";
 my $sharedstatedir = "@sharedstatedir@";
-my $sysconfdir = "@sysconfdir@";
+my $sysconfdir     = "@sysconfdir@";
 # Depend on exec_prefix
-my $bindir = "@bindir@";
-my $libdir = "@libdir@";
+my $bindir     = "@bindir@";
+my $libdir     = "@libdir@";
 my $libexecdir = "@libexecdir@";
-my $sbindir = "@sbindir@";
+my $sbindir    = "@sbindir@";
 # Data directories
 my $datarootdir = "@datarootdir@";
-my $datadir = "@datadir@";
-my $localedir = "@localedir@";
-my $mandir = "@mandir@";
+my $datadir     = "@datadir@";
+my $localedir   = "@localedir@";
+my $mandir      = "@mandir@";
 
 our %paths = (
-    'PREFIX' => $prefix,
-    'EXEC_PREFIX' => $exec_prefix,
-    'INCLUDEDIR' => $includedir,
-    'LOCALSTATEDIR' => $localstatedir,
-    'SHAREDSTATEDIR' => $sharedstatedir,
-    'SYSCONFDIR' => $sysconfdir,
-    'BINDIR' => $bindir,
-    'LIBDIR' => $libdir,
-    'LIBEXECDIR' => $libexecdir,
-    'SBINDIR' => $sbindir,
-    'DATAROOTDIR' => $datarootdir,
-    'DATADIR' => $datadir,
-    'LOCALEDIR' => $localedir,
-    'MANDIR' => $mandir,
-    'BUILDD_CONF' => "@BUILDD_CONF@",
-    'BUILDD_SYSCONF_DIR' => "@BUILDD_SYSCONF_DIR@",
-    'SBUILD_CONF' => "@SBUILD_CONF@",
-    'SBUILD_DATA_DIR' => "@SBUILD_DATA_DIR@",
-    'SBUILD_LIBEXEC_DIR' => "@SBUILD_LIBEXEC_DIR@",
-    'SBUILD_LOCALSTATE_DIR' => "$localstatedir/lib/sbuild",
-    'SBUILD_SYSCONF_DIR' => "@SBUILD_SYSCONF_DIR@",
-    'SCHROOT_CONF' => "@SCHROOT_CONF@",
-    'SCHROOT_SYSCONF_DIR' => "@SCHROOT_SYSCONF_DIR@"
+	'PREFIX'                => $prefix,
+	'EXEC_PREFIX'           => $exec_prefix,
+	'INCLUDEDIR'            => $includedir,
+	'LOCALSTATEDIR'         => $localstatedir,
+	'SHAREDSTATEDIR'        => $sharedstatedir,
+	'SYSCONFDIR'            => $sysconfdir,
+	'BINDIR'                => $bindir,
+	'LIBDIR'                => $libdir,
+	'LIBEXECDIR'            => $libexecdir,
+	'SBINDIR'               => $sbindir,
+	'DATAROOTDIR'           => $datarootdir,
+	'DATADIR'               => $datadir,
+	'LOCALEDIR'             => $localedir,
+	'MANDIR'                => $mandir,
+	'BUILDD_CONF'           => "@BUILDD_CONF@",
+	'BUILDD_SYSCONF_DIR'    => "@BUILDD_SYSCONF_DIR@",
+	'SBUILD_CONF'           => "@SBUILD_CONF@",
+	'SBUILD_DATA_DIR'       => "@SBUILD_DATA_DIR@",
+	'SBUILD_LIBEXEC_DIR'    => "@SBUILD_LIBEXEC_DIR@",
+	'SBUILD_LOCALSTATE_DIR' => "$localstatedir/lib/sbuild",
+	'SBUILD_SYSCONF_DIR'    => "@SBUILD_SYSCONF_DIR@",
+	'SCHROOT_CONF'          => "@SCHROOT_CONF@",
+	'SCHROOT_SYSCONF_DIR'   => "@SCHROOT_SYSCONF_DIR@"
 );
 
 1;

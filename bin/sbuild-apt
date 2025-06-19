@@ -22,9 +22,10 @@ use strict;
 use warnings;
 
 use Getopt::Long;
-use Sbuild qw(help_text version_text usage_error check_group_membership);
+use Sbuild
+  qw(help_text version_text usage_error check_group_membership check_unshare);
 use Sbuild::Utility qw(setup cleanup);
-use Sbuild::Conf qw();
+use Sbuild::Conf    qw();
 use Sbuild::OptionsBase;
 use Sbuild::AptResolver;
 use Sbuild::ChrootRoot;
@@ -33,35 +34,37 @@ my $conf = Sbuild::Conf::new();
 exit 1 if !defined($conf);
 my $options = Sbuild::OptionsBase->new($conf, "sbuild-apt", "1");
 exit 1 if !defined($options);
+check_unshare($0, $conf);
 check_group_membership();
 
 usage_error("sbuild-apt", "Incorrect number of options") if (@ARGV < 2);
 
-my $chroot = shift @ARGV;
+my $chroot  = shift @ARGV;
 my $command = shift @ARGV;
 
 if ($command eq "apt-get") {
-    $command = $conf->get('APT_GET');
+	$command = $conf->get('APT_GET');
 } elsif ($command eq "apt-cache") {
-    $command = $conf->get('APT_CACHE');
+	$command = $conf->get('APT_CACHE');
 } else {
-    usage_error("sbuild-apt",
+	usage_error("sbuild-apt",
 		"Bad command $command.  Allowed commands: apt-get or apt-cache\n");
 }
 
 my $session = setup('source', $chroot, $conf) or die "Chroot setup failed";
-my $host = Sbuild::ChrootRoot->new($conf);
+my $host    = Sbuild::ChrootRoot->new($conf);
 $host->begin_session() or die "Chroot setup (host) failed";
 
 my $resolver = Sbuild::AptResolver->new($conf, $session, $host);
 $resolver->setup();
 
-$resolver->run_apt_command(
-    { COMMAND => [$command, '-oAPT::Get::Assume-Yes=true', @ARGV],
-      ENV => {'DEBIAN_FRONTEND' => 'noninteractive'},
-      USER => 'root',
-      PRIORITY => 1,
-      DIR => '/' });
+$resolver->run_apt_command({
+	COMMAND  => [$command, '-oAPT::Get::Assume-Yes=true', @ARGV],
+	ENV      => { 'DEBIAN_FRONTEND' => 'noninteractive' },
+	USER     => 'root',
+	PRIORITY => 1,
+	DIR      => '/'
+});
 my $status = $? >> 8;
 
 cleanup($conf);

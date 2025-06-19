@@ -30,37 +30,37 @@ use strict;
 use warnings;
 
 BEGIN {
-    use Exporter ();
-    our (@ISA, @EXPORT);
+	use Exporter ();
+	our (@ISA, @EXPORT);
 
-    @ISA = qw(Exporter);
+	@ISA = qw(Exporter);
 
-    @EXPORT = qw(get_resolver);
+	@EXPORT = qw(get_resolver);
 }
 
 sub get_resolver ($$$);
 
 sub get_resolver ($$$) {
-    my $conf = shift;
-    my $session = shift;
-    my $host = shift;
+	my $conf    = shift;
+	my $session = shift;
+	my $host    = shift;
 
-    my $resolver;
-    if ($conf->get('BUILD_DEP_RESOLVER') eq "apt") {
-	$resolver = Sbuild::AptResolver->new($conf, $session, $host);
-    } elsif ($conf->get('BUILD_DEP_RESOLVER') eq "xapt") {
-	$resolver = Sbuild::XaptResolver->new($conf, $session, $host);
-    } elsif ($conf->get('BUILD_DEP_RESOLVER') eq "aptitude") {
-	$resolver = Sbuild::AptitudeResolver->new($conf, $session, $host);
-    } elsif ($conf->get('BUILD_DEP_RESOLVER') eq "aspcud") {
-	$resolver = Sbuild::AspcudResolver->new($conf, $session, $host);
-    } elsif ($conf->get('BUILD_DEP_RESOLVER') eq "null") {
-	$resolver = Sbuild::NullResolver->new($conf, $session, $host);
-    } else {
-	$resolver = Sbuild::AptResolver->new($conf, $session, $host);
-    }
+	my $resolver;
+	if ($conf->get('BUILD_DEP_RESOLVER') eq "apt") {
+		$resolver = Sbuild::AptResolver->new($conf, $session, $host);
+	} elsif ($conf->get('BUILD_DEP_RESOLVER') eq "xapt") {
+		$resolver = Sbuild::XaptResolver->new($conf, $session, $host);
+	} elsif ($conf->get('BUILD_DEP_RESOLVER') eq "aptitude") {
+		$resolver = Sbuild::AptitudeResolver->new($conf, $session, $host);
+	} elsif ($conf->get('BUILD_DEP_RESOLVER') eq "aspcud") {
+		$resolver = Sbuild::AspcudResolver->new($conf, $session, $host);
+	} elsif ($conf->get('BUILD_DEP_RESOLVER') eq "null") {
+		$resolver = Sbuild::NullResolver->new($conf, $session, $host);
+	} else {
+		$resolver = Sbuild::AptResolver->new($conf, $session, $host);
+	}
 
-    return $resolver;
+	return $resolver;
 }
 
 1;

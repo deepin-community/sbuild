@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 
-import apt_pkg, sys
+import platform
+import sys
+
+import apt_pkg
+
+os_release = platform.freedesktop_os_release()
+if os_release["ID"] != "debian" and os_release.get("VERSION_CODENAME"):
+    print(os_release["VERSION_CODENAME"])
+    sys.exit(0)
 
 apt_pkg.init()
 c = apt_pkg.Cache(None)
@@ -20,9 +28,11 @@ for pkgfile, _ in d.get_candidate_ver(c["base-files"]).file_list:
         print("index is not trusted -- skipping", file=sys.stderr)
         continue
     archive = pkgfile.archive
-    if archive not in ["stable", "testing", "unstable"]:
+    if archive not in ["stable", "testing", "unstable", "proposed-updates"]:
         print("index archive %s is %s -- skipping" % (index, archive), file=sys.stderr)
         continue
+    if archive == "proposed-updates":
+        archive = "stable"
     prio = d.policy.get_priority(pkgfile)
     if prio > highest_prio:
         highest_prio = prio
