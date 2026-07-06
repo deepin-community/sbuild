@@ -57,6 +57,7 @@ sub install_deps {
 	my $status         = 0;
 	my $session        = $self->get('Session');
 	my $dummy_pkg_name = $self->get_sbuild_dummy_pkg_name($name);
+	my $arch           = $self->get('Host Arch');
 
 	# Call functions to setup an archive to install dummy package.
 	$self->log_subsubsection("Setup apt archive");
@@ -77,7 +78,8 @@ sub install_deps {
 	# Install the dummy package
 	my (@instd, @rmvd);
 	$self->log("Installing build dependencies\n");
-	my @apt_args = ("-yf", \@instd, \@rmvd, 'install', $dummy_pkg_name);
+	my @apt_args
+	  = ("-yf", \@instd, \@rmvd, 'install', "$dummy_pkg_name:$arch");
 
 	if (!$self->run_apt(@apt_args)) {
 		$self->log_error("Package installation failed\n");

@@ -510,7 +510,7 @@ variable. See
 .BR sbuild.conf (5)
 for more information.
 .TP
-.BR "--log-filename-ts-format=\fformat\fP"
+.BR "--log-filename-ts-format=\fIformat\fP"
 Set the format of the timestamp used in the build log filename in the format
 used by strftime.
 .TP

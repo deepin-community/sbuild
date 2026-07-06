@@ -34,6 +34,7 @@ package Sbuild::Utility;
 use strict;
 use warnings;
 
+use English;
 use Sbuild::Chroot;
 use File::Temp                qw(tempfile);
 use Module::Load::Conditional qw(can_load); # Used to check for LWP::UserAgent
@@ -388,7 +389,8 @@ use constant { PER_LINUX32 => 0x0008, };
 
 sub read_subuid_subgid() {
 	my $username = getpwuid $<;
-	my ($subid, $num_subid, $fh, $n);
+	my ($subid, $num_subid, $fh);
+	my $n      = -1;
 	my @result = ();
 
 	if (!-e "/etc/subuid") {
@@ -404,11 +406,11 @@ sub read_subuid_subgid() {
 	  or die "cannot open /etc/subuid for reading: $!";
 	while (my $line = <$fh>) {
 		($n, $subid, $num_subid) = split(/:/, $line, 3);
-		last if ($n eq $username);
+		last if ($n eq $username || $n eq $REAL_USER_ID);
 	}
 	close $fh;
 
-	if ($n ne $username) {
+	if ($n ne $username && $n ne $REAL_USER_ID) {
 		printf STDERR "No entry for $username in /etc/subuid\n";
 		return;
 	}
@@ -419,11 +421,11 @@ sub read_subuid_subgid() {
 	  or die "cannot open /etc/subgid for reading: $!";
 	while (my $line = <$fh>) {
 		($n, $subid, $num_subid) = split(/:/, $line, 3);
-		last if ($n eq $username);
+		last if ($n eq $username || $n eq $REAL_USER_ID);
 	}
 	close $fh;
 
-	if ($n ne $username) {
+	if ($n ne $username && $n ne $REAL_USER_ID) {
 		printf STDERR "No entry for $username in /etc/subgid\n";
 		return;
 	}

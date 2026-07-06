@@ -982,7 +982,7 @@ $unshare_mmdebstrap_extra_args = [
 			GROUP   => 'Build options',
 			DEFAULT => 0,
 			HELP    =>
-'Run apt-get distclean before the build to clean the apt package cache if the command is available. This makes sure that the build environment is not polluted by extra information but means that you need to run apt update before manually installing packages for debugging. You can disable this to save the extra call but remember to not use the information from the apt cache. Also note that this silently files when the command is not available to be compatible with older releases.'
+'Run apt-get distclean before the build to clean the apt package cache if the command is available. This makes sure that the build environment is not polluted by extra information but means that you need to run apt update before manually installing packages for debugging. You can disable this to save the extra call but remember to not use the information from the apt cache. Also note that this silently fails when the command is not available to be compatible with older releases.'
 		},
 		'CHECK_SPACE' => {
 			TYPE    => 'BOOL',
