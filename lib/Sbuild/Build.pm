@@ -29,7 +29,7 @@ use English;
 use POSIX;
 use Errno qw(:POSIX);
 use Fcntl;
-use File::Temp     qw(mkdtemp);
+use File::Temp     qw(tempdir);
 use File::Basename qw(basename dirname);
 use FileHandle;
 use File::Copy qw();    # copy is already exported from Sbuild, so don't export
@@ -2099,8 +2099,9 @@ sub run_piuparts {
 	  if ($self->get_conf('PIUPARTS_OPTIONS'));
 	push @piuparts_command, $self->get('Changes File');
 	$self->get('Host')->run_command({
-		COMMAND  => \@piuparts_command,
-		PRIORITY => 0,
+		COMMAND    => \@piuparts_command,
+		ENV_FILTER => ['^TMPDIR$'],
+		PRIORITY   => 0,
 	});
 	my $status = $? >> 8;
 
@@ -2183,7 +2184,7 @@ sub run_autopkgtest {
 			# sbuild got passed a source package name and downloaded that
 			# itself, so it must be made available to the host
 			my $build_dir = $self->get('Build Dir');
-			$tmpdir = mkdtemp("/tmp/tmp.sbuild.XXXXXXXXXX");
+			$tmpdir = tempdir("tmp.sbuild.XXXXXXXXXX", TMPDIR => 1);
 			if (!$session->copy_from_chroot("$build_dir/$dsc", "$tmpdir/$dsc"))
 			{
 				$self->log_error("cannot copy .dsc from chroot\n");
@@ -2214,8 +2215,9 @@ sub run_autopkgtest {
 		push @autopkgtest_command, '--', 'null';
 	}
 	$self->get('Host')->run_command({
-		COMMAND  => \@autopkgtest_command,
-		PRIORITY => 0,
+		COMMAND    => \@autopkgtest_command,
+		ENV_FILTER => ['^TMPDIR$'],
+		PRIORITY   => 0,
 	});
 	my $status = $? >> 8;
 	# if the source package wasn't built and also initially downloaded by
@@ -2720,8 +2722,9 @@ sub build {
 				# Do not make it binary-only=yes if --binNMU=0.
 				# Only if BIN_NMU_VERSION is defined and neither empty nor
 				# zero is the +bN suffix appended.
-				print $clogpipe ", binary-only=yes\n\n";
+				print $clogpipe ", binary-only=yes";
 			}
+			print $clogpipe "\n\n";
 			if ($self->get_conf('APPEND_TO_VERSION')) {
 				print $clogpipe "  * Append ",
 				  $self->get_conf('APPEND_TO_VERSION'),
@@ -2955,6 +2958,9 @@ sub build {
 			});
 			if ($? != 0) {
 				$dpkg_build_user = "root";
+				# root needs access to the build path
+				# this fixes the build of smartlist 3.15-28
+				$session->chmod($self->get_conf('BUILD_PATH'), "a+rx");
 			}
 		} else {
 			# temporary detect R³ manually until all affected

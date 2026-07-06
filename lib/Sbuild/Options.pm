@@ -693,7 +693,7 @@ sub set_options {
 			$self->push_conf('EXTRA_REPOSITORY_KEYS', $_[1]);
 		},
 		"build-path=s" => sub {
-			if ($_[1] !~ /^\//) {
+			if ($_[1] !~ /^($|\/)/) {
 				die "--build-path must be an absolute path";
 			}
 			$self->set_conf('BUILD_PATH', $_[1]);

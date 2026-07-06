@@ -1,3 +1,49 @@
+sbuild (0.89.3+deb13u4) trixie; urgency=medium
+
+  * Revert "Actually use UNSHARE_MMDEBSTRAP_ENV_CMD"
+
+ -- Jochen Sprickerhof <jspricke@debian.org>  Sun, 28 Dec 2025 14:49:34 +0100
+
+sbuild (0.89.3+deb13u3) trixie; urgency=medium
+
+  * Actually use UNSHARE_MMDEBSTRAP_ENV_CMD
+  * lib/Sbuild/Build.pm: preserve TMPDIR for piuparts
+  * Obey $TMPDIR for autopkgtest dsc mkdtemp
+  * Fix tempdir for autopkgtest
+  * Initialize variable
+
+ -- Jochen Sprickerhof <jspricke@debian.org>  Sat, 27 Dec 2025 21:42:04 +0100
+
+sbuild (0.89.3+deb13u2) trixie; urgency=medium
+
+  [ Jochen Sprickerhof ]
+  * Explicitly select the sbuild-build-depends-main-dummy package arch
+    (Closes: #1119344)
+
+  [ Johannes Schauer Marin Rodrigues ]
+  * lib/Sbuild/Build.pm: preserve TMPDIR when running autopkgtest
+    (Closes: #1121503)
+  * lib/Sbuild/Build.pm: perltidy
+
+ -- Jochen Sprickerhof <jspricke@debian.org>  Fri, 28 Nov 2025 09:43:59 +0100
+
+sbuild (0.89.3+deb13u1) trixie; urgency=medium
+
+  [ Richard Lewis ]
+  * man/sbuild.1.in: fix typo in markup
+
+  [ Hiraku Toyooka ]
+  * Allow BUILD_PATH being empty also in command line options
+
+  [ Jochen Sprickerhof ]
+  * Fix typo in help string
+  * Support UID in /etc/sub(u|g)id (Closes: #1110876)
+  * Fix build path permissions when building as root
+  * Always append newline in binNMU changelog.
+    Thanks to mjt (Closes: #1111776)
+
+ -- Jochen Sprickerhof <jspricke@debian.org>  Sat, 16 Aug 2025 09:00:34 +0200
+
 sbuild (0.89.3) unstable; urgency=medium
 
   [ Jochen Sprickerhof ]
